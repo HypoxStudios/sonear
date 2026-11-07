@@ -97,7 +97,7 @@ fn playlist_item_pages_parse() {
 
     assert_eq!(page.total, Some(25));
     assert_eq!(page.items.len(), 2);
-    assert!(page.items.iter().all(|row| row.item.is_some()));
+    assert!(page.items.iter().all(|row| row.media().is_some()));
 }
 
 #[test]
@@ -116,8 +116,21 @@ fn rows_with_null_items_are_skipped() {
     .unwrap();
 
     assert_eq!(page.items.len(), 2);
-    assert!(page.items[0].item.is_none());
-    assert!(page.items[1].item.is_some());
+    assert!(page.items[0].media().is_none());
+    assert!(page.items[1].media().is_some());
+}
+
+#[test]
+fn rows_with_both_item_and_track_parse() {
+    let page: Page<PlaylistRow> = serde_json::from_str(
+        r#"{"items":[{"item":{"uri":"spotify:track:a","name":"A"},"track":{"uri":"spotify:track:a","name":"A"}}],"total":1}"#,
+    )
+    .unwrap();
+
+    assert_eq!(page.items.len(), 1);
+    assert!(
+        matches!(page.items[0].media(), Some(MediaItem::Track(track)) if track.uri == "spotify:track:a")
+    );
 }
 
 #[test]
@@ -127,7 +140,7 @@ fn episodes_in_rows_are_told_apart() {
     )
     .unwrap();
 
-    assert!(matches!(row.item, Some(MediaItem::Episode(_))));
+    assert!(matches!(row.media(), Some(MediaItem::Episode(_))));
 }
 
 #[test]
@@ -138,7 +151,7 @@ fn local_files_parse() {
     .unwrap();
 
     assert!(row.is_local);
-    assert!(matches!(row.item, Some(MediaItem::Track(ref track)) if track.is_local));
+    assert!(matches!(row.media(), Some(MediaItem::Track(track)) if track.is_local));
 }
 
 #[test]

@@ -15,7 +15,14 @@ where
     Ok(values
         .into_iter()
         .filter(|value| !value.is_null())
-        .filter_map(|value| serde_json::from_value(value).ok())
+        .filter_map(|value| match serde_json::from_value(value) {
+            Ok(entry) => Some(entry),
+            Err(error) => {
+                tracing::debug!(%error, "skipping an entry Sonear couldn't read");
+
+                None
+            }
+        })
         .collect())
 }
 
@@ -213,14 +220,21 @@ impl Playlist {
     }
 }
 
-/// A playlist row. The track or episode is `item`, or `track` in older shapes.
+/// A playlist row. The track or episode is `item`, or `track` in older
+/// shapes; older Client IDs may get both, so they are separate fields.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct PlaylistRow {
     pub added_at: Option<String>,
     pub is_local: bool,
-    #[serde(alias = "track")]
     pub item: Option<MediaItem>,
+    pub track: Option<MediaItem>,
+}
+
+impl PlaylistRow {
+    pub fn media(&self) -> Option<&MediaItem> {
+        self.item.as_ref().or(self.track.as_ref())
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]

@@ -491,7 +491,7 @@ impl LibraryBackend for SpotifyLibrary {
         let page = self.lift(self.client()?.playlist_items(id, PAGE_SIZE, offset).await)?;
 
         Ok(convert::page(page, offset, |row| {
-            row.item.as_ref().and_then(convert::media_item)
+            row.media().and_then(convert::media_item)
         }))
     }
 
