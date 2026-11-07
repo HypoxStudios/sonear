@@ -17,7 +17,6 @@ use tokio::sync::mpsc;
 
 use crate::data::{self, Env, Load, Slot};
 
-const REPAINT_EVERY: Duration = Duration::from_millis(250);
 const TOAST_FOR: Duration = Duration::from_secs(6);
 const PENDING_PLAY_FOR: Duration = Duration::from_secs(10);
 const SIDEBAR_PLAYLISTS: usize = 8;
@@ -171,7 +170,6 @@ pub struct AppStore {
     /// Width of the main panel, written by the shell and read by grid pages.
     pub main_width: Rc<Cell<f32>>,
     serial: u64,
-    ticker: Option<Task<()>>,
     loads: Vec<Task<()>>,
 }
 
@@ -210,7 +208,6 @@ impl AppStore {
             history_version: 0,
             main_width: Rc::new(Cell::new(900.)),
             serial: 0,
-            ticker: None,
             loads: Vec::new(),
         };
         let mut events = core.subscribe();
@@ -306,8 +303,6 @@ impl AppStore {
                     self.ensure_current_like();
                     self.core.history.sync_soon();
                 }
-
-                self.sync_ticker(cx);
             }
             AppEvent::Soloist(status) => self.soloist = status,
             AppEvent::SoloistExpiry { days_left } => self.expiry_days = days_left,
@@ -482,41 +477,6 @@ impl AppStore {
     pub fn dismiss_toast(&mut self, cx: &mut Context<Self>) {
         self.toast = None;
         cx.notify();
-    }
-
-    /// The repaint timer only runs while playing, so an idle app uses no CPU.
-    fn sync_ticker(&mut self, cx: &mut Context<Self>) {
-        if !self.playback.is_playing() {
-            self.ticker = None;
-            return;
-        }
-
-        if self.ticker.is_some() {
-            return;
-        }
-
-        self.ticker = Some(cx.spawn(async move |this, cx| {
-            loop {
-                cx.background_executor().timer(REPAINT_EVERY).await;
-
-                let keep_going = this
-                    .update(cx, |store, cx| {
-                        if !store.playback.is_playing() {
-                            store.ticker = None;
-                            return false;
-                        }
-
-                        cx.notify();
-
-                        true
-                    })
-                    .unwrap_or(false);
-
-                if !keep_going {
-                    break;
-                }
-            }
-        }));
     }
 
     pub fn navigate(&mut self, route: Route, cx: &mut Context<Self>) {

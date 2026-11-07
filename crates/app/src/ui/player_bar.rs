@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Sizable as _;
 use gpui_kit::component::slider::{Slider, SliderEvent, SliderState, SliderValue};
@@ -5,8 +7,8 @@ use gpui_kit::component::spinner::Spinner;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
     AppContext as _, Context, Div, Entity, FontWeight, InteractiveElement as _, IntoElement,
-    ParentElement as _, Render, StatefulInteractiveElement as _, Styled as _, Subscription, Window,
-    div, px, relative,
+    ParentElement as _, Render, StatefulInteractiveElement as _, Styled as _, Subscription, Task,
+    Window, div, px, relative,
 };
 use sonear_core::PlaybackModel;
 use sonear_core::playback::now_ms;
@@ -18,6 +20,7 @@ use crate::format::clock;
 use crate::store::AppStore;
 use crate::theme;
 
+const REPAINT_EVERY: Duration = Duration::from_millis(250);
 const PROGRESS_STEPS: f32 = 1000.;
 const SIDE_WIDTH: f32 = 280.;
 const CENTER_SHARE: f32 = 0.4;
@@ -29,6 +32,7 @@ pub struct PlayerBar {
     volume: Entity<SliderState>,
     dragging_progress: bool,
     dragging_volume: bool,
+    ticker: Option<Task<()>>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -37,7 +41,10 @@ impl PlayerBar {
         let progress = cx.new(|_| SliderState::new().min(0.).max(PROGRESS_STEPS).step(1.));
         let volume = cx.new(|_| SliderState::new().min(0.).max(100.).step(1.));
         let subscriptions = vec![
-            cx.observe(&store, |_, _, cx| cx.notify()),
+            cx.observe(&store, |this, _, cx| {
+                this.sync_ticker(cx);
+                cx.notify();
+            }),
             cx.subscribe(&progress, |this, _, event: &SliderEvent, cx| match event {
                 SliderEvent::Change(_) => this.dragging_progress = true,
                 SliderEvent::Release(value) => {
@@ -58,14 +65,57 @@ impl PlayerBar {
             }),
         ];
 
-        Self {
+        let mut bar = Self {
             store,
             progress,
             volume,
             dragging_progress: false,
             dragging_volume: false,
+            ticker: None,
             _subscriptions: subscriptions,
+        };
+
+        bar.sync_ticker(cx);
+
+        bar
+    }
+
+    /// Only this view repaints each tick, and only while playing, so an idle
+    /// app uses no CPU and pages stay untouched.
+    fn sync_ticker(&mut self, cx: &mut Context<Self>) {
+        if !self.store.read(cx).playback.is_playing() {
+            self.ticker = None;
+
+            return;
         }
+
+        if self.ticker.is_some() {
+            return;
+        }
+
+        self.ticker = Some(cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor().timer(REPAINT_EVERY).await;
+
+                let keep_going = this
+                    .update(cx, |bar, cx| {
+                        if !bar.store.read(cx).playback.is_playing() {
+                            bar.ticker = None;
+
+                            return false;
+                        }
+
+                        cx.notify();
+
+                        true
+                    })
+                    .unwrap_or(false);
+
+                if !keep_going {
+                    break;
+                }
+            }
+        }));
     }
 
     fn seek_to(&mut self, step: f32, cx: &mut Context<Self>) {

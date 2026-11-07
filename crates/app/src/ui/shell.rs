@@ -3,7 +3,7 @@ use gpui_kit::component::TitleBar;
 use gpui_kit::{
     AnyElement, AnyView, AppContext as _, Context, Div, Entity, FontWeight,
     InteractiveElement as _, IntoElement, ParentElement as _, Render, Stateful,
-    StatefulInteractiveElement as _, Styled as _, Subscription, Window, div, px,
+    StatefulInteractiveElement as _, StyleRefinement, Styled as _, Subscription, Window, div, px,
 };
 use sonear_soloist::Status;
 
@@ -90,7 +90,10 @@ impl Shell {
         }
 
         match &self.page {
-            Some((_, view)) => view.clone().into_any_element(),
+            Some((_, view)) => view
+                .clone()
+                .cached(StyleRefinement::default().size_full())
+                .into_any_element(),
             None => div().into_any_element(),
         }
     }
@@ -401,7 +404,14 @@ impl Render for Shell {
         let dialog = self.confirm_dialog(cx);
         let state = self.store.read(cx);
         let sidebar = sidebar(&self.store, state, collapsed);
-        let right = show_right.then(|| self.right_panel.clone());
+        let right = show_right.then(|| {
+            self.right_panel.clone().cached(
+                StyleRefinement::default()
+                    .flex_none()
+                    .h_full()
+                    .w(theme::RIGHT_PANEL_WIDTH),
+            )
+        });
 
         let main = panel()
             .flex_1()
