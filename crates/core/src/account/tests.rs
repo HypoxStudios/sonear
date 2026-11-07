@@ -1,0 +1,141 @@
+use super::*;
+use crate::history::{HistoryRow, HistoryStore};
+use crate::library::LibraryBackend;
+use crate::meta::TrackResolver;
+use crate::secrets::MemoryStore;
+
+struct Fixture {
+    account: Arc<Account>,
+    secrets: Arc<MemoryStore>,
+    paths: AppPaths,
+    meta: Arc<MetaCache>,
+    history: Arc<History>,
+    config: ConfigHandle,
+    _dir: tempfile::TempDir,
+}
+
+fn fixture() -> Fixture {
+    let dir = tempfile::tempdir().unwrap();
+    let paths = AppPaths::new(dir.path().join("config"), dir.path().join("local"));
+    let config = ConfigHandle::load(paths.config_file());
+    let secrets = Arc::new(MemoryStore::default());
+    let library = Arc::new(SpotifyLibrary::default());
+    let backend: Arc<dyn LibraryBackend> = library.clone();
+    let meta = MetaCache::open(paths.meta_cache_dir());
+    let (events, _) = broadcast::channel(16);
+    let history = History::new(
+        HistoryStore::open(paths.history_db()),
+        backend.clone(),
+        TrackResolver::new(backend.clone(), meta.clone()),
+        config.clone(),
+        events.clone(),
+    );
+    let likes = LikeStore::new(backend, events.clone());
+    let account = Account::new(
+        Handle::current(),
+        paths.clone(),
+        config.clone(),
+        secrets.clone(),
+        Some(library),
+        meta.clone(),
+        history.clone(),
+        likes,
+        events,
+    );
+
+    Fixture {
+        account,
+        secrets,
+        paths,
+        meta,
+        history,
+        config,
+        _dir: dir,
+    }
+}
+
+#[test]
+fn client_ids_are_checked_loosely() {
+    assert!(looks_like_client_id("0123456789abcdef0123456789abcdef"));
+    assert!(looks_like_client_id("  0123456789abcdef  "));
+    assert!(!looks_like_client_id("short"));
+    assert!(!looks_like_client_id("has spaces in the middle of it all"));
+    assert!(!looks_like_client_id(
+        "https://developer.spotify.com/dashboard"
+    ));
+}
+
+#[tokio::test]
+async fn a_bad_client_id_fails_without_touching_the_network() {
+    let fx = fixture();
+
+    fx.account.begin_login("nope");
+
+    assert!(matches!(fx.account.state(), AccountState::LoginFailed(_)));
+    assert_eq!(fx.config.get().spotify_client_id, "");
+}
+
+#[tokio::test]
+async fn disconnect_deletes_the_login_cache_covers_history_and_client_id() {
+    let fx = fixture();
+    let covers = fx.paths.cover_cache_dir();
+
+    fx.secrets
+        .set(SPOTIFY_REFRESH_TOKEN, &Secret::new("refresh"))
+        .unwrap();
+    fx.secrets
+        .set(crate::secrets::SOLOIST_API_KEY, &Secret::new("keep-me"))
+        .unwrap();
+    fx.config.update(|config| {
+        config.spotify_client_id = "0123456789abcdef0123456789abcdef".into();
+        config.history_cleared_at_ms = 5;
+    });
+    fx.meta.put("playlist:x", &"cached");
+    fs::create_dir_all(&covers).unwrap();
+    fs::write(covers.join("cover.jpg"), b"image").unwrap();
+    fx.history
+        .store()
+        .insert(vec![HistoryRow {
+            played_at_ms: 1,
+            track_uri: "spotify:track:a".into(),
+            context_uri: None,
+        }])
+        .await
+        .unwrap();
+
+    assert!(fx.paths.history_db().exists());
+
+    let problems = fx.account.disconnect().await;
+
+    assert!(problems.is_empty(), "{problems:?}");
+    assert!(fx.secrets.get(SPOTIFY_REFRESH_TOKEN).unwrap().is_none());
+    assert_eq!(
+        fx.secrets
+            .get(crate::secrets::SOLOIST_API_KEY)
+            .unwrap()
+            .unwrap()
+            .expose(),
+        "keep-me"
+    );
+    assert!(fx.meta.get::<String>("playlist:x").is_none());
+    assert!(!covers.exists());
+    assert!(!fx.paths.history_db().exists());
+    assert_eq!(fx.config.get().spotify_client_id, "");
+    assert_eq!(fx.config.get().history_cleared_at_ms, 0);
+    assert_eq!(fx.account.state(), AccountState::Disconnected);
+}
+
+#[tokio::test]
+async fn starting_without_a_saved_login_stays_disconnected() {
+    let fx = fixture();
+
+    fx.account.start();
+
+    assert_eq!(fx.account.state(), AccountState::Disconnected);
+
+    fx.config
+        .update(|config| config.spotify_client_id = "0123456789abcdef0123456789abcdef".into());
+    fx.account.start();
+
+    assert_eq!(fx.account.state(), AccountState::Disconnected);
+}
