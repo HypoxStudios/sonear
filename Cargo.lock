@@ -6389,7 +6389,6 @@ name = "sonear"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bytes",
  "chrono",
  "embed-resource",
  "futures-util",
