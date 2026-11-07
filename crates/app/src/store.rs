@@ -678,6 +678,11 @@ impl AppStore {
                     self.resolve_queue(cx);
                 }
 
+                // Only after a login approved in the browser, never on a normal start.
+                if matches!(previous, AccountState::LoggingIn { .. }) {
+                    self.show_main_window(cx);
+                }
+
                 self.open_pending_link(cx);
             }
             AccountState::Disconnected
