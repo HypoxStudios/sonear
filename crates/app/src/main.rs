@@ -1,4 +1,4 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(not(test), windows_subsystem = "windows")]
 
 mod assets;
 mod cover_cache;
@@ -25,7 +25,32 @@ const DEMO: bool = cfg!(feature = "demo");
 /// Decoded cover images kept in memory at once.
 const IMAGE_CACHE_CAPACITY: usize = 160;
 
+/// The GUI subsystem starts without a console, so a launch from a terminal
+/// would lose its logs. Borrow the parent's console unless stdout is already
+/// redirected.
+#[cfg(windows)]
+fn attach_parent_console() {
+    use windows::Win32::System::Console::{
+        ATTACH_PARENT_PROCESS, AttachConsole, GetStdHandle, STD_OUTPUT_HANDLE,
+    };
+
+    // SAFETY: both calls take plain values and have no preconditions.
+    unsafe {
+        let usable = GetStdHandle(STD_OUTPUT_HANDLE)
+            .is_ok_and(|handle| !handle.is_invalid() && !handle.0.is_null());
+
+        if !usable {
+            let _ = AttachConsole(ATTACH_PARENT_PROCESS);
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn attach_parent_console() {}
+
 fn main() {
+    attach_parent_console();
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
