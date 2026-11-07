@@ -9,7 +9,7 @@ use sonear_core::config::LEGAL_VERSION;
 use sonear_core::model::ItemKind;
 use sonear_core::model::{PlayOffset, PlaybackRequest, Playlist, Profile, Track};
 use sonear_core::queue::QueueSource;
-use sonear_core::{AccountState, AppEvent, Core, PlaybackModel, QueueSnapshot};
+use sonear_core::{AccountState, AppEvent, Core, PlaybackModel, QueueSnapshot, SpotifyLink};
 use sonear_soloist::Status;
 use sonear_soloist::install::InstallProgress;
 use sonear_spotify::RateLimit;
@@ -178,6 +178,8 @@ pub struct AppStore {
     pub legal_open: Option<LegalDoc>,
     /// A query the Search page should fill in and run, taken when it reads it.
     pub pending_search: Option<String>,
+    /// A link opened before the app could act on it, opened once it can.
+    pending_link: Option<SpotifyLink>,
     /// Bumped whenever the history changes, so history views reload.
     pub history_version: u64,
     /// Bumped whenever collected playlist tracks change, so playlist pages reload them.
@@ -225,6 +227,7 @@ impl AppStore {
             shortcuts_open: false,
             legal_open: None,
             pending_search: None,
+            pending_link: None,
             history_version: 0,
             seen_version: 0,
             seen_changed: None,
@@ -326,7 +329,10 @@ impl AppStore {
                     self.core.history.sync_soon();
                 }
             }
-            AppEvent::Soloist(status) => self.soloist = status,
+            AppEvent::Soloist(status) => {
+                self.soloist = status;
+                self.open_pending_link(cx);
+            }
             AppEvent::SoloistExpiry { days_left } => self.expiry_days = days_left,
             AppEvent::Account(state) => self.apply_account(state, cx),
             AppEvent::AccountDataWiped => self.drop_account_caches(),
@@ -362,6 +368,8 @@ impl AppStore {
                     self.ensure_current_like();
                     self.resolve_queue(cx);
                 }
+
+                self.open_pending_link(cx);
             }
             AccountState::Disconnected
             | AccountState::SessionExpired
@@ -739,6 +747,74 @@ impl AppStore {
             .config
             .update(|config| config.legal_accepted = LEGAL_VERSION);
         cx.notify();
+    }
+
+    /// Opens an album, playlist, artist or show, or plays a track or episode.
+    /// Waits until the app is logged in and Soloist is ready.
+    pub fn open_link(&mut self, link: SpotifyLink, cx: &mut Context<Self>) {
+        if !self.can_open_links() {
+            self.pending_link = Some(link);
+
+            return;
+        }
+
+        match link {
+            SpotifyLink::Album(id) => self.navigate(Route::Album(id), cx),
+            SpotifyLink::Playlist(id) => self.navigate(Route::Playlist(id), cx),
+            SpotifyLink::Artist(id) => self.navigate(Route::Artist(id), cx),
+            SpotifyLink::Show(id) => self.navigate(Route::Show(id), cx),
+            SpotifyLink::Track(_) => self.open_track(link.uri(), cx),
+            SpotifyLink::Episode(_) => self.play_tracks(vec![link.uri()], 0, cx),
+        }
+
+        cx.notify();
+    }
+
+    /// Plays a track inside its album and shows the album, so the queue goes
+    /// on from there. Plays it alone when the lookup finds no album.
+    fn open_track(&mut self, uri: String, cx: &mut Context<Self>) {
+        let history = self.core.history.clone();
+        let (sender, receiver) = tokio::sync::oneshot::channel();
+        let lookup = uri.clone();
+
+        self.begin_play(cx);
+        self.runtime.spawn(async move {
+            let track = history.resolver().resolve(&lookup).await;
+            let _ = sender.send(track);
+        });
+        cx.spawn(async move |this, cx| {
+            let track = receiver.await.ok().flatten();
+            let album = track
+                .and_then(|track| track.album)
+                .and_then(|album| album.id.clone().map(|id| (id, album.uri)));
+
+            let _ = this.update(cx, |store, cx| {
+                match album {
+                    Some((id, album_uri)) => {
+                        store.navigate(Route::Album(id), cx);
+                        store.play_in_context(&album_uri, PlayOffset::Uri(uri), cx);
+                    }
+                    None => store.play_tracks(vec![uri], 0, cx),
+                }
+
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    fn can_open_links(&self) -> bool {
+        self.connected() && (self.is_demo() || matches!(self.soloist, Status::Ready { .. }))
+    }
+
+    fn open_pending_link(&mut self, cx: &mut Context<Self>) {
+        if !self.can_open_links() {
+            return;
+        }
+
+        if let Some(link) = self.pending_link.take() {
+            self.open_link(link, cx);
+        }
     }
 
     /// Opens the Search page with `query` filled in, also when it is already open.

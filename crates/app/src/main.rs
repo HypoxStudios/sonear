@@ -16,7 +16,8 @@ use std::sync::Arc;
 
 use gpui_kit::component::TitleBar;
 use gpui_kit::{AppContext as _, Bounds, WindowBounds, WindowOptions, px, size};
-use sonear_core::{AppPaths, Core};
+use instance::Handoff;
+use sonear_core::{AppPaths, Core, SpotifyLink};
 use tracing::{error, info};
 
 const DEMO: bool = cfg!(feature = "demo");
@@ -32,8 +33,19 @@ fn main() {
         )
         .init();
 
+    let arg = std::env::args().nth(1);
+    let link = arg.as_deref().and_then(SpotifyLink::parse);
+
+    if let (Some(arg), None) = (&arg, &link) {
+        let shown: String = arg.chars().take(200).collect();
+
+        info!(argument = %shown, "ignored a launch argument that isn't a Spotify link");
+    }
+
     let Some(_instance) = instance::acquire(DEMO) else {
         info!("Sonear is already running");
+        instance::forward(DEMO, &link.map_or(Handoff::Show, Handoff::Open));
+
         return;
     };
     let Some(paths) = AppPaths::discover() else {
@@ -53,6 +65,7 @@ fn main() {
         }
     };
     let handle = runtime.handle().clone();
+    let handoffs = instance::serve(&handle, DEMO);
     let core = Arc::new(start_core(&handle, &paths));
     let covers = (!DEMO).then(|| {
         cover_cache::DiskCache::open(
@@ -85,13 +98,36 @@ fn main() {
                 ..TitleBar::window_options()
             };
 
+            let shell_store = store.clone();
             let opened = gpui_kit::open_window(options, cx, |window, cx| {
-                cx.new(|cx| ui::shell::Shell::new(store, window, cx))
+                cx.new(|cx| ui::shell::Shell::new(shell_store, window, cx))
             });
 
-            if let Err(error) = opened {
-                error!(%error, "could not open the window");
+            let Ok((window, _)) = opened else {
+                if let Err(error) = opened {
+                    error!(%error, "could not open the window");
+                }
+
                 cx.quit();
+
+                return;
+            };
+
+            if let Some(link) = link.clone() {
+                store.update(cx, |store, cx| store.open_link(link, cx));
+            }
+
+            if let Some(mut inbox) = handoffs {
+                cx.spawn(async move |cx| {
+                    while let Some(handoff) = inbox.recv().await {
+                        if let Handoff::Open(link) = handoff {
+                            store.update(cx, |store, cx| store.open_link(link, cx));
+                        }
+
+                        let _ = window.update(cx, |_, window, _| window.activate_window());
+                    }
+                })
+                .detach();
             }
 
             cx.activate(true);

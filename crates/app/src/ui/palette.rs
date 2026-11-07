@@ -10,6 +10,7 @@ use gpui_kit::{
     InteractiveElement as _, IntoElement, Keystroke, ParentElement as _, Render,
     StatefulInteractiveElement as _, Styled as _, Task, Window, div, px,
 };
+use sonear_core::SpotifyLink;
 use sonear_core::model::{Artwork, Page, Playlist, SearchKind, SearchResults, Track};
 use sonear_soloist::protocol::RepeatMode;
 
@@ -97,6 +98,7 @@ enum Target {
     Command,
     Route(Route),
     Track(String),
+    Link(SpotifyLink),
     Search,
     None,
 }
@@ -185,7 +187,7 @@ impl PaletteView {
         self.generation += 1;
         self.debounce = None;
 
-        if query.chars().count() < MIN_SEARCH_CHARS {
+        if query.chars().count() < MIN_SEARCH_CHARS || SpotifyLink::parse(&query).is_some() {
             self.search = None;
             self.results = None;
             self.error = None;
@@ -254,6 +256,7 @@ impl PaletteView {
         self.store.update(cx, |store, cx| match target {
             Target::Route(route) => store.navigate(route, cx),
             Target::Track(uri) => store.play_tracks(vec![uri], 0, cx),
+            Target::Link(link) => store.open_link(link, cx),
             Target::Search => store.search_for(&query, cx),
             Target::Command | Target::None => {}
         });
@@ -336,6 +339,12 @@ impl PaletteView {
     }
 
     fn typed_model(&self, groups: &mut Groups, cx: &App) {
+        if let Some(link) = SpotifyLink::parse(&self.query) {
+            groups.add(Some("Spotify link"), vec![link_row(link)]);
+
+            return;
+        }
+
         let query = self.query.to_lowercase();
 
         groups.add(
@@ -457,6 +466,33 @@ fn command_row(glyph: IconName, label: &str, on: bool, keystroke: &Option<Keystr
             row.child(icon(IconName::CircleCheck, 14., theme::accent()))
         })
         .children(keystroke.clone().map(Kbd::new))
+}
+
+fn link_row(link: SpotifyLink) -> (CommandItem, Target) {
+    let (verb, glyph) = match link {
+        SpotifyLink::Track(_) | SpotifyLink::Episode(_) => ("Play", IconName::Play),
+        _ => ("Open", IconName::ExternalLink),
+    };
+    let label = format!("{verb} {}", link.kind_label().to_lowercase());
+    let id = link.id().to_owned();
+    let shown = label.clone();
+    let item = CommandItem::new().label(label).child(move |_, _| {
+        div()
+            .flex()
+            .items_center()
+            .gap_3()
+            .w_full()
+            .child(icon(glyph, 16., theme::text_secondary()))
+            .child(div().flex_1().truncate().child(shown.clone()))
+            .child(
+                div()
+                    .text_size(px(11.))
+                    .text_color(theme::text_tertiary())
+                    .child(id.clone()),
+            )
+    });
+
+    (item, Target::Link(link))
 }
 
 fn playlist_row(playlist: &Playlist) -> (CommandItem, Target) {
