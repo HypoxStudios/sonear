@@ -13,7 +13,7 @@ use gpui_kit::{
 };
 use serde::{Deserialize, Serialize};
 use sonear_core::LibraryError;
-use sonear_core::model::{Album, Artwork, PlayOffset, Playlist, Track};
+use sonear_core::model::{Album, Artwork, PlayOffset, Playlist, Track, is_liked_context};
 use sonear_core::seen::seen_key;
 
 use crate::data::{self, Env, Load, Paged, Slot};
@@ -409,13 +409,20 @@ impl DetailPage {
         let model = &state.playback;
         let header = self.header.value();
         let context = header.and_then(|header| header.context_uri.clone());
+        let liked = self.kind == Kind::Liked;
+        let in_liked_context = liked
+            && model
+                .context
+                .as_ref()
+                .is_some_and(|context| is_liked_context(&context.uri));
         let playing_here = model.is_playing()
             && match &context {
                 Some(uri) => model.context.as_ref().is_some_and(|c| &c.uri == uri),
-                None => self.kind == Kind::Liked && self.is_current_in_list(model),
+                None => liked && (in_liked_context || self.is_current_in_list(model)),
             };
-        let paused_in_list =
-            context.is_none() && !model.is_playing() && self.is_current_in_list(model);
+        let paused_in_list = context.is_none()
+            && !model.is_playing()
+            && (in_liked_context || self.is_current_in_list(model));
         let pending = state.pending_play;
         let scrolled = -f32::from(self.scroll.offset().y);
         let t = (scrolled / COLLAPSE_OVER).clamp(0., 1.);
@@ -454,6 +461,7 @@ impl DetailPage {
 
                     store.update(cx, |state, cx| match context {
                         Some(uri) => state.play_context(&uri, cx),
+                        None if liked => state.play_liked(None, uris, 0, cx),
                         None => state.play_tracks(uris, 0, cx),
                     });
                 }
@@ -650,6 +658,7 @@ impl DetailPage {
         let not_exposed = self.not_exposed;
         let notice = not_exposed.then(|| self.seen_notice(self.header.value()));
         let kind = self.kind.clone();
+        let is_liked = kind == Kind::Liked;
         let user = self.store.read(cx).user_id().map(str::to_owned);
         let editable = self
             .header
@@ -726,6 +735,9 @@ impl DetailPage {
                                         PlayOffset::Uri(track_uri.clone()),
                                         cx,
                                     ),
+                                    None if is_liked => {
+                                        state.play_liked(Some(track_uri.clone()), uris, index, cx)
+                                    }
                                     None => state.play_tracks(uris, index, cx),
                                 });
                             },

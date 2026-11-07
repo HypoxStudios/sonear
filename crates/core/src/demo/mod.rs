@@ -64,6 +64,7 @@ fn track_entity(track: &DemoTrack) -> Entity {
 
 fn context_entity(uri: &str) -> Entity {
     let name = crate::model::split_uri(uri)
+        .filter(|_| !crate::model::is_liked_context(uri))
         .and_then(|(kind, id)| match kind {
             "playlist" => catalog()
                 .playlist(id)
@@ -78,7 +79,13 @@ fn context_entity(uri: &str) -> Entity {
                 .map(|index| catalog::ARTISTS[index % catalog::ARTISTS.len()].to_owned()),
             _ => None,
         })
-        .unwrap_or_default();
+        .unwrap_or_else(|| {
+            if crate::model::is_liked_context(uri) {
+                "Liked Songs".to_owned()
+            } else {
+                String::new()
+            }
+        });
 
     named(uri, uri.split(':').nth(1).unwrap_or("playlist"), &name)
 }
@@ -87,6 +94,11 @@ fn context_entity(uri: &str) -> Entity {
 enum Cmd {
     Play(Option<String>),
     PlayWeb(WebPlayRequest),
+    PlayCollection {
+        indices: Vec<usize>,
+        start: usize,
+        context_uri: String,
+    },
     Pause,
     Next,
     Previous,
@@ -125,6 +137,20 @@ impl DemoBackend {
     /// Starts something the way a Web API play call would.
     pub fn play_web(&self, request: WebPlayRequest) -> Result<(), PlayerError> {
         self.send(Cmd::PlayWeb(request))
+    }
+
+    /// Starts the saved tracks, given as catalogue indices, as the user's collection context.
+    pub fn play_collection(
+        &self,
+        indices: Vec<usize>,
+        start: usize,
+        context_uri: String,
+    ) -> Result<(), PlayerError> {
+        self.send(Cmd::PlayCollection {
+            indices,
+            start,
+            context_uri,
+        })
     }
 }
 
@@ -341,6 +367,11 @@ impl Sim {
             }
             Cmd::Play(Some(uri)) => self.play_uri(&uri),
             Cmd::PlayWeb(request) => self.play_web(&request),
+            Cmd::PlayCollection {
+                indices,
+                start,
+                context_uri,
+            } => self.load(indices, start, Some(context_entity(&context_uri))),
             Cmd::Pause => {
                 self.set_position(self.position_ms());
                 self.status = PlayStatus::Paused;
@@ -700,6 +731,73 @@ mod tests {
         assert_eq!(sim.current().index, 40);
         assert_eq!(sim.order.len(), 2);
         assert!(sim.context.is_none());
+    }
+
+    #[test]
+    fn the_collection_context_plays_the_saved_tracks_in_order() {
+        let mut sim = Sim::new(40);
+        let uri = crate::model::liked_context_uri(catalog::DEMO_USER);
+
+        sim.handle(Cmd::PlayCollection {
+            indices: vec![9, 4, 7, 2],
+            start: 2,
+            context_uri: uri.clone(),
+        });
+
+        assert_eq!(sim.current().index, 7);
+        assert_eq!(sim.status, PlayStatus::Playing);
+
+        let snapshot = sim.snapshot();
+        let context = snapshot.context.unwrap();
+
+        assert_eq!(context.uri, uri);
+        assert_eq!(context.name(), "Liked Songs");
+        assert_eq!(sim.upcoming()[0].item.uri, catalog().tracks[2].uri);
+
+        sim.advance();
+        sim.advance();
+
+        assert_eq!(sim.status, PlayStatus::Paused);
+        assert_eq!(sim.current().index, 9);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn the_demo_library_starts_the_collection_from_the_offset_track() {
+        use crate::library::LibraryBackend as _;
+
+        let backend = DemoBackend::spawn(&Handle::current(), 40);
+        let library = DemoLibrary::new(backend.clone(), DEVICE_NAME.into());
+        let mut events = backend.subscribe();
+        let liked = library.saved_tracks(0).await.unwrap().items;
+        let uri = crate::model::liked_context_uri(catalog::DEMO_USER);
+
+        library
+            .start_playback(
+                &WebPlayRequest {
+                    context_uri: Some(uri.clone()),
+                    offset: Some(PlayOffset::Uri(liked[2].uri.clone())),
+                    ..WebPlayRequest::default()
+                },
+                "demo-device",
+            )
+            .await
+            .unwrap();
+        tokio::task::yield_now().await;
+        tokio::time::advance(Duration::from_millis(10)).await;
+        tokio::task::yield_now().await;
+
+        let mut last = None;
+
+        while let Ok(event) = events.try_recv() {
+            if let ClientEvent::Event(Event::PlaybackState(state)) = event {
+                last = Some(state);
+            }
+        }
+
+        let state = last.unwrap();
+
+        assert_eq!(state.context.unwrap().uri, uri);
+        assert_eq!(state.item.unwrap().uri, liked[2].uri);
     }
 
     #[test]

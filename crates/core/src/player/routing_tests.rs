@@ -88,6 +88,8 @@ struct Web {
     plays: Mutex<Vec<(WebPlayRequest, String)>>,
     /// Device ids whose play call answers 404.
     dead_devices: Vec<String>,
+    /// What a play call with a context answers instead of succeeding.
+    context_error: Option<LibraryError>,
 }
 
 fn soloist(id: &str) -> Device {
@@ -119,6 +121,10 @@ impl LibraryBackend for Web {
     async fn start_playback(&self, request: &WebPlayRequest, device_id: &str) -> LibraryResult<()> {
         if self.dead_devices.iter().any(|dead| dead == device_id) {
             return Err(LibraryError::NotFound);
+        }
+
+        if let (Some(_), Some(error)) = (&request.context_uri, &self.context_error) {
+            return Err(error.clone());
         }
 
         lock(&self.plays).push((request.clone(), device_id.to_owned()));
@@ -154,6 +160,12 @@ fn fixture(web: Web) -> Fixture {
         web,
         events: receiver,
         _dir: dir,
+    }
+}
+
+impl Fixture {
+    fn inner_support(&self) -> u8 {
+        self.player.inner.liked_support.load(Ordering::Relaxed)
     }
 }
 
@@ -330,4 +342,147 @@ async fn a_failed_play_posts_a_notice_and_does_not_fall_back() {
 
     assert!(matches!(receiver.try_recv(), Ok(AppEvent::Notice(text)) if text.contains("quota")));
     assert!(lock(&socket.calls).is_empty());
+}
+
+const COLLECTION: &str = "spotify:user:me:collection";
+
+fn liked_uris() -> Vec<String> {
+    (0..5).map(|n| format!("spotify:track:{n}")).collect()
+}
+
+fn play_liked(fx: &Fixture, offset: Option<&str>, start: usize) {
+    fx.player.play_request(PlaybackRequest::LikedSongs {
+        user_id: "me".into(),
+        offset_uri: offset.map(str::to_owned),
+        uris: liked_uris(),
+        start,
+    });
+}
+
+#[tokio::test(start_paused = true)]
+async fn liked_songs_start_the_collection_context_with_a_uri_offset() {
+    let web = Web {
+        device_lists: Mutex::new(vec![vec![soloist("s1")]]),
+        ..Web::default()
+    };
+    let fx = fixture(web);
+
+    play_liked(&fx, Some("spotify:track:3"), 3);
+    settle().await;
+
+    let plays = lock(&fx.web.plays).clone();
+
+    assert_eq!(plays.len(), 1);
+    assert_eq!(plays[0].0.context_uri.as_deref(), Some(COLLECTION));
+    assert_eq!(plays[0].0.uris, None);
+    assert_eq!(
+        plays[0].0.offset,
+        Some(PlayOffset::Uri("spotify:track:3".into()))
+    );
+    assert_eq!(fx.inner_support(), LIKED_YES);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_rejected_collection_falls_back_to_the_uris_and_is_remembered() {
+    let web = Web {
+        device_lists: Mutex::new(vec![vec![soloist("s1")]]),
+        context_error: Some(LibraryError::Forbidden),
+        ..Web::default()
+    };
+    let mut fx = fixture(web);
+
+    play_liked(&fx, Some("spotify:track:2"), 2);
+    settle().await;
+
+    let plays = lock(&fx.web.plays).clone();
+
+    assert_eq!(plays.len(), 1);
+    assert_eq!(plays[0].0.context_uri, None);
+    assert_eq!(plays[0].0.uris.as_ref().unwrap()[0], "spotify:track:2");
+    assert_eq!(fx.web.device_calls.load(Ordering::SeqCst), 1);
+    assert_eq!(fx.inner_support(), LIKED_NO);
+    assert!(fx.events.try_recv().is_err());
+
+    play_liked(&fx, None, 0);
+    settle().await;
+
+    let plays = lock(&fx.web.plays).clone();
+
+    assert_eq!(plays.len(), 2);
+    assert_eq!(plays[1].0.context_uri, None);
+    assert_eq!(plays[1].0.uris.as_ref().unwrap().len(), 5);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_network_error_does_not_fall_back_or_change_the_answer() {
+    let web = Web {
+        device_lists: Mutex::new(vec![vec![soloist("s1")]]),
+        context_error: Some(LibraryError::Network("down".into())),
+        ..Web::default()
+    };
+    let mut fx = fixture(web);
+
+    play_liked(&fx, None, 0);
+    settle().await;
+
+    assert!(lock(&fx.web.plays).is_empty());
+    assert!(lock(&fx.socket.calls).is_empty());
+    assert_eq!(fx.inner_support(), LIKED_UNKNOWN);
+    assert!(matches!(fx.events.try_recv(), Ok(AppEvent::Notice(_))));
+}
+
+#[tokio::test(start_paused = true)]
+async fn liked_songs_without_a_library_use_the_websocket() {
+    let dir = tempfile::tempdir().unwrap();
+    let config = ConfigHandle::load(dir.path().join("config.toml"));
+    let socket = Arc::new(Socket {
+        calls: Mutex::new(Vec::new()),
+        events: broadcast::channel(16).0,
+    });
+    let player = Player::new(
+        socket.clone(),
+        Handle::current(),
+        config,
+        broadcast::channel(16).0,
+    );
+
+    player.play_request(PlaybackRequest::LikedSongs {
+        user_id: "me".into(),
+        offset_uri: None,
+        uris: liked_uris(),
+        start: 1,
+    });
+    player.play_request(PlaybackRequest::LikedSongs {
+        user_id: "me".into(),
+        offset_uri: None,
+        uris: Vec::new(),
+        start: 0,
+    });
+    settle().await;
+
+    assert_eq!(
+        *lock(&socket.calls),
+        [
+            Ws::Play(Some("spotify:track:1".into())),
+            Ws::Play(Some(COLLECTION.into())),
+        ]
+    );
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_missing_device_plays_the_clicked_liked_track_over_the_websocket() {
+    let web = Web {
+        device_lists: Mutex::new(vec![vec![other("k1")]]),
+        ..Web::default()
+    };
+    let mut fx = fixture(web);
+
+    play_liked(&fx, Some("spotify:track:4"), 4);
+    settle().await;
+
+    assert_eq!(
+        *lock(&fx.socket.calls),
+        [Ws::Activate, Ws::Play(Some("spotify:track:4".into()))]
+    );
+    assert!(matches!(fx.events.try_recv(), Ok(AppEvent::Notice(_))));
 }

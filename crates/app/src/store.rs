@@ -613,6 +613,31 @@ impl AppStore {
             .play_request(PlaybackRequest::Tracks { uris, start });
     }
 
+    /// Plays Liked Songs as one context when the user is known, so it keeps
+    /// going past the loaded rows. `uris` and `start` are what plays when
+    /// Spotify refuses that.
+    pub fn play_liked(
+        &mut self,
+        offset_uri: Option<String>,
+        uris: Vec<String>,
+        start: usize,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(user_id) = self.user_id().map(str::to_owned) else {
+            self.play_tracks(uris, start, cx);
+
+            return;
+        };
+
+        self.begin_play(cx);
+        self.core.player.play_request(PlaybackRequest::LikedSongs {
+            user_id,
+            offset_uri,
+            uris,
+            start,
+        });
+    }
+
     pub fn toggle_like(&mut self, uri: &str, cx: &mut Context<Self>) {
         let likes = self.core.likes.clone();
         let uri = uri.to_owned();

@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
@@ -11,12 +12,16 @@ use tracing::{debug, warn};
 use crate::config::ConfigHandle;
 use crate::events::AppEvent;
 use crate::library::{LibraryBackend, LibraryError};
-use crate::model::{MAX_PLAY_URIS, PlayOffset, PlaybackRequest, WebPlayRequest};
+use crate::model::{MAX_PLAY_URIS, PlayOffset, PlaybackRequest, WebPlayRequest, liked_context_uri};
 use crate::playback::PlaybackModel;
 
 pub const VOLUME_THROTTLE: Duration = Duration::from_millis(100);
 /// How long an `activate` gets to make Soloist show up in the device list.
 pub const ACTIVATE_WAIT: Duration = Duration::from_millis(1500);
+
+const LIKED_UNKNOWN: u8 = 0;
+const LIKED_YES: u8 = 1;
+const LIKED_NO: u8 = 2;
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum PlayerError {
@@ -70,6 +75,9 @@ struct Inner {
     events: broadcast::Sender<AppEvent>,
     web: OnceLock<Arc<dyn LibraryBackend>>,
     device: Mutex<Option<String>>,
+    /// Whether Spotify accepts the saved-tracks context. Lives as long as the
+    /// process, so it isn't reset when the account changes.
+    liked_support: AtomicU8,
 }
 
 /// Cloneable handle the UI uses to control playback and read the model.
@@ -103,6 +111,7 @@ impl Player {
             events: events.clone(),
             web: OnceLock::new(),
             device: Mutex::new(None),
+            liked_support: AtomicU8::new(LIKED_UNKNOWN),
         });
         let mut feed = inner.backend.subscribe();
         let pump = inner.clone();
@@ -119,6 +128,7 @@ impl Player {
                 };
                 let snapshot = {
                     let mut state = lock(&pump.state);
+                    let context_before = state.context.as_ref().map(|context| context.uri.clone());
 
                     let changed = match &event {
                         ClientEvent::Event(event) => state.apply(event),
@@ -131,6 +141,15 @@ impl Player {
                             changed
                         }
                     };
+                    let context_after = state.context.as_ref().map(|context| context.uri.clone());
+
+                    if context_after != context_before {
+                        debug!(
+                            context = context_after.as_deref().unwrap_or("none"),
+                            upcoming = state.upcoming.len(),
+                            "playback context changed"
+                        );
+                    }
 
                     changed.then(|| state.clone())
                 };
@@ -300,21 +319,39 @@ fn web_request(request: &PlaybackRequest) -> Option<WebPlayRequest> {
                 offset: None,
             })
         }
+        PlaybackRequest::LikedSongs {
+            user_id,
+            offset_uri,
+            ..
+        } => Some(WebPlayRequest {
+            context_uri: Some(liked_context_uri(user_id)),
+            uris: None,
+            offset: offset_uri.clone().map(PlayOffset::Uri),
+        }),
     }
 }
 
 /// What the WebSocket can do when the Web API route is unavailable: start one URI.
-fn fallback_uri(request: &PlaybackRequest) -> Option<&str> {
+fn fallback_uri(request: &PlaybackRequest) -> Option<String> {
     match request {
-        PlaybackRequest::Context { uri } => Some(uri),
+        PlaybackRequest::Context { uri } => Some(uri.clone()),
         PlaybackRequest::InContext {
             context_uri,
             offset,
         } => match offset {
-            PlayOffset::Uri(uri) => Some(uri),
-            PlayOffset::Position(_) => Some(context_uri),
+            PlayOffset::Uri(uri) => Some(uri.clone()),
+            PlayOffset::Position(_) => Some(context_uri.clone()),
         },
-        PlaybackRequest::Tracks { uris, start } => uris.get(*start).map(String::as_str),
+        PlaybackRequest::Tracks { uris, start } => uris.get(*start).cloned(),
+        PlaybackRequest::LikedSongs {
+            user_id,
+            uris,
+            start,
+            ..
+        } => uris
+            .get(*start)
+            .cloned()
+            .or_else(|| Some(liked_context_uri(user_id))),
     }
 }
 
@@ -345,12 +382,20 @@ enum Attempt {
     Failed(LibraryError),
 }
 
-async fn attempt(inner: &Inner, web: &dyn LibraryBackend, request: &WebPlayRequest) -> Attempt {
+/// With `probe` set, an error other than a 404 from a cached device id means
+/// Spotify rejected the request itself, so the device lookup isn't retried.
+async fn attempt(
+    inner: &Inner,
+    web: &dyn LibraryBackend,
+    request: &WebPlayRequest,
+    probe: bool,
+) -> Attempt {
     let mut activated = false;
     let mut retried = false;
 
     loop {
         let cached = lock(&inner.device).clone();
+        let fresh = cached.is_none();
         let id = match cached {
             Some(id) => id,
             None => match find_device(inner, web).await {
@@ -376,6 +421,12 @@ async fn attempt(inner: &Inner, web: &dyn LibraryBackend, request: &WebPlayReque
                 | LibraryError::Network(_)),
             ) => return Attempt::Failed(error),
             Err(error) => {
+                let device_suspect = !probe || (error == LibraryError::NotFound && !fresh);
+
+                if !device_suspect {
+                    return Attempt::Failed(error);
+                }
+
                 *lock(&inner.device) = None;
 
                 if retried {
@@ -388,28 +439,78 @@ async fn attempt(inner: &Inner, web: &dyn LibraryBackend, request: &WebPlayReque
     }
 }
 
+fn socket_fallback(inner: &Inner, request: &PlaybackRequest) {
+    if let Some(uri) = fallback_uri(request) {
+        let _ = inner.backend.play(Some(&uri));
+    }
+}
+
 async fn route(inner: Arc<Inner>, request: PlaybackRequest) {
-    let fallback = |inner: &Inner| {
-        if let Some(uri) = fallback_uri(&request) {
-            let _ = inner.backend.play(Some(uri));
-        }
-    };
-    let (Some(web), Some(wire)) = (inner.web.get(), web_request(&request)) else {
-        fallback(&inner);
+    match request {
+        PlaybackRequest::LikedSongs { .. } => route_liked(&inner, request).await,
+        request => route_plain(&inner, &request).await,
+    }
+}
+
+async fn route_plain(inner: &Inner, request: &PlaybackRequest) {
+    let (Some(web), Some(wire)) = (inner.web.get(), web_request(request)) else {
+        socket_fallback(inner, request);
 
         return;
     };
 
-    match attempt(&inner, web.as_ref(), &wire).await {
+    match attempt(inner, web.as_ref(), &wire, false).await {
         Attempt::Started => {}
         Attempt::NoDevice => {
-            fallback(&inner);
+            socket_fallback(inner, request);
             notice(
-                &inner,
+                inner,
                 "Soloist isn't listed by Spotify yet, so only the clicked track was started.",
             );
         }
-        Attempt::Failed(error) => notice(&inner, format!("Couldn't start playback. {error}")),
+        Attempt::Failed(error) => notice(inner, format!("Couldn't start playback. {error}")),
+    }
+}
+
+/// Tries the saved-tracks context first. When Spotify rejects it, plays the
+/// loaded tracks instead and skips the context from then on.
+async fn route_liked(inner: &Inner, request: PlaybackRequest) {
+    let (Some(web), Some(wire)) = (inner.web.get(), web_request(&request)) else {
+        socket_fallback(inner, &request);
+
+        return;
+    };
+    let PlaybackRequest::LikedSongs { uris, start, .. } = &request else {
+        return;
+    };
+    let tracks = PlaybackRequest::Tracks {
+        uris: uris.clone(),
+        start: *start,
+    };
+
+    if inner.liked_support.load(Ordering::Relaxed) == LIKED_NO {
+        route_plain(inner, &tracks).await;
+
+        return;
+    }
+
+    match attempt(inner, web.as_ref(), &wire, true).await {
+        Attempt::Started => inner.liked_support.store(LIKED_YES, Ordering::Relaxed),
+        Attempt::NoDevice => {
+            socket_fallback(inner, &request);
+            notice(
+                inner,
+                "Soloist isn't listed by Spotify yet, so only the clicked track was started.",
+            );
+        }
+        Attempt::Failed(
+            error @ (LibraryError::Forbidden | LibraryError::NotFound | LibraryError::Api(_)),
+        ) => {
+            debug!(%error, "Spotify rejected the saved-tracks context");
+            inner.liked_support.store(LIKED_NO, Ordering::Relaxed);
+            route_plain(inner, &tracks).await;
+        }
+        Attempt::Failed(error) => notice(inner, format!("Couldn't start playback. {error}")),
     }
 }
 

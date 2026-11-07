@@ -10,8 +10,8 @@ use crate::library::{
     ARTIST_ALBUMS_PAGE, LibraryBackend, LibraryError, LibraryResult, PAGE_SIZE, SEARCH_PAGE,
 };
 use crate::model::{
-    Album, Artist, Artwork, Device, Episode, Page, PlayRecord, Playlist, Profile, SearchKind,
-    SearchResults, Show, Track, WebPlayRequest,
+    Album, Artist, Artwork, Device, Episode, Page, PlayOffset, PlayRecord, Playlist, Profile,
+    SearchKind, SearchResults, Show, Track, WebPlayRequest, liked_context_uri,
 };
 use crate::playback::now_ms;
 
@@ -378,8 +378,35 @@ impl LibraryBackend for DemoLibrary {
         request: &WebPlayRequest,
         _device_id: &str,
     ) -> LibraryResult<()> {
+        let stopped = || LibraryError::Network("the demo player stopped".into());
+
+        if let Some(context) = request
+            .context_uri
+            .as_deref()
+            .filter(|context| *context == liked_context_uri(DEMO_USER))
+        {
+            let indices: Vec<usize> = self
+                .liked()
+                .iter()
+                .filter_map(|uri| catalog().track(uri).map(|track| track.index))
+                .collect();
+            let start = match &request.offset {
+                Some(PlayOffset::Uri(uri)) => indices
+                    .iter()
+                    .position(|index| catalog().tracks[*index].uri == *uri)
+                    .unwrap_or(0),
+                Some(PlayOffset::Position(position)) => *position as usize,
+                None => 0,
+            };
+
+            return self
+                .backend
+                .play_collection(indices, start, context.to_owned())
+                .map_err(|_| stopped());
+        }
+
         self.backend
             .play_web(request.clone())
-            .map_err(|_| LibraryError::Network("the demo player stopped".into()))
+            .map_err(|_| stopped())
     }
 }

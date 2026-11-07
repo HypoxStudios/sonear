@@ -267,6 +267,28 @@ pub enum PlaybackRequest {
     },
     /// Play a list of tracks (Liked Songs, search results) from `start` on.
     Tracks { uris: Vec<String>, start: usize },
+    /// Start the user's saved tracks as one context, so playback and shuffle
+    /// cover all of them. `uris` and `start` are the fallback, as in `Tracks`,
+    /// for when Spotify refuses the context.
+    LikedSongs {
+        user_id: String,
+        offset_uri: Option<String>,
+        uris: Vec<String>,
+        start: usize,
+    },
+}
+
+/// The context URI Spotify uses for a user's saved tracks.
+pub fn liked_context_uri(user_id: &str) -> String {
+    format!("spotify:user:{user_id}:collection")
+}
+
+/// Whether `uri` is the saved-tracks context, in either form Soloist may report.
+pub fn is_liked_context(uri: &str) -> bool {
+    uri.starts_with("spotify:collection")
+        || uri
+            .strip_prefix("spotify:user:")
+            .is_some_and(|rest| rest.len() > ":collection".len() && rest.ends_with(":collection"))
 }
 
 /// Wire form of a Web API play call.
@@ -485,6 +507,17 @@ mod tests {
 
         assert_eq!(art.url_for(300), Some("u0"));
         assert_eq!(Artwork::default().url_for(10), None);
+    }
+
+    #[test]
+    fn the_saved_tracks_context_is_recognised_in_both_forms() {
+        assert_eq!(liked_context_uri("me"), "spotify:user:me:collection");
+        assert!(is_liked_context("spotify:user:me:collection"));
+        assert!(is_liked_context("spotify:collection"));
+        assert!(is_liked_context("spotify:collection:tracks"));
+        assert!(!is_liked_context("spotify:user::collection"));
+        assert!(!is_liked_context("spotify:user:me:playlist:p"));
+        assert!(!is_liked_context("spotify:playlist:p"));
     }
 
     #[test]

@@ -128,7 +128,13 @@ fn build_rows(state: &AppStore) -> Vec<Row> {
             .playback
             .context
             .as_ref()
-            .map(|context| context.name())
+            .map(|context| {
+                if sonear_core::model::is_liked_context(&context.uri) {
+                    "Liked Songs"
+                } else {
+                    context.name()
+                }
+            })
             .filter(|name| !name.is_empty())
             .unwrap_or("Then");
 
