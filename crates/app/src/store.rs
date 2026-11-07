@@ -170,6 +170,10 @@ pub struct AppStore {
     pub pending_search: Option<String>,
     /// Bumped whenever the history changes, so history views reload.
     pub history_version: u64,
+    /// Bumped whenever collected playlist tracks change, so playlist pages reload them.
+    pub seen_version: u64,
+    /// The playlist the last bump was for.
+    pub seen_changed: Option<String>,
     /// Width of the main panel, written by the shell and read by grid pages.
     pub main_width: Rc<Cell<f32>>,
     serial: u64,
@@ -211,6 +215,8 @@ impl AppStore {
             shortcuts_open: false,
             pending_search: None,
             history_version: 0,
+            seen_version: 0,
+            seen_changed: None,
             main_width: Rc::new(Cell::new(900.)),
             serial: 0,
             loads: Vec::new(),
@@ -314,6 +320,10 @@ impl AppStore {
             AppEvent::Account(state) => self.apply_account(state, cx),
             AppEvent::Likes => {}
             AppEvent::HistoryChanged => self.history_version += 1,
+            AppEvent::SeenTracks { playlist_id } => {
+                self.seen_version += 1;
+                self.seen_changed = Some(playlist_id);
+            }
             AppEvent::Queue => self.queue = self.core.queue.snapshot(),
             AppEvent::RateLimit(rate) => self.apply_rate(rate, cx),
             AppEvent::Notice(text) => {

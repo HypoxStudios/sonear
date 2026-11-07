@@ -2,7 +2,6 @@
 //! title, Play and heart, then the track list. The header shrinks on scroll.
 
 use std::rc::Rc;
-use std::time::Duration;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{VirtualListScrollHandle, v_virtual_list};
@@ -14,8 +13,8 @@ use gpui_kit::{
 };
 use serde::{Deserialize, Serialize};
 use sonear_core::LibraryError;
-use sonear_core::convert::entity_track;
-use sonear_core::model::{Album, Artwork, PlayOffset, Playlist, Track, merge_seen};
+use sonear_core::model::{Album, Artwork, PlayOffset, Playlist, Track};
+use sonear_core::seen::seen_key;
 
 use crate::data::{self, Env, Load, Paged, Slot};
 use crate::format::{long_duration, plain_text};
@@ -32,12 +31,6 @@ use crate::ui::widgets::{
 const ART_FULL: f32 = 232.;
 const ART_COMPACT: f32 = 64.;
 const COLLAPSE_OVER: f32 = 190.;
-/// How long the context and queue must stay put before they're trusted.
-/// Soloist sends them separately and in either order, so during a switch the
-/// new playlist can appear next to the old one's queue. Saving that would put
-/// the wrong tracks in this list for days.
-const QUEUE_SETTLE: Duration = Duration::from_secs(2);
-
 pub const NOT_EXPOSED: &str = "Spotify doesn't let apps list the tracks in playlists you don't own. Press Play, and what's coming up appears under Up next.";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,13 +130,9 @@ pub struct DetailPage {
     scroll: VirtualListScrollHandle,
     sizes: Rc<Vec<Size<Pixels>>>,
     tasks: Vec<Task<()>>,
-    /// Set for a playlist: the context whose queue fills the list when `not_exposed`.
-    seen_context: Option<String>,
     seen_task: Option<Task<()>>,
-    /// Whether the saved list has been merged in, so a save cannot overwrite it.
-    seen_loaded: bool,
-    last_sequence: Vec<String>,
-    settle: Option<Task<()>>,
+    /// The store's `seen_version` this page has caught up with.
+    seen_version: u64,
     _subscription: Subscription,
 }
 
@@ -169,13 +158,10 @@ async fn fetch_tracks(
 
 impl DetailPage {
     pub fn new(store: Entity<AppStore>, kind: Kind, cx: &mut Context<Self>) -> Self {
-        let seen_context = match &kind {
-            Kind::Playlist(id) => Some(format!("spotify:playlist:{id}")),
-            _ => None,
-        };
+        let seen_version = store.read(cx).seen_version;
         let mut page = Self {
             _subscription: cx.observe(&store, |page, _, cx| {
-                page.absorb(cx);
+                page.on_store(cx);
                 cx.notify();
             }),
             store,
@@ -186,11 +172,8 @@ impl DetailPage {
             scroll: VirtualListScrollHandle::new(),
             sizes: Rc::new(Vec::new()),
             tasks: Vec::new(),
-            seen_context,
             seen_task: None,
-            seen_loaded: false,
-            last_sequence: Vec::new(),
-            settle: None,
+            seen_version,
         };
 
         page.start(cx);
@@ -262,9 +245,6 @@ impl DetailPage {
         self.tracks.items = retained;
         self.not_exposed = false;
         self.seen_task = None;
-        self.seen_loaded = false;
-        self.last_sequence.clear();
-        self.settle = None;
         self.start(cx);
     }
 
@@ -322,12 +302,11 @@ impl DetailPage {
 
         self.seen_task = Some(data::load(
             &env,
-            Some(format!("seen:playlist:{id}")),
+            Some(seen_key(id)),
             data::fetch(|_core| async { Err::<Vec<Track>, _>(LibraryError::NotFound) }),
             cx,
             |page: &mut Self, message, cx| page.on_seen(message, cx),
         ));
-        self.absorb(cx);
     }
 
     fn on_seen(&mut self, message: Load<Vec<Track>>, cx: &mut Context<Self>) {
@@ -335,102 +314,36 @@ impl DetailPage {
             return;
         }
 
-        match message {
-            Load::Ready { value } => {
-                let mut merged = value;
-                let added = merge_seen(&mut merged, &self.tracks.items);
-
-                self.track_hearts(&merged, cx);
-                self.tracks.items = merged;
-                self.seen_loaded = true;
-
-                if !added.is_empty() {
-                    self.persist_seen(cx);
-                }
-            }
-            Load::Failed(LibraryError::NotFound) => {
-                let nothing_saved = !self.seen_loaded;
-
-                self.seen_loaded = true;
-
-                if nothing_saved && !self.tracks.items.is_empty() {
-                    self.persist_seen(cx);
-                }
-            }
-            Load::Loading | Load::Failed(_) => {}
-        }
-    }
-
-    /// Notices a change in what the queue shows of this playlist and restarts
-    /// the wait for it to settle. Runs on every store change, so it returns
-    /// before allocating when the queue is as it was.
-    fn absorb(&mut self, cx: &mut Context<Self>) {
-        let Some(context) = self.seen_context.as_deref().filter(|_| self.not_exposed) else {
+        let Load::Ready { value } = message else {
             return;
         };
-        let Some(sequence) = self.store.read(cx).playback.context_sequence(context) else {
-            return;
-        };
-        let unchanged = sequence.len() == self.last_sequence.len()
-            && sequence
-                .iter()
-                .zip(&self.last_sequence)
-                .all(|(entity, uri)| entity.uri == *uri);
-
-        if unchanged {
-            return;
-        }
-
-        self.last_sequence = sequence.iter().map(|entity| entity.uri.clone()).collect();
-        self.settle = Some(cx.spawn(async move |this, cx| {
-            cx.background_executor().timer(QUEUE_SETTLE).await;
-
-            let _ = this.update(cx, |page, cx| {
-                page.absorb_settled(cx);
-                cx.notify();
-            });
-        }));
-    }
-
-    /// Adds the tracks once the queue has stayed the same for `QUEUE_SETTLE`.
-    fn absorb_settled(&mut self, cx: &mut Context<Self>) {
-        let Some(context) = self.seen_context.as_deref() else {
-            return;
-        };
-        let Some(sequence) = self.store.read(cx).playback.context_sequence(context) else {
-            return;
-        };
-        let tracks: Vec<Track> = sequence.into_iter().map(entity_track).collect();
-        let added = merge_seen(&mut self.tracks.items, &tracks);
-
-        if added.is_empty() {
-            return;
-        }
-
-        let fresh: Vec<Track> = tracks
-            .into_iter()
-            .filter(|track| added.contains(&track.uri))
+        let fresh: Vec<Track> = value
+            .iter()
+            .filter(|track| !self.tracks.items.iter().any(|shown| shown.uri == track.uri))
+            .cloned()
             .collect();
 
         self.track_hearts(&fresh, cx);
-        self.persist_seen(cx);
+        self.tracks.items = value;
     }
 
-    fn persist_seen(&self, cx: &Context<Self>) {
+    /// Reloads the collected tracks when the collector saved new ones for this playlist.
+    fn on_store(&mut self, cx: &mut Context<Self>) {
+        let state = self.store.read(cx);
+
+        if state.seen_version == self.seen_version {
+            return;
+        }
+
+        self.seen_version = state.seen_version;
+
         let Kind::Playlist(id) = &self.kind else {
             return;
         };
 
-        if !self.seen_loaded {
-            return;
+        if self.not_exposed && state.seen_changed.as_deref() == Some(id.as_str()) {
+            self.start_seen(cx);
         }
-
-        let env = self.env(cx);
-        let key = format!("seen:playlist:{id}");
-        let items = self.tracks.items.clone();
-
-        env.runtime
-            .spawn_blocking(move || env.core.meta.put(&key, &items));
     }
 
     fn track_hearts(&self, tracks: &[Track], cx: &Context<Self>) {

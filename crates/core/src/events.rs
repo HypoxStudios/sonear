@@ -20,6 +20,10 @@ pub enum AppEvent {
     /// The user's play queue changed.
     Queue,
     RateLimit(RateLimit),
+    /// The collected tracks of a playlist Spotify won't list changed.
+    SeenTracks {
+        playlist_id: String,
+    },
     /// A short message for the user, shown as a toast.
     Notice(String),
 }

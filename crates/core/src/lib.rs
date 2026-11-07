@@ -17,6 +17,7 @@ pub mod playback;
 pub mod player;
 pub mod queue;
 pub mod secrets;
+pub mod seen;
 pub mod soloist_backend;
 
 use std::sync::Arc;
@@ -37,6 +38,7 @@ pub use playback::PlaybackModel;
 pub use player::{Player, PlayerBackend, PlayerError};
 pub use queue::{QueueManager, QueueSnapshot, QueueSource, QueuedTrack};
 pub use secrets::{KeyringStore, Secret, SecretStore};
+pub use seen::SeenCollector;
 
 const EVENT_BUFFER: usize = 256;
 
@@ -110,6 +112,7 @@ impl Core {
         );
 
         player.attach_library(library.clone());
+        SeenCollector::spawn(player.clone(), meta.clone(), events.clone(), runtime);
         manager.run(runtime);
         account.start();
 
@@ -165,6 +168,7 @@ impl Core {
         );
 
         player.attach_library(library.clone());
+        SeenCollector::spawn(player.clone(), meta.clone(), events.clone(), runtime);
 
         let seed = history.clone();
 

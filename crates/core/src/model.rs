@@ -294,26 +294,55 @@ pub fn split_uri(uri: &str) -> Option<(&str, &str)> {
     Some((kind, id))
 }
 
-/// Adds the tracks of `sequence` that `seen` lacks, each right after the
-/// track before it in `sequence` (at the front when there is none). Known
-/// tracks never move. Returns the URIs that were added.
-pub fn merge_seen(seen: &mut Vec<Track>, sequence: &[Track]) -> Vec<String> {
-    let mut added = Vec::new();
-    let mut at = 0;
+/// Folds `observed`, a contiguous run of a playlist seen in the queue, into
+/// the `stored` list. The run is authoritative for the span of `stored` it
+/// covers, so reorders show up and any other stored copy of an observed track
+/// is dropped. Stored tracks inside that span but missing from the run were
+/// either removed or the run's tracks moved past them, which can't be told
+/// apart, so they are kept right after the run instead of being lost; a
+/// removed track drifts towards the end. With no overlap the run goes in at
+/// the front. Returns whether `stored` changed.
+pub fn merge_window(stored: &mut Vec<Track>, observed: &[Track]) -> bool {
+    let mut window: Vec<Track> = Vec::new();
 
-    for track in sequence {
-        if let Some(position) = seen.iter().position(|known| known.uri == track.uri) {
-            at = position + 1;
-
-            continue;
+    for track in observed {
+        if !window.iter().any(|known| known.uri == track.uri) {
+            window.push(track.clone());
         }
-
-        seen.insert(at, track.clone());
-        added.push(track.uri.clone());
-        at += 1;
     }
 
-    added
+    if window.is_empty() {
+        return false;
+    }
+
+    let in_window = |track: &Track| window.iter().any(|known| known.uri == track.uri);
+    let mut overlap = stored
+        .iter()
+        .enumerate()
+        .filter(|(_, track)| in_window(track))
+        .map(|(index, _)| index);
+    let first = overlap.next();
+    let last = overlap.next_back().or(first);
+    let (before, span, after) = match (first, last) {
+        (Some(first), Some(last)) => (&stored[..first], &stored[first..=last], &stored[last + 1..]),
+        _ => (&stored[..0], &stored[..0], &stored[..]),
+    };
+    let merged: Vec<Track> = before
+        .iter()
+        .filter(|track| !in_window(track))
+        .chain(&window)
+        .chain(span.iter().filter(|track| !in_window(track)))
+        .chain(after.iter().filter(|track| !in_window(track)))
+        .cloned()
+        .collect();
+
+    if merged == *stored {
+        return false;
+    }
+
+    *stored = merged;
+
+    true
 }
 
 #[cfg(test)]
@@ -333,48 +362,98 @@ mod tests {
         tracks.iter().map(|track| track.uri.as_str()).collect()
     }
 
-    #[test]
-    fn merging_into_nothing_takes_the_sequence() {
-        let mut seen = Vec::new();
-        let added = merge_seen(&mut seen, &stubs(&["a", "b", "c"]));
+    fn window(stored: &[&str], observed: &[&str]) -> (Vec<String>, bool) {
+        let mut stored = stubs(stored);
+        let changed = merge_window(&mut stored, &stubs(observed));
 
-        assert_eq!(uris(&seen), ["a", "b", "c"]);
-        assert_eq!(added, ["a", "b", "c"]);
+        (
+            uris(&stored).into_iter().map(str::to_owned).collect(),
+            changed,
+        )
     }
 
     #[test]
-    fn overlap_appends_only_the_new_tail() {
-        let mut seen = stubs(&["a", "b", "c"]);
-        let added = merge_seen(&mut seen, &stubs(&["b", "c", "d", "e"]));
-
-        assert_eq!(uris(&seen), ["a", "b", "c", "d", "e"]);
-        assert_eq!(added, ["d", "e"]);
+    fn an_all_new_window_goes_in_at_the_front() {
+        assert_eq!(
+            window(&[], &["a", "b", "c"]),
+            (["a", "b", "c"].map(String::from).to_vec(), true)
+        );
+        assert_eq!(window(&["a", "b"], &["x", "y"]).0, ["x", "y", "a", "b"]);
     }
 
     #[test]
-    fn a_jump_forward_is_filled_in_later() {
-        let mut seen = stubs(&["a", "b"]);
-
-        merge_seen(&mut seen, &stubs(&["x", "y"]));
-
-        assert_eq!(uris(&seen), ["x", "y", "a", "b"]);
-
-        let mut seen = stubs(&["a", "b", "z"]);
-
-        merge_seen(&mut seen, &stubs(&["z", "y"]));
-        merge_seen(&mut seen, &stubs(&["b", "c", "z"]));
-
-        assert_eq!(uris(&seen), ["a", "b", "c", "z", "y"]);
+    fn overlap_appends_the_new_tail() {
+        assert_eq!(
+            window(&["a", "b", "c"], &["b", "c", "d", "e"]),
+            (["a", "b", "c", "d", "e"].map(String::from).to_vec(), true)
+        );
     }
 
     #[test]
-    fn a_repeated_track_never_duplicates() {
-        let mut seen = stubs(&["a"]);
-        let added = merge_seen(&mut seen, &stubs(&["a", "b", "a", "b", "c"]));
+    fn a_reorder_inside_the_window_is_taken() {
+        assert_eq!(
+            window(&["a", "b", "c", "d"], &["a", "c", "b", "d"]),
+            (["a", "c", "b", "d"].map(String::from).to_vec(), true)
+        );
+    }
 
-        assert_eq!(uris(&seen), ["a", "b", "c"]);
-        assert_eq!(added, ["b", "c"]);
-        assert!(merge_seen(&mut seen, &stubs(&["a", "b", "c"])).is_empty());
+    #[test]
+    fn tracks_left_out_of_the_window_move_after_it() {
+        assert_eq!(
+            window(&["a", "b", "c", "d", "e"], &["a", "c", "e"]),
+            (["a", "c", "e", "b", "d"].map(String::from).to_vec(), true)
+        );
+    }
+
+    #[test]
+    fn one_track_moved_from_far_away_loses_nothing() {
+        assert_eq!(
+            window(&["a", "b", "c", "d", "e", "f"], &["b", "f"]),
+            (
+                ["a", "b", "f", "c", "d", "e"].map(String::from).to_vec(),
+                true
+            )
+        );
+        assert!(!window(&["a", "b", "f", "c", "d", "e"], &["b", "f"]).1);
+    }
+
+    #[test]
+    fn a_track_moved_into_the_window_is_not_duplicated() {
+        assert_eq!(
+            window(&["a", "b", "c", "z"], &["b", "z", "c"]),
+            (["a", "b", "z", "c"].map(String::from).to_vec(), true)
+        );
+        assert_eq!(
+            window(&["z", "a", "b", "c"], &["a", "z", "b"]),
+            (["a", "z", "b", "c"].map(String::from).to_vec(), true)
+        );
+    }
+
+    #[test]
+    fn tracks_outside_the_window_keep_their_order() {
+        assert_eq!(
+            window(&["a", "b", "c", "d", "e"], &["c", "d"]).0,
+            ["a", "b", "c", "d", "e"]
+        );
+        assert_eq!(
+            window(&["a", "b", "c", "d", "e"], &["c", "x", "d"]).0,
+            ["a", "b", "c", "x", "d", "e"]
+        );
+    }
+
+    #[test]
+    fn an_identical_window_reports_no_change() {
+        assert!(!window(&["a", "b", "c"], &["a", "b", "c"]).1);
+        assert!(!window(&["a", "b", "c"], &["b", "c"]).1);
+        assert!(!window(&["a"], &[]).1);
+    }
+
+    #[test]
+    fn a_repeated_track_in_the_window_keeps_the_first() {
+        assert_eq!(
+            window(&["a"], &["a", "b", "a", "b", "c"]),
+            (["a", "b", "c"].map(String::from).to_vec(), true)
+        );
     }
 
     fn art(widths: &[Option<u32>]) -> Artwork {
