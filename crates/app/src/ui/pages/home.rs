@@ -249,6 +249,7 @@ impl HomePage {
             .w_full()
             .p_5()
             .mt_6()
+            .relative()
             .rounded(theme::CARD_RADIUS)
             .bg(theme::raised())
             .cursor_pointer()
@@ -256,6 +257,13 @@ impl HomePage {
             .border_1()
             .border_color(theme::transparent())
             .focus_visible(|style| style.border_color(theme::accent()))
+            .child(
+                div()
+                    .absolute()
+                    .inset_0()
+                    .rounded(theme::CARD_RADIUS)
+                    .bg(theme::hero_tint()),
+            )
             .child(art(&hero.art, &hero.uri, 128., theme::ART_RADIUS))
             .child(
                 div()

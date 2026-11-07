@@ -24,6 +24,7 @@ futures-util.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 gpui-kit.workspace = true
+image.workspace = true
 reqwest.workspace = true
 tokio.workspace = true
 tracing.workspace = true

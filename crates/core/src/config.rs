@@ -37,6 +37,8 @@ pub struct Config {
     /// Whether lyrics are looked up. Looking them up sends the song's title,
     /// artist, album and length to LRCLIB.
     pub lyrics_enabled: bool,
+    /// Whether buttons and sliders take a colour from the playing song's cover.
+    pub cover_accent: bool,
     pub right_panel: RightPanelConfig,
     pub ui: UiConfig,
     /// Keystrokes the user changed, by shortcut id. An empty string means unbound.
@@ -69,6 +71,7 @@ impl Default for Config {
             history_retention_months: 12,
             history_cleared_at_ms: 0,
             lyrics_enabled: true,
+            cover_accent: true,
             right_panel: RightPanelConfig::default(),
             ui: UiConfig::default(),
             shortcuts: BTreeMap::new(),
@@ -223,6 +226,7 @@ mod tests {
         assert_eq!(config.legal_accepted, 0);
         assert_eq!(config.account_user_id, "");
         assert!(config.lyrics_enabled);
+        assert!(config.cover_accent);
         assert!(!config.right_panel.lyrics);
     }
 
@@ -244,6 +248,7 @@ open = false
         assert!(!config.right_panel.open);
         assert!(!config.right_panel.lyrics);
         assert!(config.lyrics_enabled);
+        assert!(config.cover_accent);
     }
 
     #[test]

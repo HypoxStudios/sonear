@@ -1,5 +1,7 @@
 //! Every colour and metric used by the UI. Nothing else hardcodes either.
 
+use std::sync::atomic::{AtomicU32, Ordering};
+
 use gpui_kit::component::{ActiveTheme as _, Theme, ThemeMode};
 use gpui_kit::{App, Hsla, Pixels, Rgba, SharedString, px, rgb, rgba};
 
@@ -53,6 +55,14 @@ pub const LYRICS_END_PADDING: f32 = 240.;
 /// Share of the lyrics list above the active line.
 pub const LYRICS_FOCUS: f32 = 1. / 3.;
 
+/// Saturation and lightness a cover's colour is clamped to, so it stays
+/// readable on the dark panels and under dark text.
+pub const ACCENT_SATURATION: (f32, f32) = (0.35, 0.75);
+pub const ACCENT_LIGHTNESS: (f32, f32) = (0.70, 0.82);
+/// How much lighter the hover state of a cover accent is.
+const ACCENT_HOVER_LIFT: f32 = 0.06;
+const HERO_TINT_ALPHA: f32 = 0.10;
+
 /// Window width below which the sidebar collapses to a rail.
 pub const COLLAPSE_BELOW: f32 = 1100.;
 /// Main plus right panel width below which the right panel hides.
@@ -86,12 +96,56 @@ pub fn hover() -> Hsla {
     hsla(rgba(0xFFFFFF0D))
 }
 
-pub fn accent() -> Hsla {
+/// Packed `0xRRGGBB`, or `NO_ACCENT` while the lilac brand colour is used.
+static ACCENT_OVERRIDE: AtomicU32 = AtomicU32::new(NO_ACCENT);
+const NO_ACCENT: u32 = u32::MAX;
+
+/// The lilac the logo always uses, whatever the current song tints.
+pub fn brand_accent() -> Hsla {
     hsla(rgb(0xC9B2F5))
 }
 
+fn accent_override() -> Option<Hsla> {
+    let packed = ACCENT_OVERRIDE.load(Ordering::Relaxed);
+
+    (packed != NO_ACCENT).then(|| hsla(rgb(packed)))
+}
+
+/// Replaces the accent, or restores the brand colour with `None`. Returns
+/// whether the colour changed.
+pub fn set_accent(color: Option<Hsla>) -> bool {
+    let packed = color.map_or(NO_ACCENT, |color| {
+        let rgba = Rgba::from(color);
+        let byte = |value: f32| (value.clamp(0., 1.) * 255.).round() as u32;
+
+        (byte(rgba.r) << 16) | (byte(rgba.g) << 8) | byte(rgba.b)
+    });
+
+    ACCENT_OVERRIDE.swap(packed, Ordering::Relaxed) != packed
+}
+
+pub fn accent() -> Hsla {
+    accent_override().unwrap_or_else(brand_accent)
+}
+
 pub fn accent_hover() -> Hsla {
-    hsla(rgb(0xD9C8F9))
+    match accent_override() {
+        Some(mut color) => {
+            color.l = (color.l + ACCENT_HOVER_LIFT).min(1.);
+
+            color
+        }
+        None => hsla(rgb(0xD9C8F9)),
+    }
+}
+
+/// Faint wash of the accent over the Home hero card. Never drawn on artwork.
+pub fn hero_tint() -> Hsla {
+    let mut color = accent();
+
+    color.a = HERO_TINT_ALPHA;
+
+    color
 }
 
 pub fn on_accent() -> Hsla {
@@ -171,6 +225,18 @@ pub fn art_gradient(seed: &str) -> (Hsla, Hsla) {
     let (from, to) = ART_GRADIENTS[(hash % ART_GRADIENTS.len() as u64) as usize];
 
     (hsla(rgb(from)), hsla(rgb(to)))
+}
+
+/// Points the component library's accent-coloured parts at the current accent
+/// and repaints every window, including cached views.
+pub fn refresh_accent(cx: &mut App) {
+    Theme::update(cx, |theme| {
+        theme.colors.ring = accent();
+        theme.colors.primary = accent();
+        theme.colors.link = accent();
+        theme.colors.slider_bar = accent();
+    });
+    cx.refresh_windows();
 }
 
 pub fn apply(cx: &mut App) {

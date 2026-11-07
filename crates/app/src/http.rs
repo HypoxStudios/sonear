@@ -14,6 +14,57 @@ pub fn cover_cache() -> Option<&'static Arc<DiskCache>> {
     COVER_CACHE.get()
 }
 
+const COVER_FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
+const COVER_MAX_BYTES: usize = 4 * 1024 * 1024;
+
+/// A cover's bytes, from the disk cache or else downloaded and stored. Only
+/// Spotify's cover hosts are contacted; anything else gives `None`.
+pub async fn fetch_cover(url: &str) -> Option<Vec<u8>> {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+    let parsed: Url = url.parse().ok()?;
+
+    if parsed.scheme() != "https" || !parsed.host_str().is_some_and(is_cover_host) {
+        return None;
+    }
+
+    let cache = cover_cache();
+
+    if let Some(cache) = cache {
+        let cache = cache.clone();
+        let key = url.to_owned();
+
+        if let Ok(Some(bytes)) = tokio::task::spawn_blocking(move || cache.get(&key)).await {
+            return Some(bytes);
+        }
+    }
+
+    let client = CLIENT.get_or_init(|| reqwest::Client::builder().build().unwrap_or_default());
+    let response = client
+        .get(url)
+        .timeout(COVER_FETCH_TIMEOUT)
+        .send()
+        .await
+        .ok()?
+        .error_for_status()
+        .ok()?;
+    let bytes = response.bytes().await.ok()?;
+
+    if bytes.len() > COVER_MAX_BYTES {
+        return None;
+    }
+
+    if let Some(cache) = cache {
+        let cache = cache.clone();
+        let key = url.to_owned();
+        let stored = bytes.to_vec();
+
+        tokio::task::spawn_blocking(move || cache.put(&key, &stored));
+    }
+
+    Some(bytes.to_vec())
+}
+
 /// Serves GPUI's `img(url)` requests through reqwest on the tokio runtime,
 /// because GPUI's default client fails every request. Cover art from
 /// Spotify's CDNs goes through a bounded disk cache.

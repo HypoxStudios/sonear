@@ -206,6 +206,23 @@ impl SettingsPage {
         )
     }
 
+    fn accent_row(&self, cx: &Context<Self>) -> AnyElement {
+        let store = self.store.clone();
+
+        row(
+            "Accent from cover art",
+            "Tints buttons and sliders with a colour from the playing song's cover.",
+            None,
+            Switch::new("settings-cover-accent")
+                .checked(self.store.read(cx).cover_accent)
+                .color(theme::accent())
+                .accessibility_label("Accent from cover art")
+                .on_change(move |enabled, _, cx| {
+                    store.update(cx, |state, cx| state.set_cover_accent(*enabled, cx));
+                }),
+        )
+    }
+
     fn playback_section(&self, cx: &mut Context<Self>) -> Div {
         let can_save = self.can_save_device_name(cx);
         let save = ghost_button("device-save", "Save", can_save).when(can_save, |this| {
@@ -241,6 +258,7 @@ impl SettingsPage {
         }
 
         rows.push(self.lyrics_row(cx));
+        rows.push(self.accent_row(cx));
 
         section("Playback", rows)
     }

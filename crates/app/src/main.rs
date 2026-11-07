@@ -1,6 +1,7 @@
 #![cfg_attr(not(test), windows_subsystem = "windows")]
 
 mod assets;
+mod cover_accent;
 mod cover_cache;
 mod data;
 mod format;

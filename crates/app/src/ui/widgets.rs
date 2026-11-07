@@ -45,8 +45,9 @@ pub fn play_pause_icon(playing: bool, size: f32, color: Hsla) -> Icon {
     asset_icon(path, size, color)
 }
 
-/// The logo in the accent colour. Below about 40 px the bars of the full mark
-/// blur together, so small sizes use the simplified drawing.
+/// The logo in the brand colour, which the per-song accent never changes. Below
+/// about 40 px the bars of the full mark blur together, so small sizes use the
+/// simplified drawing.
 pub fn logo_mark(size: f32) -> Icon {
     let path = if size < 40. {
         assets::MARK_SMALL
@@ -54,7 +55,7 @@ pub fn logo_mark(size: f32) -> Icon {
         assets::MARK
     };
 
-    asset_icon(path, size, theme::accent())
+    asset_icon(path, size, theme::brand_accent())
 }
 
 /// A square clickable icon with a visible keyboard focus ring. Attach

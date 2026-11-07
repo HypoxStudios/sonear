@@ -16,9 +16,11 @@ use sonear_spotify::RateLimit;
 use tokio::runtime::Handle;
 use tokio::sync::mpsc;
 
+use crate::cover_accent::{self, Accent};
 use crate::data::{self, Env, Load, Slot};
 use crate::keymap;
 use crate::legal::LegalDoc;
+use crate::theme;
 
 const TOAST_FOR: Duration = Duration::from_secs(6);
 const PENDING_PLAY_FOR: Duration = Duration::from_secs(10);
@@ -26,6 +28,7 @@ const SIDEBAR_PLAYLISTS: usize = 8;
 /// Longest device name the settings page accepts.
 pub const DEVICE_NAME_MAX: usize = 64;
 const BACK_STACK_LIMIT: usize = 64;
+const ACCENT_MEMORY: usize = 32;
 /// Rows the Up next panel shows.
 pub const UP_NEXT_ROWS: usize = 30;
 
@@ -165,6 +168,7 @@ pub struct AppStore {
     /// Whether the right panel shows lyrics instead of the queue.
     pub right_panel_lyrics: bool,
     pub lyrics_enabled: bool,
+    pub cover_accent: bool,
     pub ai_hint_dismissed: bool,
     pub account: AccountState,
     pub profile: Slot<Profile>,
@@ -193,6 +197,12 @@ pub struct AppStore {
     pub main_width: Rc<Cell<f32>>,
     serial: u64,
     loads: Vec<Task<()>>,
+    /// What the accent was last worked out for: a cover URL, or a track URI without one.
+    accent_source: Option<String>,
+    /// Colours found for recent covers; `None` means the cover has no usable colour.
+    accent_memory: Vec<(String, Option<Accent>)>,
+    accent_serial: u64,
+    accent_load: Option<Task<()>>,
 }
 
 impl AppStore {
@@ -219,6 +229,7 @@ impl AppStore {
             right_panel_open: config.right_panel.open,
             right_panel_lyrics: config.right_panel.lyrics,
             lyrics_enabled: config.lyrics_enabled,
+            cover_accent: config.cover_accent,
             ai_hint_dismissed: config.ui.ai_hint_dismissed,
             profile: Slot::default(),
             sidebar_playlists: Vec::new(),
@@ -239,6 +250,10 @@ impl AppStore {
             main_width: Rc::new(Cell::new(900.)),
             serial: 0,
             loads: Vec::new(),
+            accent_source: None,
+            accent_memory: Vec::new(),
+            accent_serial: 0,
+            accent_load: None,
         };
         let mut events = core.subscribe();
 
@@ -256,6 +271,8 @@ impl AppStore {
             }
         })
         .detach();
+
+        store.sync_accent(cx);
 
         if store.account == AccountState::Connected {
             store.load_session(cx);
@@ -332,6 +349,10 @@ impl AppStore {
                 if track_changed {
                     self.ensure_current_like();
                     self.core.history.sync_soon();
+                }
+
+                if self.accent_source != self.accent_key() {
+                    self.sync_accent(cx);
                 }
             }
             AppEvent::Soloist(status) => {
@@ -629,6 +650,93 @@ impl AppStore {
             .config
             .update(|config| config.lyrics_enabled = enabled);
         cx.notify();
+    }
+
+    pub fn set_cover_accent(&mut self, enabled: bool, cx: &mut Context<Self>) {
+        self.cover_accent = enabled;
+        self.core
+            .config
+            .update(|config| config.cover_accent = enabled);
+        self.sync_accent(cx);
+        cx.notify();
+    }
+
+    fn accent_key(&self) -> Option<String> {
+        let item = self.playback.item.as_ref()?;
+
+        Some(
+            item.cover_url("small")
+                .map_or_else(|| item.uri.clone(), str::to_owned),
+        )
+    }
+
+    fn apply_accent(&mut self, accent: Option<Accent>, cx: &mut Context<Self>) {
+        if theme::set_accent(accent.map(Accent::hsla)) {
+            theme::refresh_accent(cx);
+        }
+    }
+
+    /// Works out the accent for the playing track's cover. A slow answer for
+    /// an earlier track is dropped.
+    fn sync_accent(&mut self, cx: &mut Context<Self>) {
+        self.accent_serial += 1;
+        self.accent_load = None;
+        self.accent_source = self.accent_key();
+
+        let serial = self.accent_serial;
+        let item = self.playback.item.as_ref().filter(|_| self.cover_accent);
+        let Some(item) = item else {
+            self.apply_accent(None, cx);
+
+            return;
+        };
+        let Some(url) = item.cover_url("small").map(str::to_owned) else {
+            let accent = self
+                .is_demo()
+                .then(|| cover_accent::accent_from_placeholder(&item.uri));
+
+            self.apply_accent(accent, cx);
+
+            return;
+        };
+
+        if let Some((_, known)) = self.accent_memory.iter().find(|(key, _)| *key == url) {
+            let known = *known;
+
+            self.apply_accent(known, cx);
+
+            return;
+        }
+
+        let work = self.runtime.spawn({
+            let url = url.clone();
+
+            async move {
+                let bytes = crate::http::fetch_cover(&url).await?;
+
+                tokio::task::spawn_blocking(move || cover_accent::accent_from_image(&bytes))
+                    .await
+                    .ok()
+                    .flatten()
+            }
+        });
+
+        self.accent_load = Some(cx.spawn(async move |this, cx| {
+            let found = work.await.ok().flatten();
+
+            let _ = this.update(cx, |store, cx| {
+                if store.accent_serial != serial {
+                    return;
+                }
+
+                if store.accent_memory.len() >= ACCENT_MEMORY {
+                    store.accent_memory.remove(0);
+                }
+
+                store.accent_memory.push((url, found));
+                store.apply_accent(found, cx);
+            });
+        }));
     }
 
     pub fn dismiss_ai_hint(&mut self, cx: &mut Context<Self>) {
@@ -960,6 +1068,8 @@ impl AppStore {
                 store.right_panel_open = config.right_panel.open;
                 store.right_panel_lyrics = config.right_panel.lyrics;
                 store.lyrics_enabled = config.lyrics_enabled;
+                store.cover_accent = config.cover_accent;
+                store.sync_accent(cx);
                 store.ai_hint_dismissed = config.ui.ai_hint_dismissed;
                 store.editing_key = false;
                 store.key_error = None;
