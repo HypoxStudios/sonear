@@ -34,6 +34,9 @@ pub struct Config {
     pub history_retention_months: u32,
     /// Plays up to this time were cleared by the user, so syncs skip them.
     pub history_cleared_at_ms: u64,
+    /// Whether lyrics are looked up. Looking them up sends the song's title,
+    /// artist, album and length to LRCLIB.
+    pub lyrics_enabled: bool,
     pub right_panel: RightPanelConfig,
     pub ui: UiConfig,
     /// Keystrokes the user changed, by shortcut id. An empty string means unbound.
@@ -44,6 +47,8 @@ pub struct Config {
 #[serde(default)]
 pub struct RightPanelConfig {
     pub open: bool,
+    /// Whether the panel shows lyrics instead of the queue.
+    pub lyrics: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -63,6 +68,7 @@ impl Default for Config {
             account_user_id: String::new(),
             history_retention_months: 12,
             history_cleared_at_ms: 0,
+            lyrics_enabled: true,
             right_panel: RightPanelConfig::default(),
             ui: UiConfig::default(),
             shortcuts: BTreeMap::new(),
@@ -72,7 +78,10 @@ impl Default for Config {
 
 impl Default for RightPanelConfig {
     fn default() -> Self {
-        Self { open: true }
+        Self {
+            open: true,
+            lyrics: false,
+        }
     }
 }
 
@@ -213,6 +222,28 @@ mod tests {
         assert_eq!(config.history_retention_months, 12);
         assert_eq!(config.legal_accepted, 0);
         assert_eq!(config.account_user_id, "");
+        assert!(config.lyrics_enabled);
+        assert!(!config.right_panel.lyrics);
+    }
+
+    #[test]
+    fn files_from_before_lyrics_still_load() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+
+        fs::write(
+            &path,
+            "[right_panel]
+open = false
+",
+        )
+        .unwrap();
+
+        let config = Config::load(&path);
+
+        assert!(!config.right_panel.open);
+        assert!(!config.right_panel.lyrics);
+        assert!(config.lyrics_enabled);
     }
 
     #[test]

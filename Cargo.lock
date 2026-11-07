@@ -6416,6 +6416,7 @@ dependencies = [
  "dirs 6.0.0",
  "futures-util",
  "keyring",
+ "reqwest",
  "rusqlite",
  "serde",
  "serde_json",
@@ -6426,6 +6427,8 @@ dependencies = [
  "tokio",
  "toml 1.2.1+spec-1.1.0",
  "tracing",
+ "url",
+ "wiremock",
 ]
 
 [[package]]

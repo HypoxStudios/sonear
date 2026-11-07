@@ -154,6 +154,11 @@ impl PlaybackModel {
         self.options.repeat
     }
 
+    /// The last position Soloist reported, which `position_ms_at` extrapolates from.
+    pub fn position_anchor(&self) -> Option<Position> {
+        self.position
+    }
+
     /// Playback position at `now_ms`, extrapolated from the last anchor and
     /// clamped to the track length. Frozen unless the status is playing.
     pub fn position_ms_at(&self, now_ms: u64) -> u64 {

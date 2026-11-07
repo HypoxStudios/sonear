@@ -70,6 +70,7 @@ const COMMANDS: [(&str, &[Entry]); 4] = [
         "Queue",
         &[
             entry("toggle_queue", IconName::ListMusic),
+            entry("toggle_lyrics", IconName::MicVocal),
             entry("clear_queue", IconName::X),
         ],
     ),

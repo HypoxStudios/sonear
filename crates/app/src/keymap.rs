@@ -27,6 +27,7 @@ actions!(
         CycleRepeat,
         LikeCurrent,
         ToggleQueue,
+        ToggleLyrics,
         ClearQueue,
         ToggleSidebar,
         GoHome,
@@ -106,7 +107,7 @@ macro_rules! shortcut {
     };
 }
 
-pub static SHORTCUTS: [Shortcut; 22] = [
+pub static SHORTCUTS: [Shortcut; 23] = [
     shortcut!(
         "palette",
         "Command palette",
@@ -198,6 +199,13 @@ pub static SHORTCUTS: [Shortcut; 22] = [
         Queue,
         Some("alt-shift-q"),
         ToggleQueue
+    ),
+    shortcut!(
+        "toggle_lyrics",
+        "Lyrics",
+        Queue,
+        Some("ctrl-shift-l"),
+        ToggleLyrics
     ),
     shortcut!("clear_queue", "Clear queue", Queue, None, ClearQueue),
     shortcut!(

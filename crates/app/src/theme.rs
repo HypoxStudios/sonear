@@ -43,6 +43,16 @@ pub const SHORTCUTS_MAX_HEIGHT: f32 = 0.82;
 pub const SHORTCUT_ROW_HEIGHT: Pixels = px(40.);
 pub const PALETTE_COVER: f32 = 32.;
 
+/// Lyrics text size and the space between lines.
+pub const LYRICS_SIZE: f32 = 18.;
+pub const LYRICS_GAP: f32 = 14.;
+pub const LYRICS_SKELETON_HEIGHT: f32 = 18.;
+pub const LYRICS_PLAIN_SIZE: f32 = 14.;
+/// Room under the last line so it can scroll up to the focus point.
+pub const LYRICS_END_PADDING: f32 = 240.;
+/// Share of the lyrics list above the active line.
+pub const LYRICS_FOCUS: f32 = 1. / 3.;
+
 /// Window width below which the sidebar collapses to a rail.
 pub const COLLAPSE_BELOW: f32 = 1100.;
 /// Main plus right panel width below which the right panel hides.

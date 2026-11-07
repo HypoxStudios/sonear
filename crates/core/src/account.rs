@@ -15,6 +15,7 @@ use crate::events::AppEvent;
 use crate::history::History;
 use crate::library::{LibraryBackend, SpotifyLibrary};
 use crate::likes::LikeStore;
+use crate::lyrics::LyricsStore;
 use crate::meta::MetaCache;
 use crate::paths::AppPaths;
 use crate::queue::QueueManager;
@@ -87,6 +88,7 @@ pub struct Account {
     history: Arc<History>,
     likes: Arc<LikeStore>,
     queue: Arc<QueueManager>,
+    lyrics: Arc<LyricsStore>,
     events: broadcast::Sender<AppEvent>,
     state: Mutex<AccountState>,
     cancel: Mutex<Option<Arc<Notify>>>,
@@ -106,6 +108,7 @@ impl Account {
         history: Arc<History>,
         likes: Arc<LikeStore>,
         queue: Arc<QueueManager>,
+        lyrics: Arc<LyricsStore>,
         events: broadcast::Sender<AppEvent>,
     ) -> Arc<Self> {
         let state = if library.is_some() {
@@ -124,6 +127,7 @@ impl Account {
             history,
             likes,
             queue,
+            lyrics,
             events,
             state: Mutex::new(state),
             cancel: Mutex::new(None),
@@ -391,6 +395,7 @@ impl Account {
 
         self.meta.clear();
         self.likes.clear();
+        self.lyrics.clear();
 
         if let Err(error) = self.history.store().wipe().await {
             problems.push(format!("history: {error}"));

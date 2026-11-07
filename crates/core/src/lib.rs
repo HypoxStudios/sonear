@@ -10,6 +10,7 @@ pub mod history;
 pub mod library;
 pub mod likes;
 pub mod link;
+pub mod lyrics;
 pub mod manager;
 pub mod meta;
 pub mod model;
@@ -33,6 +34,7 @@ pub use history::{History, HistoryRow, HistoryStore};
 pub use library::{LibraryBackend, LibraryError, SpotifyLibrary};
 pub use likes::LikeStore;
 pub use link::SpotifyLink;
+pub use lyrics::{LrcLibSource, LyricLine, Lyrics, LyricsQuery, LyricsSource, LyricsStore};
 pub use manager::SoloistManager;
 pub use meta::{Freshness, MetaCache, TrackResolver};
 pub use paths::AppPaths;
@@ -56,6 +58,7 @@ pub struct Core {
     pub likes: Arc<LikeStore>,
     pub account: Arc<Account>,
     pub queue: Arc<QueueManager>,
+    pub lyrics: Arc<LyricsStore>,
     secrets: Arc<dyn SecretStore>,
     events: broadcast::Sender<AppEvent>,
 }
@@ -138,6 +141,7 @@ impl Core {
             Some(paths.queue_file()),
             runtime.clone(),
         );
+        let lyrics = LyricsStore::new(Arc::new(LrcLibSource::new()));
         let account = Account::new(
             runtime.clone(),
             paths.clone(),
@@ -148,6 +152,7 @@ impl Core {
             history.clone(),
             likes.clone(),
             queue.clone(),
+            lyrics.clone(),
             events.clone(),
         );
 
@@ -166,6 +171,7 @@ impl Core {
             likes,
             account,
             queue,
+            lyrics,
             secrets,
             events,
         }
@@ -196,6 +202,7 @@ impl Core {
         let likes = LikeStore::new(library.clone(), events.clone());
         let queue = QueueManager::new(player.clone(), events.clone(), None, runtime.clone());
         let secrets: Arc<dyn SecretStore> = Arc::new(secrets::MemoryStore::default());
+        let lyrics = LyricsStore::new(Arc::new(demo::DemoLyrics));
         let account = Account::new(
             runtime.clone(),
             AppPaths::new("demo", "demo"),
@@ -206,6 +213,7 @@ impl Core {
             history.clone(),
             likes.clone(),
             queue.clone(),
+            lyrics.clone(),
             events.clone(),
         );
 
@@ -228,6 +236,7 @@ impl Core {
             likes,
             account,
             queue,
+            lyrics,
             secrets,
             events,
         }

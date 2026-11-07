@@ -2,6 +2,7 @@
 
 pub mod catalog;
 pub mod library;
+pub mod lyrics;
 
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -22,6 +23,7 @@ use crate::player::{PlayerBackend, PlayerError};
 use catalog::{DemoTrack, PLAYLIST_URI, catalog};
 
 pub use library::DemoLibrary;
+pub use lyrics::DemoLyrics;
 
 pub const DEVICE_NAME: &str = "Sonear (demo)";
 

@@ -1,5 +1,6 @@
 use gpui_kit::assets::IconName;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
+use gpui_kit::component::switch::Switch;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
     AnyElement, App, AppContext as _, Context, Div, ElementId, Entity, FontWeight, Hsla,
@@ -188,6 +189,23 @@ impl SettingsPage {
         )
     }
 
+    fn lyrics_row(&self, cx: &Context<Self>) -> AnyElement {
+        let store = self.store.clone();
+
+        row(
+            "Lyrics",
+            "Shows lyrics from LRCLIB. While the panel is open, the song's title, artist, album and length are sent to lrclib.net.",
+            None,
+            Switch::new("settings-lyrics")
+                .checked(self.store.read(cx).lyrics_enabled)
+                .color(theme::accent())
+                .accessibility_label("Lyrics")
+                .on_change(move |enabled, _, cx| {
+                    store.update(cx, |state, cx| state.set_lyrics_enabled(*enabled, cx));
+                }),
+        )
+    }
+
     fn playback_section(&self, cx: &mut Context<Self>) -> Div {
         let can_save = self.can_save_device_name(cx);
         let save = ghost_button("device-save", "Save", can_save).when(can_save, |this| {
@@ -221,6 +239,8 @@ impl SettingsPage {
         if !self.store.read(cx).is_demo() {
             rows.push(self.links_row(cx));
         }
+
+        rows.push(self.lyrics_row(cx));
 
         section("Playback", rows)
     }

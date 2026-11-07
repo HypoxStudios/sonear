@@ -194,7 +194,9 @@ impl Render for PlayerBar {
         let model = state.playback.clone();
         let demo = state.is_demo();
         let (status_label, status_ready) = soloist_label(&state.soloist, demo);
-        let right_open = state.right_panel_open;
+        let queue_open = state.queue_showing();
+        let lyrics_open = state.lyrics_showing();
+        let lyrics_enabled = state.lyrics_enabled;
         let player = state.core.player.clone();
         let queue = state.core.queue.clone();
         let has_queued = model.is_active
@@ -203,6 +205,7 @@ impl Render for PlayerBar {
         let pending_play = state.pending_play;
         let likes = state.core.likes.clone();
         let store = self.store.clone();
+        let lyrics_store = self.store.clone();
 
         self.sync_sliders(&model, window, cx);
 
@@ -463,25 +466,32 @@ impl Render for PlayerBar {
                     }))
                     .child(status_label),
             )
-            .child(icon_button(
-                "lyrics",
-                IconName::MicVocal,
-                16.,
-                32.,
-                theme::text_tertiary(),
-                false,
-            ))
+            .when(lyrics_enabled, |this| {
+                this.child(
+                    icon_button(
+                        "lyrics",
+                        IconName::MicVocal,
+                        16.,
+                        32.,
+                        accent_if(lyrics_open),
+                        true,
+                    )
+                    .on_click(move |_, _, cx| {
+                        lyrics_store.update(cx, |state, cx| state.show_lyrics_panel(cx));
+                    }),
+                )
+            })
             .child(
                 icon_button(
                     "queue",
                     IconName::ListMusic,
                     16.,
                     32.,
-                    accent_if(right_open),
+                    accent_if(queue_open),
                     true,
                 )
                 .on_click(move |_, _, cx| {
-                    store.update(cx, |state, cx| state.toggle_right_panel(cx));
+                    store.update(cx, |state, cx| state.show_queue_panel(cx));
                 }),
             )
             .child(icon(volume_icon, 16., theme::text_secondary()))

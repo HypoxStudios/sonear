@@ -36,7 +36,7 @@ Sonear builds no listening statistics or profile of you. The history is a plain 
 ## What Sonear sends, and to whom
 
 - **Spotify.** Sonear talks to the Spotify Web API, and Soloist talks to Spotify to play music. Spotify's [privacy policy](https://www.spotify.com/legal/privacy-policy/) covers what Spotify does with this.
-- **LRCLIB.** While the lyrics panel is open, Sonear sends the playing track's title, artist, album and length to [lrclib.net](https://lrclib.net) to fetch lyrics. You can turn lyrics off in Settings.
+- **LRCLIB.** While the lyrics panel is open, Sonear sends the playing track's title, artist, album and length to [lrclib.net](https://lrclib.net) to fetch lyrics. Lyrics are kept in memory only and never saved to disk. You can turn lyrics off in Settings.
 - **Spotify's download server.** When you install or update Soloist, Sonear downloads it from Spotify.
 
 Sonear sends nothing else. It has no analytics, telemetry, crash reporting or advertising, and it never sells or shares your data.

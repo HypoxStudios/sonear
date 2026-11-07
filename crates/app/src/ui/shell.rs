@@ -9,6 +9,7 @@ use sonear_core::playback::now_ms;
 use sonear_soloist::Status;
 
 use super::legal::legal_overlay;
+use super::lyrics::LyricsPanel;
 use super::pages::artist::ArtistPage;
 use super::pages::detail::{DetailPage, Kind};
 use super::pages::history::HistoryPage;
@@ -27,8 +28,8 @@ use super::widgets::{accent_button, ghost_button, icon, panel};
 use crate::keymap::{
     self, ClearQueue, CloseOverlay, CycleRepeat, GoBack, GoHistory, GoHome, GoLibrary, GoLiked,
     GoSearch, LikeCurrent, NextTrack, OpenPalette, OpenSettings, OpenShortcuts, PreviousTrack,
-    SeekBack, SeekForward, TogglePlayPause, ToggleQueue, ToggleShuffle, ToggleSidebar, VolumeDown,
-    VolumeUp,
+    SeekBack, SeekForward, ToggleLyrics, TogglePlayPause, ToggleQueue, ToggleShuffle,
+    ToggleSidebar, VolumeDown, VolumeUp,
 };
 use crate::store::{AppStore, Confirm, LibraryTab, Route};
 use crate::theme;
@@ -51,6 +52,7 @@ pub struct Shell {
     store: Entity<AppStore>,
     player_bar: Entity<PlayerBar>,
     right_panel: Entity<RightPanel>,
+    lyrics_panel: Option<Entity<LyricsPanel>>,
     setup: Entity<SetupView>,
     page: Option<(Route, AnyView)>,
     focus: FocusHandle,
@@ -71,6 +73,7 @@ impl Shell {
             shortcuts: None,
             player_bar: cx.new(|cx| PlayerBar::new(store.clone(), cx)),
             right_panel: cx.new(|cx| RightPanel::new(store.clone(), cx)),
+            lyrics_panel: None,
             setup: cx.new(|cx| SetupView::new(store.clone(), window, cx)),
             page: None,
             _subscription: cx.observe(&store, |_, _, cx| cx.notify()),
@@ -627,7 +630,12 @@ impl Shell {
         .on_action(cx.listener(|shell, _: &ToggleQueue, _, cx| {
             shell
                 .store
-                .update(cx, |state, cx| state.toggle_right_panel(cx));
+                .update(cx, |state, cx| state.show_queue_panel(cx));
+        }))
+        .on_action(cx.listener(|shell, _: &ToggleLyrics, _, cx| {
+            shell
+                .store
+                .update(cx, |state, cx| state.show_lyrics_panel(cx));
         }))
         .on_action(cx.listener(|shell, _: &ClearQueue, _, cx| {
             shell.playback(cx, |state| state.core.queue.clear());
@@ -665,12 +673,13 @@ impl Render for Shell {
         }
 
         let width = f32::from(window.viewport_size().width);
-        let (collapsed, right_open) = {
+        let (collapsed, right_open, lyrics_showing) = {
             let state = self.store.read(cx);
 
             (
                 state.sidebar_collapsed || width < theme::COLLAPSE_BELOW,
                 state.right_panel_open,
+                state.lyrics_showing(),
             )
         };
         let gap = f32::from(theme::PANEL_GAP);
@@ -697,13 +706,24 @@ impl Render for Shell {
         let dialog = self.confirm_dialog(cx);
         let state = self.store.read(cx);
         let sidebar = sidebar(&self.store, state, collapsed);
+        let right_style = StyleRefinement::default()
+            .flex_none()
+            .h_full()
+            .w(theme::RIGHT_PANEL_WIDTH);
         let right = show_right.then(|| {
-            self.right_panel.clone().cached(
-                StyleRefinement::default()
-                    .flex_none()
-                    .h_full()
-                    .w(theme::RIGHT_PANEL_WIDTH),
-            )
+            if lyrics_showing {
+                let store = self.store.clone();
+                let panel = self
+                    .lyrics_panel
+                    .get_or_insert_with(|| cx.new(|cx| LyricsPanel::new(store, cx)));
+
+                panel.clone().cached(right_style).into_any_element()
+            } else {
+                self.right_panel
+                    .clone()
+                    .cached(right_style)
+                    .into_any_element()
+            }
         });
 
         let main = panel()

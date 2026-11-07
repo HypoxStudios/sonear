@@ -162,6 +162,9 @@ pub struct AppStore {
     pub editing_key: bool,
     pub sidebar_collapsed: bool,
     pub right_panel_open: bool,
+    /// Whether the right panel shows lyrics instead of the queue.
+    pub right_panel_lyrics: bool,
+    pub lyrics_enabled: bool,
     pub ai_hint_dismissed: bool,
     pub account: AccountState,
     pub profile: Slot<Profile>,
@@ -214,6 +217,8 @@ impl AppStore {
             editing_key: false,
             sidebar_collapsed: config.sidebar_collapsed,
             right_panel_open: config.right_panel.open,
+            right_panel_lyrics: config.right_panel.lyrics,
+            lyrics_enabled: config.lyrics_enabled,
             ai_hint_dismissed: config.ui.ai_hint_dismissed,
             profile: Slot::default(),
             sidebar_playlists: Vec::new(),
@@ -569,14 +574,60 @@ impl AppStore {
         cx.notify();
     }
 
-    pub fn toggle_right_panel(&mut self, cx: &mut Context<Self>) {
-        self.right_panel_open = !self.right_panel_open;
+    /// Whether the right slot is open on the lyrics.
+    pub fn lyrics_showing(&self) -> bool {
+        self.right_panel_open && self.lyrics_enabled && self.right_panel_lyrics
+    }
 
-        let open = self.right_panel_open;
+    /// Whether the right slot is open on the queue.
+    pub fn queue_showing(&self) -> bool {
+        self.right_panel_open && !(self.lyrics_enabled && self.right_panel_lyrics)
+    }
 
+    /// Opens the lyrics, or closes the panel if the lyrics are already showing.
+    pub fn show_lyrics_panel(&mut self, cx: &mut Context<Self>) {
+        if !self.lyrics_enabled {
+            return;
+        }
+
+        if self.lyrics_showing() {
+            self.right_panel_open = false;
+        } else {
+            self.right_panel_open = true;
+            self.right_panel_lyrics = true;
+        }
+
+        self.save_right_panel();
+        cx.notify();
+    }
+
+    /// Opens the queue, or closes the panel if the queue is already showing.
+    pub fn show_queue_panel(&mut self, cx: &mut Context<Self>) {
+        if self.queue_showing() {
+            self.right_panel_open = false;
+        } else {
+            self.right_panel_open = true;
+            self.right_panel_lyrics = false;
+        }
+
+        self.save_right_panel();
+        cx.notify();
+    }
+
+    fn save_right_panel(&self) {
+        let (open, lyrics) = (self.right_panel_open, self.right_panel_lyrics);
+
+        self.core.config.update(|config| {
+            config.right_panel.open = open;
+            config.right_panel.lyrics = lyrics;
+        });
+    }
+
+    pub fn set_lyrics_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
+        self.lyrics_enabled = enabled;
         self.core
             .config
-            .update(|config| config.right_panel.open = open);
+            .update(|config| config.lyrics_enabled = enabled);
         cx.notify();
     }
 
@@ -907,6 +958,8 @@ impl AppStore {
 
                 store.sidebar_collapsed = config.sidebar_collapsed;
                 store.right_panel_open = config.right_panel.open;
+                store.right_panel_lyrics = config.right_panel.lyrics;
+                store.lyrics_enabled = config.lyrics_enabled;
                 store.ai_hint_dismissed = config.ui.ai_hint_dismissed;
                 store.editing_key = false;
                 store.key_error = None;

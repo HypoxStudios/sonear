@@ -54,6 +54,7 @@ fn fixture() -> Fixture {
         history.clone(),
         likes,
         queue.clone(),
+        crate::LyricsStore::new(std::sync::Arc::new(crate::LrcLibSource::new())),
         events,
     );
 

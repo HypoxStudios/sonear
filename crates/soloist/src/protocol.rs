@@ -166,6 +166,10 @@ impl Entity {
             .collect()
     }
 
+    pub fn first_artist(&self) -> Option<&str> {
+        self.artist_names().into_iter().next()
+    }
+
     pub fn artist_line(&self) -> String {
         self.artist_names().join(", ")
     }
