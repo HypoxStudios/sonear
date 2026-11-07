@@ -258,11 +258,7 @@ impl Render for PlayerBar {
             .w(px(SIDE_WIDTH))
             .flex_none()
             .min_w_0()
-            .child(cover_for(
-                item.as_ref().and_then(|i| i.album()).or(item.as_ref()),
-                52.,
-                theme::ART_RADIUS_SMALL,
-            ))
+            .child(cover_for(item.as_ref(), 52., theme::ART_RADIUS_SMALL))
             .child(
                 div()
                     .flex()

@@ -128,7 +128,12 @@ impl Entity {
 
     /// The cover whose size matches `prefer` (`small`, `default`, `large`,
     /// `xlarge`), or the closest available size.
+    /// With no cover of its own, the album's is used.
     pub fn cover_url(&self, prefer: &str) -> Option<&str> {
+        if self.decorations.visual_identity.cover.is_empty() {
+            return self.album()?.cover_url(prefer);
+        }
+
         let covers = &self.decorations.visual_identity.cover;
 
         if let Some(exact) = covers.iter().find(|cover| cover.size == prefer) {

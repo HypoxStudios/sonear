@@ -167,7 +167,7 @@ fn line_for_item(state: &AppStore, item: &SoloistEntity) -> Line {
 
     if !item.name().is_empty() {
         return Line {
-            cover: cover_for(item.album().or(Some(item)), COVER, theme::ART_RADIUS_SMALL),
+            cover: cover_for(Some(item), COVER, theme::ART_RADIUS_SMALL),
             name: item.name().to_owned(),
             artists: item.artist_line(),
             known: true,

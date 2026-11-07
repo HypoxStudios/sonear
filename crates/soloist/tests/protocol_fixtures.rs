@@ -1,4 +1,6 @@
-use sonear_soloist::protocol::{Command, Event, PlayStatus, RepeatMode};
+use sonear_soloist::protocol::{
+    Command, Cover, Decorations, Entity, Event, Parent, PlayStatus, RepeatMode, VisualIdentity,
+};
 
 fn parse(text: &str) -> Event {
     Event::parse(text).expect("fixture parses")
@@ -191,4 +193,64 @@ fn commands_serialise_to_wire_shape() {
 
         assert_eq!(actual, expected);
     }
+}
+
+fn with_covers(urls: &[(&str, &str)]) -> Decorations {
+    Decorations {
+        visual_identity: VisualIdentity {
+            cover: urls
+                .iter()
+                .map(|(size, url)| Cover {
+                    url: (*url).into(),
+                    size: (*size).into(),
+                })
+                .collect(),
+        },
+        ..Decorations::default()
+    }
+}
+
+#[test]
+fn item_returns_its_own_cover() {
+    let Event::PlaybackState(state) = parse(include_str!("fixtures/playback_state.json")) else {
+        panic!("wrong variant");
+    };
+    let item = state.item.expect("item");
+
+    assert!(item.cover_url("default").unwrap().contains("9b9b36b0"));
+    assert!(item.cover_url("small").unwrap().contains("00004851"));
+}
+
+#[test]
+fn item_without_covers_uses_its_albums() {
+    let album = Entity {
+        decorations: with_covers(&[("default", "https://example.test/album")]),
+        ..Entity::default()
+    };
+    let item = Entity {
+        decorations: Decorations {
+            parent: Some(Parent {
+                entity: Some(Box::new(album)),
+            }),
+            ..Decorations::default()
+        },
+        ..Entity::default()
+    };
+
+    assert_eq!(item.cover_url("small"), Some("https://example.test/album"));
+
+    let own = Entity {
+        decorations: Decorations {
+            parent: item.decorations.parent.clone(),
+            ..with_covers(&[("small", "https://example.test/own")])
+        },
+        ..Entity::default()
+    };
+
+    assert_eq!(own.cover_url("small"), Some("https://example.test/own"));
+}
+
+#[test]
+fn entity_without_any_cover_returns_none() {
+    assert_eq!(Entity::default().cover_url("small"), None);
 }
