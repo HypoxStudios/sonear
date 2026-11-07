@@ -52,7 +52,7 @@ impl From<SpotifyError> for LibraryError {
         match error {
             SpotifyError::NeedsLogin => Self::NeedsLogin,
             SpotifyError::Forbidden => Self::Forbidden,
-            SpotifyError::NotFound => Self::NotFound,
+            SpotifyError::NotFound | SpotifyError::InvalidId(_) => Self::NotFound,
             SpotifyError::RateLimited { .. } => Self::RateLimited,
             SpotifyError::QuotaExceeded => Self::QuotaExceeded,
             SpotifyError::Network(reason) => Self::Network(reason),

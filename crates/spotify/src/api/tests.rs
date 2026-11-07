@@ -4,6 +4,8 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use super::*;
 use crate::client::tests::client_for;
 
+const ID: &str = "4uLU6hMCjMI75M1A2tKUQC";
+
 #[tokio::test]
 async fn search_limit_is_never_above_ten() {
     let server = MockServer::start().await;
@@ -40,7 +42,7 @@ async fn artist_albums_limit_is_never_above_ten() {
     let server = MockServer::start().await;
     let client = client_for(&server).await;
 
-    Mock::given(path("/v1/artists/a/albums"))
+    Mock::given(path("/v1/artists/4uLU6hMCjMI75M1A2tKUQC/albums"))
         .and(query_param("limit", "10"))
         .and(query_param("offset", "20"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
@@ -48,7 +50,7 @@ async fn artist_albums_limit_is_never_above_ten() {
         .mount(&server)
         .await;
 
-    client.artist_albums("a", 50, 20).await.unwrap();
+    client.artist_albums(ID, 50, 20).await.unwrap();
 }
 
 #[tokio::test]
@@ -188,7 +190,7 @@ async fn playlist_items_not_exposed_is_forbidden() {
     let server = MockServer::start().await;
     let client = client_for(&server).await;
 
-    Mock::given(path("/v1/playlists/followed/items"))
+    Mock::given(path("/v1/playlists/4uLU6hMCjMI75M1A2tKUQC/items"))
         .respond_with(ResponseTemplate::new(403).set_body_json(serde_json::json!({
             "error": {"status": 403, "message": "Forbidden"}
         })))
@@ -197,7 +199,44 @@ async fn playlist_items_not_exposed_is_forbidden() {
         .await;
 
     assert_eq!(
-        client.playlist_items("followed", 50, 0).await.unwrap_err(),
+        client.playlist_items(ID, 50, 0).await.unwrap_err(),
         SpotifyError::Forbidden
+    );
+}
+
+#[tokio::test]
+async fn a_bad_id_fails_before_any_request() {
+    let server = MockServer::start().await;
+    let client = client_for(&server).await;
+    let bad = [
+        "",
+        "../me",
+        "4uLU6hMCjMI75M1A2tKUQ?",
+        "4uLU6hMCjMI75M1A2tKUQ",
+        "4uLU6hMCjMI75M1A2tKUQCC",
+        "4uLU6hMCjMI75M1A2tKU/C",
+    ];
+
+    for id in bad {
+        let expected = SpotifyError::InvalidId(id.to_owned());
+
+        assert_eq!(client.track(id).await.unwrap_err(), expected);
+        assert_eq!(client.album(id).await.unwrap_err(), expected);
+        assert_eq!(client.album_tracks(id, 1, 0).await.unwrap_err(), expected);
+        assert_eq!(client.artist(id).await.unwrap_err(), expected);
+        assert_eq!(client.artist_albums(id, 1, 0).await.unwrap_err(), expected);
+        assert_eq!(client.artist_top_tracks(id).await.unwrap_err(), expected);
+        assert_eq!(client.playlist(id).await.unwrap_err(), expected);
+        assert_eq!(client.playlist_items(id, 1, 0).await.unwrap_err(), expected);
+        assert_eq!(client.show(id).await.unwrap_err(), expected);
+        assert_eq!(client.show_episodes(id, 1, 0).await.unwrap_err(), expected);
+    }
+
+    assert!(
+        server
+            .received_requests()
+            .await
+            .unwrap_or_default()
+            .is_empty()
     );
 }

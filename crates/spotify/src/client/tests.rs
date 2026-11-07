@@ -199,8 +199,11 @@ async fn error_fixtures_map_to_distinct_errors() {
     let server = MockServer::start().await;
     let client = client_for(&server).await;
     let cases = [
-        ("followed_playlist_items_forbidden", "playlists/p/items"),
-        ("editorial_playlist_404", "playlists/e"),
+        (
+            "followed_playlist_items_forbidden",
+            "playlists/4uLU6hMCjMI75M1A2tKUQC/items",
+        ),
+        ("editorial_playlist_404", "playlists/5uLU6hMCjMI75M1A2tKUQC"),
         ("batch_tracks_forbidden", "tracks"),
         ("search_limit_11", "search"),
     ];
@@ -215,11 +218,14 @@ async fn error_fixtures_map_to_distinct_errors() {
     }
 
     assert_eq!(
-        client.playlist_items("p", 50, 0).await.unwrap_err(),
+        client
+            .playlist_items("4uLU6hMCjMI75M1A2tKUQC", 50, 0)
+            .await
+            .unwrap_err(),
         SpotifyError::Forbidden
     );
     assert_eq!(
-        client.playlist("e").await.unwrap_err(),
+        client.playlist("5uLU6hMCjMI75M1A2tKUQC").await.unwrap_err(),
         SpotifyError::NotFound
     );
     assert_eq!(

@@ -96,6 +96,16 @@ impl PlayParams {
     }
 }
 
+/// Spotify IDs are 22 base62 characters. Anything else could carry `../` or
+/// `?` into the joined URL and reach another endpoint.
+fn resource(kind: &str, id: &str, rest: &str) -> Result<String, SpotifyError> {
+    if id.len() != 22 || !id.bytes().all(|byte| byte.is_ascii_alphanumeric()) {
+        return Err(SpotifyError::InvalidId(id.chars().take(40).collect()));
+    }
+
+    Ok(format!("{kind}/{id}{rest}"))
+}
+
 fn paging(limit: u32, offset: u32) -> Vec<(&'static str, String)> {
     vec![("limit", limit.to_string()), ("offset", offset.to_string())]
 }
@@ -156,11 +166,11 @@ impl SpotifyClient {
     }
 
     pub async fn track(&self, id: &str) -> Result<Track, SpotifyError> {
-        self.get(&format!("tracks/{id}"), &[]).await
+        self.get(&resource("tracks", id, "")?, &[]).await
     }
 
     pub async fn album(&self, id: &str) -> Result<Album, SpotifyError> {
-        self.get(&format!("albums/{id}"), &[]).await
+        self.get(&resource("albums", id, "")?, &[]).await
     }
 
     pub async fn album_tracks(
@@ -169,12 +179,12 @@ impl SpotifyClient {
         limit: u32,
         offset: u32,
     ) -> Result<Page<Track>, SpotifyError> {
-        self.get(&format!("albums/{id}/tracks"), &paging(limit, offset))
+        self.get(&resource("albums", id, "/tracks")?, &paging(limit, offset))
             .await
     }
 
     pub async fn artist(&self, id: &str) -> Result<Artist, SpotifyError> {
-        self.get(&format!("artists/{id}"), &[]).await
+        self.get(&resource("artists", id, "")?, &[]).await
     }
 
     pub async fn artist_albums(
@@ -187,7 +197,7 @@ impl SpotifyClient {
 
         query.push(("include_groups", "album,single".to_owned()));
 
-        self.get(&format!("artists/{id}/albums"), &query).await
+        self.get(&resource("artists", id, "/albums")?, &query).await
     }
 
     /// Forbidden on new Client IDs. Callers try it once and remember the answer.
@@ -198,7 +208,9 @@ impl SpotifyClient {
             tracks: Vec<Track>,
         }
 
-        let tracks: Tracks = self.get(&format!("artists/{id}/top-tracks"), &[]).await?;
+        let tracks: Tracks = self
+            .get(&resource("artists", id, "/top-tracks")?, &[])
+            .await?;
 
         Ok(tracks.tracks)
     }
@@ -292,7 +304,7 @@ impl SpotifyClient {
     /// Metadata plus the first rows. The rows are missing, or the call fails
     /// with `Forbidden`, for playlists the user does not own.
     pub async fn playlist(&self, id: &str) -> Result<Playlist, SpotifyError> {
-        self.get(&format!("playlists/{id}"), &[]).await
+        self.get(&resource("playlists", id, "")?, &[]).await
     }
 
     /// `Forbidden` or `NotFound` for playlists the user does not own.
@@ -302,12 +314,15 @@ impl SpotifyClient {
         limit: u32,
         offset: u32,
     ) -> Result<Page<PlaylistRow>, SpotifyError> {
-        self.get(&format!("playlists/{id}/items"), &paging(limit, offset))
-            .await
+        self.get(
+            &resource("playlists", id, "/items")?,
+            &paging(limit, offset),
+        )
+        .await
     }
 
     pub async fn show(&self, id: &str) -> Result<Show, SpotifyError> {
-        self.get(&format!("shows/{id}"), &[]).await
+        self.get(&resource("shows", id, "")?, &[]).await
     }
 
     pub async fn show_episodes(
@@ -316,7 +331,7 @@ impl SpotifyClient {
         limit: u32,
         offset: u32,
     ) -> Result<Page<Episode>, SpotifyError> {
-        self.get(&format!("shows/{id}/episodes"), &paging(limit, offset))
+        self.get(&resource("shows", id, "/episodes")?, &paging(limit, offset))
             .await
     }
 

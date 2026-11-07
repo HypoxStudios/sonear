@@ -20,6 +20,8 @@ pub enum SpotifyError {
     Api { status: u16, message: String },
     #[error("could not read Spotify's answer: {0}")]
     Decode(String),
+    #[error("not a Spotify ID: {0}")]
+    InvalidId(String),
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
