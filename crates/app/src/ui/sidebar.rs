@@ -6,7 +6,7 @@ use gpui_kit::{
     px,
 };
 
-use super::widgets::{art, icon, icon_button, logo_mark, spotify_icon};
+use super::widgets::{art, icon, icon_button, logo_mark};
 use crate::store::{AppStore, LibraryTab, Route};
 use crate::theme;
 
@@ -175,7 +175,6 @@ pub fn sidebar(store: &Entity<AppStore>, state: &AppStore, collapsed: bool) -> A
             .font_weight(FontWeight::MEDIUM)
             .text_color(theme::text_tertiary())
             .child("YOUR MUSIC")
-            .child(spotify_icon())
     });
 
     let liked_active = route == Route::LikedSongs;

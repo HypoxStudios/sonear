@@ -12,7 +12,7 @@ use gpui_kit::{
 use sonear_core::QueueManager;
 use sonear_soloist::protocol::Entity as SoloistEntity;
 
-use super::widgets::{art, cover_for, icon, icon_button, spotify_icon};
+use super::widgets::{art, cover_for, icon, icon_button};
 use crate::store::{AppStore, UP_NEXT_ROWS};
 use crate::theme;
 
@@ -557,8 +557,7 @@ impl Render for RightPanel {
                             .font_family(theme::FONT_DISPLAY)
                             .text_color(theme::text_primary())
                             .child("Up next"),
-                    )
-                    .child(spotify_icon()),
+                    ),
             )
             .child(div().flex_1().min_h_0().child(list))
             .children(footer)
