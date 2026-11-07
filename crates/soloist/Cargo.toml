@@ -1,0 +1,39 @@
+[package]
+name = "sonear-soloist"
+description = "Soloist protocol, WebSocket client, installer and process supervisor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+name = "sonear_soloist"
+
+[dependencies]
+async-trait.workspace = true
+chrono.workspace = true
+futures-util.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-tungstenite.workspace = true
+tracing.workspace = true
+zip.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_WinTrust",
+    "Win32_Security_Cryptography",
+    "Win32_Security_Cryptography_Catalog",
+    "Win32_Security_Cryptography_Sip",
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+] }
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["test-util"] }

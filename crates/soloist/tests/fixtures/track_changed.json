@@ -1,0 +1,71 @@
+{
+  "type": "track_changed",
+  "item": {
+    "uri": "spotify:track:5CMjjywI0eZMixPeqNd75R",
+    "entity_type": "track",
+    "decorations": {
+      "identity": {
+        "name": "Lose Yourself to Dance (feat. Pharrell Williams)"
+      },
+      "visual_identity": {
+        "cover": [
+          {
+            "url": "https://i.scdn.co/image/ab67616d000048519b9b36b0e22870b9f542d937",
+            "size": "small"
+          },
+          {
+            "url": "https://i.scdn.co/image/ab67616d00001e029b9b36b0e22870b9f542d937",
+            "size": "default"
+          },
+          {
+            "url": "https://i.scdn.co/image/ab67616d0000b2739b9b36b0e22870b9f542d937",
+            "size": "large"
+          },
+          {
+            "url": "https://i.scdn.co/image/ab67616d0000b2739b9b36b0e22870b9f542d937",
+            "size": "xlarge"
+          }
+        ]
+      },
+      "parent": {
+        "entity": {
+          "uri": "spotify:album:4m2880jivSbbyEGAKfITCa",
+          "entity_type": "album",
+          "decorations": {
+            "identity": {
+              "name": "Random Access Memories"
+            }
+          }
+        }
+      },
+      "creators": [
+        {
+          "entity": {
+            "uri": "spotify:artist:4tZwfgrHOc3mvqYlEYSvVi",
+            "entity_type": "artist",
+            "decorations": {
+              "identity": {
+                "name": "Daft Punk"
+              }
+            }
+          }
+        },
+        {
+          "entity": {
+            "uri": "spotify:artist:2RdwBSPQiwcmiDo9kixcl8",
+            "entity_type": "artist",
+            "decorations": {
+              "identity": {
+                "name": "Pharrell Williams"
+              }
+            }
+          }
+        }
+      ],
+      "playback": {
+        "duration_ms": 353893,
+        "content_ratings": []
+      }
+    }
+  }
+}

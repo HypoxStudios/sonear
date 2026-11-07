@@ -1,0 +1,417 @@
+{
+  "type": "queue_changed",
+  "previous": [
+    {
+      "uid": "ba46c65c33d9632740a1",
+      "source": "context",
+      "item": {
+        "uri": "spotify:track:7Bxv0WL7UC6WwQpk9TzdMJ",
+        "entity_type": "track",
+        "decorations": {
+          "identity": {
+            "name": "Within"
+          },
+          "visual_identity": {
+            "cover": [
+              {
+                "url": "https://i.scdn.co/image/ab67616d000048519b9b36b0e22870b9f542d937",
+                "size": "small"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d00001e029b9b36b0e22870b9f542d937",
+                "size": "default"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d0000b2739b9b36b0e22870b9f542d937",
+                "size": "large"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d0000b2739b9b36b0e22870b9f542d937",
+                "size": "xlarge"
+              }
+            ]
+          },
+          "parent": {
+            "entity": {
+              "uri": "spotify:album:4m2880jivSbbyEGAKfITCa",
+              "entity_type": "album",
+              "decorations": {
+                "identity": {
+                  "name": "Random Access Memories"
+                }
+              }
+            }
+          },
+          "creators": [
+            {
+              "entity": {
+                "uri": "spotify:artist:4tZwfgrHOc3mvqYlEYSvVi",
+                "entity_type": "artist",
+                "decorations": {
+                  "identity": {
+                    "name": "Daft Punk"
+                  }
+                }
+              }
+            }
+          ],
+          "playback": {
+            "duration_ms": 229000,
+            "content_ratings": []
+          }
+        }
+      }
+    },
+    {
+      "uid": "794188fa87fb2e65bfe3",
+      "source": "context",
+      "item": {
+        "uri": "spotify:track:0oks4FnzhNp5QPTZtoet7c",
+        "entity_type": "track",
+        "decorations": {
+          "identity": {
+            "name": "Giorgio by Moroder"
+          },
+          "visual_identity": {
+            "cover": [
+              {
+                "url": "https://i.scdn.co/image/ab67616d000048519b9b36b0e22870b9f542d937",
+                "size": "small"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d00001e029b9b36b0e22870b9f542d937",
+                "size": "default"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d0000b2739b9b36b0e22870b9f542d937",
+                "size": "large"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d0000b2739b9b36b0e22870b9f542d937",
+                "size": "xlarge"
+              }
+            ]
+          },
+          "parent": {
+            "entity": {
+              "uri": "spotify:album:4m2880jivSbbyEGAKfITCa",
+              "entity_type": "album",
+              "decorations": {
+                "identity": {
+                  "name": "Random Access Memories"
+                }
+              }
+            }
+          },
+          "creators": [
+            {
+              "entity": {
+                "uri": "spotify:artist:4tZwfgrHOc3mvqYlEYSvVi",
+                "entity_type": "artist",
+                "decorations": {
+                  "identity": {
+                    "name": "Daft Punk"
+                  }
+                }
+              }
+            }
+          ],
+          "playback": {
+            "duration_ms": 545000,
+            "content_ratings": []
+          }
+        }
+      }
+    },
+    {
+      "uid": "543450a07c9d8e49015a",
+      "source": "context",
+      "item": {
+        "uri": "spotify:track:3ctALmweZBapfBdFiIVpji",
+        "entity_type": "track",
+        "decorations": {
+          "identity": {
+            "name": "The Game of Love"
+          },
+          "visual_identity": {
+            "cover": [
+              {
+                "url": "https://i.scdn.co/image/ab67616d000048519b9b36b0e22870b9f542d937",
+                "size": "small"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d00001e029b9b36b0e22870b9f542d937",
+                "size": "default"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d0000b2739b9b36b0e22870b9f542d937",
+                "size": "large"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d0000b2739b9b36b0e22870b9f542d937",
+                "size": "xlarge"
+              }
+            ]
+          },
+          "parent": {
+            "entity": {
+              "uri": "spotify:album:4m2880jivSbbyEGAKfITCa",
+              "entity_type": "album",
+              "decorations": {
+                "identity": {
+                  "name": "Random Access Memories"
+                }
+              }
+            }
+          },
+          "creators": [
+            {
+              "entity": {
+                "uri": "spotify:artist:4tZwfgrHOc3mvqYlEYSvVi",
+                "entity_type": "artist",
+                "decorations": {
+                  "identity": {
+                    "name": "Daft Punk"
+                  }
+                }
+              }
+            }
+          ],
+          "playback": {
+            "duration_ms": 322000,
+            "content_ratings": []
+          }
+        }
+      }
+    }
+  ],
+  "upcoming": [
+    {
+      "uid": "89f14b833fd42eef8bfe",
+      "source": "context",
+      "item": {
+        "uri": "spotify:track:5CMjjywI0eZMixPeqNd75R",
+        "entity_type": "track",
+        "decorations": {
+          "identity": {
+            "name": "Lose Yourself to Dance (feat. Pharrell Williams)"
+          },
+          "visual_identity": {
+            "cover": [
+              {
+                "url": "https://i.scdn.co/image/ab67616d000048519b9b36b0e22870b9f542d937",
+                "size": "small"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d00001e029b9b36b0e22870b9f542d937",
+                "size": "default"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d0000b2739b9b36b0e22870b9f542d937",
+                "size": "large"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d0000b2739b9b36b0e22870b9f542d937",
+                "size": "xlarge"
+              }
+            ]
+          },
+          "parent": {
+            "entity": {
+              "uri": "spotify:album:4m2880jivSbbyEGAKfITCa",
+              "entity_type": "album",
+              "decorations": {
+                "identity": {
+                  "name": "Random Access Memories"
+                }
+              }
+            }
+          },
+          "creators": [
+            {
+              "entity": {
+                "uri": "spotify:artist:4tZwfgrHOc3mvqYlEYSvVi",
+                "entity_type": "artist",
+                "decorations": {
+                  "identity": {
+                    "name": "Daft Punk"
+                  }
+                }
+              }
+            },
+            {
+              "entity": {
+                "uri": "spotify:artist:2RdwBSPQiwcmiDo9kixcl8",
+                "entity_type": "artist",
+                "decorations": {
+                  "identity": {
+                    "name": "Pharrell Williams"
+                  }
+                }
+              }
+            }
+          ],
+          "playback": {
+            "duration_ms": 354000,
+            "content_ratings": []
+          }
+        }
+      }
+    },
+    {
+      "uid": "bc6974904266fedf3561",
+      "source": "context",
+      "item": {
+        "uri": "spotify:track:7oaEjLP2dTJLJsITbAxTOz",
+        "entity_type": "track",
+        "decorations": {
+          "identity": {
+            "name": "Touch (feat. Paul Williams)"
+          },
+          "visual_identity": {
+            "cover": [
+              {
+                "url": "https://i.scdn.co/image/ab67616d000048519b9b36b0e22870b9f542d937",
+                "size": "small"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d00001e029b9b36b0e22870b9f542d937",
+                "size": "default"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d0000b2739b9b36b0e22870b9f542d937",
+                "size": "large"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d0000b2739b9b36b0e22870b9f542d937",
+                "size": "xlarge"
+              }
+            ]
+          },
+          "parent": {
+            "entity": {
+              "uri": "spotify:album:4m2880jivSbbyEGAKfITCa",
+              "entity_type": "album",
+              "decorations": {
+                "identity": {
+                  "name": "Random Access Memories"
+                }
+              }
+            }
+          },
+          "creators": [
+            {
+              "entity": {
+                "uri": "spotify:artist:4tZwfgrHOc3mvqYlEYSvVi",
+                "entity_type": "artist",
+                "decorations": {
+                  "identity": {
+                    "name": "Daft Punk"
+                  }
+                }
+              }
+            },
+            {
+              "entity": {
+                "uri": "spotify:artist:3f626JSVauIhTQgatsFcs4",
+                "entity_type": "artist",
+                "decorations": {
+                  "identity": {
+                    "name": "Paul Williams"
+                  }
+                }
+              }
+            }
+          ],
+          "playback": {
+            "duration_ms": 499000,
+            "content_ratings": []
+          }
+        }
+      }
+    },
+    {
+      "uid": "283762485ae568523bd2",
+      "source": "context",
+      "item": {
+        "uri": "spotify:track:69kOkLUCkxIZYexIgSG8rq",
+        "entity_type": "track",
+        "decorations": {
+          "identity": {
+            "name": "Get Lucky (feat. Pharrell Williams and Nile Rodgers)"
+          },
+          "visual_identity": {
+            "cover": [
+              {
+                "url": "https://i.scdn.co/image/ab67616d000048519b9b36b0e22870b9f542d937",
+                "size": "small"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d00001e029b9b36b0e22870b9f542d937",
+                "size": "default"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d0000b2739b9b36b0e22870b9f542d937",
+                "size": "large"
+              },
+              {
+                "url": "https://i.scdn.co/image/ab67616d0000b2739b9b36b0e22870b9f542d937",
+                "size": "xlarge"
+              }
+            ]
+          },
+          "parent": {
+            "entity": {
+              "uri": "spotify:album:4m2880jivSbbyEGAKfITCa",
+              "entity_type": "album",
+              "decorations": {
+                "identity": {
+                  "name": "Random Access Memories"
+                }
+              }
+            }
+          },
+          "creators": [
+            {
+              "entity": {
+                "uri": "spotify:artist:4tZwfgrHOc3mvqYlEYSvVi",
+                "entity_type": "artist",
+                "decorations": {
+                  "identity": {
+                    "name": "Daft Punk"
+                  }
+                }
+              }
+            },
+            {
+              "entity": {
+                "uri": "spotify:artist:2RdwBSPQiwcmiDo9kixcl8",
+                "entity_type": "artist",
+                "decorations": {
+                  "identity": {
+                    "name": "Pharrell Williams"
+                  }
+                }
+              }
+            },
+            {
+              "entity": {
+                "uri": "spotify:artist:3yDIp0kaq9EFKe07X1X2rz",
+                "entity_type": "artist",
+                "decorations": {
+                  "identity": {
+                    "name": "Nile Rodgers"
+                  }
+                }
+              }
+            }
+          ],
+          "playback": {
+            "duration_ms": 370000,
+            "content_ratings": []
+          }
+        }
+      }
+    }
+  ]
+}
