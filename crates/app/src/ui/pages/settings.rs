@@ -223,6 +223,23 @@ impl SettingsPage {
         )
     }
 
+    fn tray_row(&self, cx: &Context<Self>) -> AnyElement {
+        let store = self.store.clone();
+
+        row(
+            "Keep running in the tray",
+            "Closing the window keeps Sonear and the music running. Quit from the tray icon.",
+            None,
+            Switch::new("settings-tray")
+                .checked(self.store.read(cx).close_to_tray)
+                .color(theme::accent())
+                .accessibility_label("Keep running in the tray")
+                .on_change(move |enabled, _, cx| {
+                    store.update(cx, |state, cx| state.set_close_to_tray(*enabled, cx));
+                }),
+        )
+    }
+
     fn playback_section(&self, cx: &mut Context<Self>) -> Div {
         let can_save = self.can_save_device_name(cx);
         let save = ghost_button("device-save", "Save", can_save).when(can_save, |this| {
@@ -259,6 +276,7 @@ impl SettingsPage {
 
         rows.push(self.lyrics_row(cx));
         rows.push(self.accent_row(cx));
+        rows.push(self.tray_row(cx));
 
         section("Playback", rows)
     }

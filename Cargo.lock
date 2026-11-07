@@ -6395,6 +6395,7 @@ dependencies = [
  "futures-util",
  "gpui-kit",
  "image",
+ "raw-window-handle",
  "reqwest",
  "serde",
  "sonear-core",

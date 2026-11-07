@@ -38,7 +38,9 @@ icon_assets!(
         RefreshCw,
         CircleCheck,
         Clock,
-        Settings
+        Settings,
+        PictureInPicture2,
+        Maximize2
     ]
 );
 

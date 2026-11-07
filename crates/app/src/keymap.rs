@@ -28,6 +28,7 @@ actions!(
         LikeCurrent,
         ToggleQueue,
         ToggleLyrics,
+        ToggleMiniPlayer,
         ClearQueue,
         ToggleSidebar,
         GoHome,
@@ -107,7 +108,7 @@ macro_rules! shortcut {
     };
 }
 
-pub static SHORTCUTS: [Shortcut; 23] = [
+pub static SHORTCUTS: [Shortcut; 24] = [
     shortcut!(
         "palette",
         "Command palette",
@@ -121,6 +122,13 @@ pub static SHORTCUTS: [Shortcut; 23] = [
         General,
         Some("ctrl-/"),
         OpenShortcuts
+    ),
+    shortcut!(
+        "toggle_mini_player",
+        "Mini player",
+        General,
+        Some("ctrl-shift-m"),
+        ToggleMiniPlayer
     ),
     shortcut!(
         "settings",

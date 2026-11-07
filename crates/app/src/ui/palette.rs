@@ -88,6 +88,7 @@ const COMMANDS: [(&str, &[Entry]); 4] = [
         "General",
         &[
             entry("settings", IconName::Settings),
+            entry("toggle_mini_player", IconName::PictureInPicture2),
             entry("shortcuts", IconName::KeyRound),
         ],
     ),
@@ -280,6 +281,7 @@ impl PaletteView {
                 RepeatMode::Off | RepeatMode::Unknown
             ),
             "like" => state.core.likes.is_liked(uri).unwrap_or(false),
+            "toggle_mini_player" => state.mini_player_open(),
             _ => false,
         };
 

@@ -4,7 +4,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
-use gpui_kit::{AppContext as _, Context, Entity, SharedString, Task};
+use gpui_kit::{AnyWindowHandle, AppContext as _, Context, Entity, SharedString, Task, Window};
 use sonear_core::config::LEGAL_VERSION;
 use sonear_core::model::ItemKind;
 use sonear_core::model::{PlayOffset, PlaybackRequest, Playlist, Profile, Track};
@@ -15,12 +15,15 @@ use sonear_soloist::install::InstallProgress;
 use sonear_spotify::RateLimit;
 use tokio::runtime::Handle;
 use tokio::sync::mpsc;
+use tracing::warn;
 
 use crate::cover_accent::{self, Accent};
 use crate::data::{self, Env, Load, Slot};
 use crate::keymap;
 use crate::legal::LegalDoc;
 use crate::theme;
+use crate::ui::mini_player;
+use crate::{platform_window, tray};
 
 const TOAST_FOR: Duration = Duration::from_secs(6);
 const PENDING_PLAY_FOR: Duration = Duration::from_secs(10);
@@ -169,6 +172,10 @@ pub struct AppStore {
     pub right_panel_lyrics: bool,
     pub lyrics_enabled: bool,
     pub cover_accent: bool,
+    pub close_to_tray: bool,
+    main_window_hidden: bool,
+    mini_player: Option<AnyWindowHandle>,
+    main_window: Option<AnyWindowHandle>,
     pub ai_hint_dismissed: bool,
     pub account: AccountState,
     pub profile: Slot<Profile>,
@@ -230,6 +237,10 @@ impl AppStore {
             right_panel_lyrics: config.right_panel.lyrics,
             lyrics_enabled: config.lyrics_enabled,
             cover_accent: config.cover_accent,
+            close_to_tray: config.close_to_tray,
+            main_window_hidden: false,
+            mini_player: None,
+            main_window: None,
             ai_hint_dismissed: config.ui.ai_hint_dismissed,
             profile: Slot::default(),
             sidebar_playlists: Vec::new(),
@@ -273,6 +284,7 @@ impl AppStore {
         .detach();
 
         store.sync_accent(cx);
+        store.sync_tray();
 
         if store.account == AccountState::Connected {
             store.load_session(cx);
@@ -296,6 +308,154 @@ impl AppStore {
 
     pub fn connected(&self) -> bool {
         self.account == AccountState::Connected
+    }
+
+    /// Whether the setup screen replaces the pages.
+    pub fn needs_setup(&self) -> bool {
+        (!self.is_demo()
+            && (!self.legal_accepted()
+                || !matches!(self.soloist, Status::Ready { .. })
+                || !self.connected()))
+            || (self.is_demo() && std::env::var("SONEAR_DEMO_SETUP").is_ok())
+    }
+
+    /// Whether views that follow the playing position should repaint on a timer.
+    pub fn ticking(&self) -> bool {
+        self.playback.is_playing() && !self.main_window_hidden
+    }
+
+    /// Views that repaint on a timer stop while the window is hidden and pick
+    /// up again from the notification this sends when it comes back.
+    pub fn set_main_window_hidden(&mut self, hidden: bool, cx: &mut Context<Self>) {
+        if self.main_window_hidden == hidden {
+            return;
+        }
+
+        self.main_window_hidden = hidden;
+        cx.notify();
+    }
+
+    pub fn set_main_window(&mut self, handle: AnyWindowHandle) {
+        self.main_window = Some(handle);
+    }
+
+    /// Brings the main window back from the tray, the taskbar or behind other windows.
+    pub fn show_main_window(&mut self, cx: &mut Context<Self>) {
+        self.set_main_window_hidden(false, cx);
+
+        let Some(handle) = self.main_window else {
+            return;
+        };
+
+        cx.defer(move |cx| {
+            let _ = handle.update(cx, |_, window, _| {
+                if let Some(hwnd) = platform_window::hwnd(window) {
+                    platform_window::show(hwnd);
+                }
+
+                window.activate_window();
+            });
+        });
+    }
+
+    pub fn set_close_to_tray(&mut self, enabled: bool, cx: &mut Context<Self>) {
+        self.close_to_tray = enabled;
+        self.core
+            .config
+            .update(|config| config.close_to_tray = enabled);
+        cx.notify();
+    }
+
+    /// Handles a request to close the main window. Hides it into the tray when
+    /// that is on and the tray icon exists, and quits the app otherwise. The
+    /// return value says whether the window may close.
+    pub fn request_close(&mut self, window: &Window, cx: &mut Context<Self>) -> bool {
+        if self.close_to_tray
+            && !self.needs_setup()
+            && tray::installed()
+            && let Some(hwnd) = platform_window::hwnd(window)
+        {
+            platform_window::hide(hwnd);
+            self.set_main_window_hidden(true, cx);
+            self.show_tray_hint();
+
+            return false;
+        }
+
+        cx.quit();
+
+        true
+    }
+
+    fn show_tray_hint(&self) {
+        if self.core.config.get().tray_hint_shown {
+            return;
+        }
+
+        tray::show_hint();
+        self.core
+            .config
+            .update(|config| config.tray_hint_shown = true);
+    }
+
+    pub fn mini_player_open(&self) -> bool {
+        self.mini_player.is_some()
+    }
+
+    /// Opens the mini player, or closes it and remembers where it was.
+    pub fn toggle_mini_player(&mut self, cx: &mut Context<Self>) {
+        if let Some(handle) = self.mini_player.take() {
+            let core = self.core.clone();
+
+            self.sync_tray();
+            cx.defer(move |cx| {
+                let _ = handle.update(cx, |_, window, _| {
+                    mini_player::remember_position(window, &core);
+                    window.remove_window();
+                });
+            });
+            cx.notify();
+
+            return;
+        }
+
+        let store = cx.entity();
+        let saved = self.core.config.get().mini_player_position;
+        let core = self.core.clone();
+
+        // The new window draws straight away and reads this store, which can't
+        // happen while the store is being updated.
+        cx.defer(move |cx| {
+            let opened = mini_player::open(store.clone(), saved, core, cx);
+
+            store.update(cx, |state, cx| match opened {
+                Ok(handle) => {
+                    state.mini_player = Some(handle);
+                    state.sync_tray();
+                    cx.notify();
+                }
+                Err(error) => {
+                    warn!(%error, "could not open the mini player");
+                    state.show_toast("Could not open the mini player.", cx);
+                }
+            });
+        });
+    }
+
+    /// The mini player's window is gone, however it was closed.
+    pub fn mini_player_closed(&mut self, cx: &mut Context<Self>) {
+        if self.mini_player.take().is_some() {
+            self.sync_tray();
+            cx.notify();
+        }
+    }
+
+    fn sync_tray(&self) {
+        tray::set_state(tray::MenuState {
+            playing: self.playback.is_playing(),
+            has_item: self.playback.item.is_some(),
+            mini_open: self.mini_player.is_some(),
+        });
     }
 
     pub fn user_id(&self) -> Option<&str> {
@@ -354,6 +514,8 @@ impl AppStore {
                 if self.accent_source != self.accent_key() {
                     self.sync_accent(cx);
                 }
+
+                self.sync_tray();
             }
             AppEvent::Soloist(status) => {
                 self.soloist = status;
@@ -598,6 +760,11 @@ impl AppStore {
     /// Whether the right slot is open on the lyrics.
     pub fn lyrics_showing(&self) -> bool {
         self.right_panel_open && self.lyrics_enabled && self.right_panel_lyrics
+    }
+
+    /// Whether the lyrics are on screen: showing, and in a window that is not hidden.
+    pub fn lyrics_visible(&self) -> bool {
+        self.lyrics_showing() && !self.main_window_hidden
     }
 
     /// Whether the right slot is open on the queue.
@@ -1069,6 +1236,7 @@ impl AppStore {
                 store.right_panel_lyrics = config.right_panel.lyrics;
                 store.lyrics_enabled = config.lyrics_enabled;
                 store.cover_accent = config.cover_accent;
+                store.close_to_tray = config.close_to_tray;
                 store.sync_accent(cx);
                 store.ai_hint_dismissed = config.ui.ai_hint_dismissed;
                 store.editing_key = false;

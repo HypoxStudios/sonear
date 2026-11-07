@@ -68,7 +68,7 @@ impl LyricsPanel {
             let uri = state.playback.item.as_ref().map(|item| item.uri.as_str());
 
             (
-                state.lyrics_showing(),
+                state.lyrics_visible(),
                 uri == self.uri.as_deref(),
                 (
                     state.playback.is_playing(),

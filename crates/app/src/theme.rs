@@ -32,6 +32,18 @@ pub const SIDEBAR_WIDTH: Pixels = px(216.);
 pub const RAIL_WIDTH: Pixels = px(64.);
 pub const RIGHT_PANEL_WIDTH: Pixels = px(240.);
 pub const PLAYER_HEIGHT: Pixels = px(84.);
+/// The mini player window, its cover, the gap kept from the screen edge and the progress line.
+pub const MINI_WIDTH: f32 = 340.;
+pub const MINI_HEIGHT: f32 = 96.;
+pub const MINI_COVER: f32 = 72.;
+pub const MINI_MARGIN: f32 = 16.;
+pub const MINI_PROGRESS_HEIGHT: f32 = 2.;
+/// Space around the cover, and from the buttons to the window edge.
+pub const MINI_PADDING: f32 = 12.;
+/// Empty margin inside the 28 px previous button around its 16 px glyph.
+pub const MINI_PREVIOUS_INSET: f32 = 6.;
+/// Empty margin inside the 22 px close button around its 12 px glyph.
+pub const MINI_CLOSE_INSET: f32 = 5.;
 pub const GRID_CARD: f32 = 168.;
 pub const GRID_GAP: f32 = 18.;
 

@@ -209,18 +209,21 @@ pub fn spotify_logo() -> Svg {
         .flex_none()
         .w(px(theme::SPOTIFY_LOGO_HEIGHT * theme::SPOTIFY_LOGO_ASPECT))
         .h(px(theme::SPOTIFY_LOGO_HEIGHT))
-        .mx(px(theme::SPOTIFY_CLEAR_SPACE))
         .text_color(theme::spotify_mark())
 }
 
 /// The Spotify icon, for places too small for the full logo.
 pub fn spotify_icon() -> Svg {
+    spotify_icon_bare().mx(px(theme::SPOTIFY_CLEAR_SPACE))
+}
+
+/// The icon without its side clear space, for layouts that provide their own.
+pub fn spotify_icon_bare() -> Svg {
     svg()
         .path(assets::SPOTIFY_ICON)
         .flex_none()
         .w(px(theme::SPOTIFY_ICON_SIZE * theme::SPOTIFY_ICON_ASPECT))
         .h(px(theme::SPOTIFY_ICON_SIZE))
-        .mx(px(theme::SPOTIFY_CLEAR_SPACE))
         .text_color(theme::spotify_mark())
 }
 

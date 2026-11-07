@@ -9,20 +9,29 @@ mod http;
 mod instance;
 mod keymap;
 mod legal;
+mod platform_window;
 mod protocol;
 mod store;
 mod theme;
+mod tray;
 mod ui;
 
 use std::sync::Arc;
 
 use gpui_kit::component::TitleBar;
-use gpui_kit::{AppContext as _, Bounds, WindowBounds, WindowOptions, px, size};
+use gpui_kit::{
+    AppContext as _, AsyncApp, Bounds, Entity, SharedString, TitlebarOptions, WindowBounds,
+    WindowOptions, px, size,
+};
 use instance::Handoff;
 use sonear_core::{AppPaths, Core, SpotifyLink};
-use tracing::{error, info};
+use store::AppStore;
+use tokio::sync::mpsc;
+use tracing::{error, info, warn};
+use tray::TrayCommand;
 
 const DEMO: bool = cfg!(feature = "demo");
+const WINDOW_TITLE: &str = "Sonear";
 /// Decoded cover images kept in memory at once.
 const IMAGE_CACHE_CAPACITY: usize = 160;
 
@@ -122,6 +131,10 @@ fn main() {
                     cx,
                 ))),
                 window_min_size: Some(size(px(900.), px(600.))),
+                titlebar: Some(TitlebarOptions {
+                    title: Some(SharedString::new_static(WINDOW_TITLE)),
+                    ..TitleBar::title_bar_options()
+                }),
                 ..TitleBar::window_options()
             };
 
@@ -140,6 +153,17 @@ fn main() {
                 return;
             };
 
+            store.update(cx, |store, _| store.set_main_window(window));
+
+            let close_store = store.clone();
+            let _ = window.update(cx, |_, window, cx| {
+                window.on_window_should_close(cx, move |window, cx| {
+                    close_store.update(cx, |store, cx| store.request_close(window, cx))
+                });
+            });
+
+            start_tray(&store, cx);
+
             if let Some(link) = link.clone() {
                 store.update(cx, |store, cx| store.open_link(link, cx));
             }
@@ -151,7 +175,7 @@ fn main() {
                             store.update(cx, |store, cx| store.open_link(link, cx));
                         }
 
-                        let _ = window.update(cx, |_, window, _| window.activate_window());
+                        store.update(cx, |store, cx| store.show_main_window(cx));
                     }
                 })
                 .detach();
@@ -161,6 +185,40 @@ fn main() {
         });
 
     drop(runtime);
+}
+
+/// Adds the tray icon and applies its menu choices. A tray that fails to start
+/// leaves the app without one, and closing the window quits instead of hiding.
+fn start_tray(store: &Entity<AppStore>, cx: &mut gpui_kit::App) {
+    let (commands, mut inbox) = mpsc::unbounded_channel();
+
+    if let Err(error) = tray::install(commands) {
+        warn!(%error, "could not add the tray icon");
+
+        return;
+    }
+
+    cx.on_app_quit(|_| async { tray::remove() }).detach();
+
+    let store = store.clone();
+
+    cx.spawn(async move |cx| {
+        while let Some(command) = inbox.recv().await {
+            run_tray_command(command, &store, cx);
+        }
+    })
+    .detach();
+}
+
+fn run_tray_command(command: TrayCommand, store: &Entity<AppStore>, cx: &mut AsyncApp) {
+    store.update(cx, |store, cx| match command {
+        TrayCommand::Show => store.show_main_window(cx),
+        TrayCommand::ToggleMiniPlayer => store.toggle_mini_player(cx),
+        TrayCommand::Quit => cx.quit(),
+        TrayCommand::TogglePlayPause => store.core.player.toggle_play_pause(),
+        TrayCommand::Next => store.core.queue.next(),
+        TrayCommand::Previous => store.core.player.previous(),
+    });
 }
 
 #[cfg(feature = "demo")]

@@ -39,6 +39,12 @@ pub struct Config {
     pub lyrics_enabled: bool,
     /// Whether buttons and sliders take a colour from the playing song's cover.
     pub cover_accent: bool,
+    /// Whether closing the window keeps Sonear running in the tray.
+    pub close_to_tray: bool,
+    /// Whether the one-time note about the tray icon was shown.
+    pub tray_hint_shown: bool,
+    /// Top-left corner of the mini player in logical pixels, once the user has placed it.
+    pub mini_player_position: Option<[f32; 2]>,
     pub right_panel: RightPanelConfig,
     pub ui: UiConfig,
     /// Keystrokes the user changed, by shortcut id. An empty string means unbound.
@@ -72,6 +78,9 @@ impl Default for Config {
             history_cleared_at_ms: 0,
             lyrics_enabled: true,
             cover_accent: true,
+            close_to_tray: true,
+            tray_hint_shown: false,
+            mini_player_position: None,
             right_panel: RightPanelConfig::default(),
             ui: UiConfig::default(),
             shortcuts: BTreeMap::new(),
@@ -97,6 +106,13 @@ impl Config {
         self.last_volume = self.last_volume.min(100);
         self.history_retention_months = self.history_retention_months.clamp(1, 120);
         self.spotify_client_id = self.spotify_client_id.trim().to_owned();
+
+        if self
+            .mini_player_position
+            .is_some_and(|position| !position.iter().all(|axis| axis.is_finite()))
+        {
+            self.mini_player_position = None;
+        }
 
         self
     }
@@ -227,6 +243,9 @@ mod tests {
         assert_eq!(config.account_user_id, "");
         assert!(config.lyrics_enabled);
         assert!(config.cover_accent);
+        assert!(config.close_to_tray);
+        assert!(!config.tray_hint_shown);
+        assert_eq!(config.mini_player_position, None);
         assert!(!config.right_panel.lyrics);
     }
 
@@ -249,6 +268,25 @@ open = false
         assert!(!config.right_panel.lyrics);
         assert!(config.lyrics_enabled);
         assert!(config.cover_accent);
+        assert!(config.close_to_tray);
+        assert!(!config.tray_hint_shown);
+        assert_eq!(config.mini_player_position, None);
+    }
+
+    #[test]
+    fn tray_and_mini_player_settings_round_trip() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let config = Config {
+            close_to_tray: false,
+            tray_hint_shown: true,
+            mini_player_position: Some([120.5, 48.]),
+            ..Config::default()
+        };
+
+        config.save(&path).unwrap();
+
+        assert_eq!(Config::load(&path), config);
     }
 
     #[test]

@@ -28,8 +28,8 @@ use super::widgets::{accent_button, ghost_button, icon, panel};
 use crate::keymap::{
     self, ClearQueue, CloseOverlay, CycleRepeat, GoBack, GoHistory, GoHome, GoLibrary, GoLiked,
     GoSearch, LikeCurrent, NextTrack, OpenPalette, OpenSettings, OpenShortcuts, PreviousTrack,
-    SeekBack, SeekForward, ToggleLyrics, TogglePlayPause, ToggleQueue, ToggleShuffle,
-    ToggleSidebar, VolumeDown, VolumeUp,
+    SeekBack, SeekForward, ToggleLyrics, ToggleMiniPlayer, TogglePlayPause, ToggleQueue,
+    ToggleShuffle, ToggleSidebar, VolumeDown, VolumeUp,
 };
 use crate::store::{AppStore, Confirm, LibraryTab, Route};
 use crate::theme;
@@ -38,15 +38,6 @@ use crate::theme;
 const EXPIRY_WARNING_DAYS: i64 = 30;
 const SEEK_STEP_MS: i64 = 10_000;
 const VOLUME_STEP: i16 = 5;
-
-/// Whether the setup screen replaces the pages.
-fn needs_setup(state: &AppStore) -> bool {
-    (!state.is_demo()
-        && (!state.legal_accepted()
-            || !matches!(state.soloist, Status::Ready { .. })
-            || !state.connected()))
-        || (state.is_demo() && std::env::var("SONEAR_DEMO_SETUP").is_ok())
-}
 
 pub struct Shell {
     store: Entity<AppStore>,
@@ -106,7 +97,7 @@ impl Shell {
         let state = self.store.read(cx);
         let route = state.route.clone();
         let connected = state.connected();
-        let needs_setup = needs_setup(state);
+        let needs_setup = state.needs_setup();
 
         // A page holds the account's data, so the next login must not reuse it.
         if !connected {
@@ -460,7 +451,7 @@ impl Shell {
     fn ready(&self, cx: &Context<Self>) -> bool {
         let state = self.store.read(cx);
 
-        state.connected() && !needs_setup(state)
+        state.connected() && !state.needs_setup()
     }
 
     fn open_palette(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -636,6 +627,11 @@ impl Shell {
             shell
                 .store
                 .update(cx, |state, cx| state.show_lyrics_panel(cx));
+        }))
+        .on_action(cx.listener(|shell, _: &ToggleMiniPlayer, _, cx| {
+            shell
+                .store
+                .update(cx, |state, cx| state.toggle_mini_player(cx));
         }))
         .on_action(cx.listener(|shell, _: &ClearQueue, _, cx| {
             shell.playback(cx, |state| state.core.queue.clear());

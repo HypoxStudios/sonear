@@ -24,7 +24,10 @@ use crate::theme;
 
 const REPAINT_EVERY: Duration = Duration::from_millis(250);
 const PROGRESS_STEPS: f32 = 1000.;
-const SIDE_WIDTH: f32 = 280.;
+const SIDE_WIDTH: f32 = 320.;
+/// Extra space before the volume icon, which has no button box, so it sits as
+/// far from the mini player icon as the toggle icons sit from each other.
+const VOLUME_GAP: f32 = 8.;
 const CENTER_SHARE: f32 = 0.4;
 const CENTER_MAX_WIDTH: f32 = 720.;
 
@@ -82,10 +85,11 @@ impl PlayerBar {
         bar
     }
 
-    /// Only this view repaints each tick, and only while playing, so an idle
-    /// app uses no CPU and pages stay untouched.
+    /// Only this view repaints each tick, and only while playing in a window
+    /// that is on screen, so an idle or hidden app uses no CPU and pages stay
+    /// untouched.
     fn sync_ticker(&mut self, cx: &mut Context<Self>) {
-        if !self.store.read(cx).playback.is_playing() {
+        if !self.store.read(cx).ticking() {
             self.ticker = None;
 
             return;
@@ -101,7 +105,7 @@ impl PlayerBar {
 
                 let keep_going = this
                     .update(cx, |bar, cx| {
-                        if !bar.store.read(cx).playback.is_playing() {
+                        if !bar.store.read(cx).ticking() {
                             bar.ticker = None;
 
                             return false;
@@ -165,7 +169,7 @@ fn set_if_changed(
 }
 
 /// `spotify:track:abc` as `https://open.spotify.com/track/abc`.
-fn spotify_url(uri: &str) -> Option<String> {
+pub(super) fn spotify_url(uri: &str) -> Option<String> {
     let (kind, id) = sonear_core::model::split_uri(uri)?;
 
     matches!(kind, "track" | "episode").then(|| format!("https://open.spotify.com/{kind}/{id}"))
@@ -197,6 +201,7 @@ impl Render for PlayerBar {
         let queue_open = state.queue_showing();
         let lyrics_open = state.lyrics_showing();
         let lyrics_enabled = state.lyrics_enabled;
+        let mini_open = state.mini_player_open();
         let player = state.core.player.clone();
         let queue = state.core.queue.clone();
         let has_queued = model.is_active
@@ -206,6 +211,7 @@ impl Render for PlayerBar {
         let likes = state.core.likes.clone();
         let store = self.store.clone();
         let lyrics_store = self.store.clone();
+        let mini_store = self.store.clone();
 
         self.sync_sliders(&model, window, cx);
 
@@ -494,7 +500,25 @@ impl Render for PlayerBar {
                     store.update(cx, |state, cx| state.show_queue_panel(cx));
                 }),
             )
-            .child(icon(volume_icon, 16., theme::text_secondary()))
+            .child(
+                icon_button(
+                    "mini-player",
+                    IconName::PictureInPicture2,
+                    16.,
+                    32.,
+                    accent_if(mini_open),
+                    true,
+                )
+                .tooltip(text_tooltip("Mini player"))
+                .on_click(move |_, _, cx| {
+                    mini_store.update(cx, |state, cx| state.toggle_mini_player(cx));
+                }),
+            )
+            .child(div().flex_none().ml(px(VOLUME_GAP)).child(icon(
+                volume_icon,
+                16.,
+                theme::text_secondary(),
+            )))
             .child(
                 div()
                     .w(px(88.))
