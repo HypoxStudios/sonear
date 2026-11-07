@@ -20,9 +20,67 @@ pub enum ConfigError {
 /// changes, so everyone is asked to accept again.
 pub const LEGAL_VERSION: u32 = 3;
 
+/// Language of the interface.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Language {
+    En,
+    Es,
+}
+
+impl Language {
+    pub const ALL: [Language; 2] = [Language::En, Language::Es];
+
+    pub fn code(self) -> &'static str {
+        match self {
+            Self::En => "en",
+            Self::Es => "es",
+        }
+    }
+
+    /// The language's name in that language.
+    pub fn native_name(self) -> &'static str {
+        match self {
+            Self::En => "English",
+            Self::Es => "Español",
+        }
+    }
+
+    /// The system language when it is supported, English otherwise.
+    pub fn detect() -> Self {
+        sys_locale::get_locale()
+            .as_deref()
+            .map_or(Self::En, Self::from_locale)
+    }
+
+    fn from_locale(locale: &str) -> Self {
+        let primary = locale.split(['-', '_']).next().unwrap_or_default();
+
+        if primary.eq_ignore_ascii_case("es") {
+            Self::Es
+        } else {
+            Self::En
+        }
+    }
+}
+
+/// An unknown or wrong-typed value reads as unset, so a hand edit cannot make
+/// the whole file count as corrupt.
+fn lenient_language<'de, D>(deserializer: D) -> Result<Option<Language>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = toml::Value::deserialize(deserializer)?;
+
+    Ok(value.try_into().ok())
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
+    /// Interface language; unset until the user chooses one.
+    #[serde(deserialize_with = "lenient_language")]
+    pub language: Option<Language>,
     pub device_name: String,
     /// Where the data folder lives, when the user moved it from the default.
     pub data_dir: Option<PathBuf>,
@@ -72,6 +130,7 @@ pub struct UiConfig {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            language: None,
             device_name: "Sonear".to_owned(),
             data_dir: None,
             last_volume: 40,
@@ -131,6 +190,16 @@ impl Config {
         self
     }
 
+    /// The saved language. Without one, someone who already accepted the
+    /// agreement stays on English, and a new user gets the system language.
+    pub fn effective_language(&self) -> Language {
+        match self.language {
+            Some(language) => language,
+            None if self.legal_accepted > 0 => Language::En,
+            None => Language::detect(),
+        }
+    }
+
     /// Defaults for everything except where the data folder is, because the
     /// Soloist program stays there.
     pub fn reset_keeping_data_dir(&mut self) {
@@ -166,6 +235,14 @@ impl Config {
                 Self::default()
             }
         }
+    }
+
+    /// Reads the file without touching it, for code that runs before the app
+    /// owns the config. `None` when it is missing, unreadable or corrupt.
+    pub fn peek(path: &Path) -> Option<Self> {
+        let text = fs::read_to_string(path).ok()?;
+
+        toml::from_str::<Config>(&text).ok().map(Self::sanitised)
     }
 
     /// Writes to a temp file, syncs it, then renames over the target.
@@ -465,6 +542,109 @@ open = false
 
         assert_eq!(config.last_volume, 100);
         assert_eq!(config.device_name, "Sonear");
+    }
+
+    #[test]
+    fn language_is_unset_when_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+
+        fs::write(&path, "last_volume = 60").unwrap();
+
+        assert_eq!(Config::load(&path).language, None);
+    }
+
+    #[test]
+    fn language_round_trips() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+
+        for language in Language::ALL {
+            let config = Config {
+                language: Some(language),
+                ..Config::default()
+            };
+
+            config.save(&path).unwrap();
+
+            assert_eq!(Config::load(&path), config);
+        }
+
+        assert!(
+            fs::read_to_string(&path)
+                .unwrap()
+                .contains("language = \"es\"")
+        );
+    }
+
+    #[test]
+    fn an_unknown_language_keeps_the_other_settings() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+
+        for line in ["language = \"fr\"", "language = 4"] {
+            fs::write(
+                &path,
+                format!(
+                    "last_volume = 61
+{line}
+"
+                ),
+            )
+            .unwrap();
+
+            let config = Config::load(&path);
+
+            assert_eq!(config.language, None);
+            assert_eq!(config.last_volume, 61);
+            assert!(path.exists());
+            assert!(!dir.path().join("config.toml.bak").exists());
+        }
+    }
+
+    #[test]
+    fn language_names_and_locale_matching() {
+        assert_eq!(Language::Es.code(), "es");
+        assert_eq!(Language::Es.native_name(), "Español");
+        assert_eq!(Language::from_locale("es-MX"), Language::Es);
+        assert_eq!(Language::from_locale("es_AR"), Language::Es);
+        assert_eq!(Language::from_locale("fr-FR"), Language::En);
+        assert_eq!(Language::from_locale(""), Language::En);
+    }
+
+    #[test]
+    fn effective_language_prefers_saved_then_keeps_existing_users_on_english() {
+        let saved = Config {
+            language: Some(Language::Es),
+            legal_accepted: 1,
+            ..Config::default()
+        };
+        let existing = Config {
+            legal_accepted: 1,
+            ..Config::default()
+        };
+
+        assert_eq!(saved.effective_language(), Language::Es);
+        assert_eq!(existing.effective_language(), Language::En);
+    }
+
+    #[test]
+    fn peeking_never_changes_the_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+
+        assert_eq!(Config::peek(&path), None);
+        assert!(!path.exists());
+
+        fs::write(&path, "language = \"es\"").unwrap();
+
+        assert_eq!(Config::peek(&path).unwrap().language, Some(Language::Es));
+
+        fs::write(&path, "not [valid").unwrap();
+
+        assert_eq!(Config::peek(&path), None);
+        assert_eq!(fs::read_to_string(&path).unwrap(), "not [valid");
+        assert!(!dir.path().join("config.toml.bak").exists());
     }
 
     #[test]

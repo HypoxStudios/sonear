@@ -26,6 +26,7 @@ gpui-kit.workspace = true
 image.workspace = true
 raw-window-handle.workspace = true
 reqwest.workspace = true
+rust-i18n.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
