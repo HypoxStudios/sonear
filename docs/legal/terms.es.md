@@ -2,7 +2,7 @@
 
 Última actualización: 6 de noviembre de 2026
 
-Este acuerdo es entre tú y Hypox Studios («nosotros»), los responsables de Sonear. Al usar Sonear, aceptas este acuerdo. Si no estás de acuerdo, no uses Sonear.
+Este acuerdo es entre tú y Hypox Studios (“nosotros”), los responsables de Sonear. Al usar Sonear, aceptas este acuerdo. Si no estás de acuerdo, no uses Sonear.
 
 ## Qué es Sonear
 
@@ -16,7 +16,7 @@ El código fuente de Sonear está bajo la licencia Apache License 2.0. Nada de e
 
 ## La plataforma, el servicio y el contenido de Spotify
 
-«La plataforma, el servicio y el contenido de Spotify» significa la Spotify Web API, Spotify Soloist, el servicio de streaming de Spotify y todo lo que se ofrece a través de ellos, como música, podcasts, portadas y metadatos.
+“La plataforma, el servicio y el contenido de Spotify” significa la Spotify Web API, Spotify Soloist, el servicio de streaming de Spotify y todo lo que se ofrece a través de ellos, como música, podcasts, portadas y metadatos.
 
 No puedes:
 
@@ -25,7 +25,7 @@ No puedes:
 
 ## Sin garantías
 
-Sonear se ofrece «tal cual». No hacemos ninguna garantía ni declaración en nombre de Spotify. Rechazamos todas las garantías implícitas sobre la plataforma, el servicio y el contenido de Spotify, incluidas las garantías de comerciabilidad, de idoneidad para un fin determinado y de no infracción. Sonear puede dejar de funcionar en cualquier momento, por ejemplo si Spotify cambia o retira sus API o Soloist.
+Sonear se ofrece “tal cual”. No hacemos ninguna garantía ni declaración en nombre de Spotify. Rechazamos todas las garantías implícitas sobre la plataforma, el servicio y el contenido de Spotify, incluidas las garantías de comerciabilidad, de idoneidad para un fin determinado y de no infracción. Sonear puede dejar de funcionar en cualquier momento, por ejemplo si Spotify cambia o retira sus API o Soloist.
 
 ## Responsabilidad
 

@@ -2,7 +2,7 @@
 
 Última actualización: 7 de noviembre de 2026
 
-Sonear está a cargo de Hypox Studios («nosotros»). Esta política explica qué recopila Sonear, dónde lo guarda y qué envía. La recopilación y el uso de tus datos en Sonear están sujetos a esta política.
+Sonear está a cargo de Hypox Studios (“nosotros”). Esta política explica qué recopila Sonear, dónde lo guarda y qué envía. La recopilación y el uso de tus datos en Sonear están sujetos a esta política.
 
 En resumen: Sonear funciona por completo en tu computadora. No tenemos servidores y Sonear no nos envía nada.
 

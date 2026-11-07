@@ -677,7 +677,7 @@ player.choose_sonear:
   es: "Elige Sonear en Spotify"
 player.mini_player:
   en: "Mini player"
-  es: "Reproductor mini"
+  es: "Reproductor en miniatura"
 player.nothing_playing:
   en: "Nothing playing"
   es: "Nada en reproducción"
@@ -828,16 +828,16 @@ settings.about.whats_new:
   es: "Novedades"
 settings.accent.body:
   en: "Tints buttons and sliders with a colour from the playing song's cover."
-  es: "Tiñe los botones y los controles deslizantes con un color de la portada de la canción en reproducción."
+  es: "Cambia los botones y los controles deslizantes a un color de la portada de la canción que está sonando."
 settings.accent.title:
   en: "Accent from cover art"
-  es: "Color de acento según la portada"
+  es: "Color secundario según la portada"
 settings.account.client_id:
   en: "Client ID %{id}…"
   es: "Client ID %{id}…"
 settings.account.delete.body:
   en: "Also removes your Soloist key, pairing and settings, and starts setup again."
-  es: "También elimina la clave y la vinculación de Soloist y la configuración, y vuelve a empezar la configuración inicial."
+  es: "También elimina la clave y la vinculación de Soloist y la configuración, y tendrás que configurar Sonear de nuevo."
 settings.account.delete.button:
   en: "Delete all data"
   es: "Eliminar todos los datos"
@@ -873,7 +873,7 @@ settings.crossfade.body:
   es: "Sigue tu cuenta de Spotify. Cámbialo en la app de Spotify, en Configuración › Reproducción."
 settings.crossfade.title:
   en: "Crossfade"
-  es: "Fundido cruzado"
+  es: "Transiciones entre canciones"
 settings.device.body:
   en: "The name Spotify apps show for this computer."
   es: "El nombre que las apps de Spotify muestran para esta computadora."
@@ -966,7 +966,7 @@ settings.section.storage:
   es: "Almacenamiento"
 settings.soloist.built:
   en: "%{version} · built %{date}"
-  es: "%{version} · compilada el %{date}"
+  es: "%{version} · del %{date}"
 settings.soloist.expired:
   en: "expired"
   es: "caducó"
@@ -1014,7 +1014,7 @@ settings.storage.title:
   es: "Carpeta de datos"
 settings.tray.body:
   en: "Closing the window keeps Sonear and the music running. Quit from the tray icon."
-  es: "Al cerrar la ventana, Sonear y la música siguen en marcha. Sal desde el ícono de la bandeja."
+  es: "Al cerrar la ventana, Sonear y la música siguen reproduciéndose. Sal desde el ícono de la bandeja."
 settings.tray.title:
   en: "Keep running in the tray"
   es: "Mantener en la bandeja del sistema"
@@ -1054,7 +1054,7 @@ setup.download.about:
   es: "Acerca de las descargas de Soloist"
 setup.download.body:
   en: "Sonear plays music through Soloist, Spotify's own player. It is downloaded directly from Spotify, and only when you click the button below."
-  es: "Sonear reproduce música con Soloist, el reproductor de Spotify. Se descarga directamente de Spotify, y solo cuando haces clic en el botón de abajo."
+  es: "Sonear reproduce música con Soloist, el reproductor de Spotify. Se descarga directamente de Spotify, y solo cuando haces click en el botón de abajo."
 setup.download.expired_body:
   en: "Spotify's player builds stop working after 90 days. Download the latest build to keep listening."
   es: "Las versiones del reproductor de Spotify dejan de funcionar a los 90 días. Descarga la más reciente para seguir escuchando."
@@ -1199,7 +1199,7 @@ shell.confirm.delete_all.action:
   es: "Eliminar todo"
 shell.confirm.delete_all.body:
   en: "This removes your Spotify login, Soloist key and pairing, history, queue, cached data, cover art and settings from this computer. The Soloist program stays, so you won't download it again. Setup starts again from the beginning."
-  es: "Esto elimina de esta computadora tu sesión de Spotify, la clave y la vinculación de Soloist, el historial, la fila, los datos en caché, las portadas y la configuración. El programa Soloist se conserva, así que no tendrás que descargarlo de nuevo. La configuración inicial vuelve a empezar desde el principio."
+  es: "Esto elimina de esta computadora tu sesión de Spotify, la clave y la vinculación de Soloist, el historial, la fila, los datos en caché, las portadas y la configuración. El programa Soloist se conserva, así que no tendrás que descargarlo de nuevo. Tendrás que configurar Sonear desde el principio."
 shell.confirm.delete_all.title:
   en: "Delete all Sonear data?"
   es: "¿Eliminar todos los datos de Sonear?"
@@ -1287,7 +1287,7 @@ shortcut.toggle_lyrics:
   es: "Letra"
 shortcut.toggle_mini_player:
   en: "Mini player"
-  es: "Reproductor mini"
+  es: "Reproductor en miniatura"
 shortcut.toggle_queue:
   en: "Show or hide queue"
   es: "Mostrar u ocultar la fila"
@@ -1303,10 +1303,10 @@ shortcut.volume_up:
 
 shortcuts.already_used:
   en: "Already used by %{owner}, which always keeps a key."
-  es: "Ya la usa «%{owner}», que siempre conserva una tecla."
+  es: "Ya la usa “%{owner}”, que siempre conserva una tecla."
 shortcuts.help:
   en: "Click a binding, then press the new keys. Esc cancels, Backspace unbinds."
-  es: "Haz clic en un atajo y presiona las teclas nuevas. Esc cancela y Retroceso lo quita."
+  es: "Haz click en un atajo y presiona las teclas nuevas. Esc cancela y Retroceso lo quita."
 shortcuts.invalid_key:
   en: "That key can't be used."
   es: "Esa tecla no se puede usar."
@@ -1321,7 +1321,7 @@ shortcuts.press_keys:
   es: "Presiona una tecla…"
 shortcuts.removed_from:
   en: "Removed from %{owner}"
-  es: "Se quitó de «%{owner}»"
+  es: "Se quitó de “%{owner}”"
 shortcuts.reset:
   en: "Reset to defaults"
   es: "Restablecer valores"
@@ -1381,7 +1381,7 @@ store.toast.disconnected_partial:
   es: "Desconectado, pero no se pudieron eliminar algunos datos: %{problems}"
 store.toast.mini_player_failed:
   en: "Could not open the mini player."
-  es: "No se pudo abrir el reproductor mini."
+  es: "No se pudo abrir el reproductor en miniatura."
 store.toast.move_demo:
   en: "Moving data isn't available in demo mode."
   es: "Mover los datos no está disponible en el modo demo."
@@ -1406,10 +1406,10 @@ tray.hint_text:
   es: "La música sigue sonando. Sal desde el ícono de la bandeja del sistema."
 tray.hint_title:
   en: "Sonear is still running"
-  es: "Sonear sigue en marcha"
+  es: "Sonear sigue abierto"
 tray.mini_player:
   en: "Mini player"
-  es: "Reproductor mini"
+  es: "Reproductor en miniatura"
 tray.next:
   en: "Next"
   es: "Siguiente"

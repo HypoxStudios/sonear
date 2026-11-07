@@ -95,7 +95,7 @@ problem.history:
   es: "historial"
 problem.login_token:
   en: "login token"
-  es: "token de inicio de sesión"
+  es: "sesión guardada"
 problem.queue:
   en: "queue"
   es: "fila"
