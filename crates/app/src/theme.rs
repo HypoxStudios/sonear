@@ -10,6 +10,16 @@ pub const PANEL_GAP: Pixels = px(10.);
 pub const PANEL_RADIUS: Pixels = px(16.);
 pub const CARD_RADIUS: Pixels = px(12.);
 pub const CONTROL_RADIUS: Pixels = px(10.);
+/// Spotify's guidelines allow at most 8px on artwork.
+pub const ART_RADIUS: Pixels = px(8.);
+pub const ART_RADIUS_SMALL: Pixels = px(4.);
+
+pub const SPOTIFY_LOGO_HEIGHT: f32 = 20.;
+pub const SPOTIFY_LOGO_ASPECT: f32 = 823.46 / 225.25;
+pub const SPOTIFY_ICON_SIZE: f32 = 22.;
+pub const SPOTIFY_ICON_ASPECT: f32 = 236.05 / 225.25;
+/// Space kept free beside the Spotify logo: half the icon's height.
+pub const SPOTIFY_CLEAR_SPACE: f32 = SPOTIFY_ICON_SIZE / 2.;
 
 pub const SIDEBAR_WIDTH: Pixels = px(216.);
 pub const RAIL_WIDTH: Pixels = px(64.);
@@ -27,7 +37,6 @@ pub const PALETTE_MAX_HEIGHT: Pixels = px(440.);
 pub const SHORTCUTS_MAX_HEIGHT: f32 = 0.82;
 pub const SHORTCUT_ROW_HEIGHT: Pixels = px(40.);
 pub const PALETTE_COVER: f32 = 32.;
-pub const PALETTE_COVER_RADIUS: Pixels = px(6.);
 
 /// Window width below which the sidebar collapses to a rail.
 pub const COLLAPSE_BELOW: f32 = 1100.;
@@ -92,6 +101,12 @@ pub fn hairline() -> Hsla {
 
 pub fn warning() -> Hsla {
     hsla(rgb(0xE8C27A))
+}
+
+/// The Spotify logo and icon. Spotify's guidelines allow only the plain white
+/// versions on dark backgrounds, never tinted.
+pub fn spotify_mark() -> Hsla {
+    hsla(rgb(0xFFFFFF))
 }
 
 /// Placeholder bars while content loads.

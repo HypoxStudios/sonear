@@ -14,7 +14,9 @@ use sonear_core::model::{Album, Artist, Artwork, ItemKind, Page, Playlist, Show,
 use crate::format::clock;
 use crate::store::{AppStore, LibraryTab, Route};
 use crate::theme;
-use crate::ui::widgets::{accent_button, art, heart_button, icon, icon_button};
+use crate::ui::widgets::{
+    accent_button, art, heart_button, icon, icon_button, spotify_logo, text_tooltip,
+};
 
 pub const ROW_HEIGHT: f32 = 52.;
 
@@ -144,7 +146,7 @@ pub fn card(index: usize, item: &CardItem, size: f32, store: &Entity<AppStore>) 
     let radius = if item.kind == CardKind::Artist {
         px(size / 2.)
     } else {
-        theme::CARD_RADIUS
+        theme::ART_RADIUS
     };
 
     div()
@@ -164,6 +166,7 @@ pub fn card(index: usize, item: &CardItem, size: f32, store: &Entity<AppStore>) 
         .cursor_pointer()
         .tab_index(0)
         .focus_visible(|style| style.border_color(theme::accent()))
+        .tooltip(text_tooltip(item.title.clone()))
         .child(art(&item.art, &item.id, size - 2., radius))
         .child(card_text(&item.title, &item.subtitle))
         .on_click(move |_, _, cx| store.update(cx, |state, cx| state.navigate(route.clone(), cx)))
@@ -381,10 +384,12 @@ pub fn breadcrumb(store: &Entity<AppStore>, state: &AppStore, current: &str) -> 
                 .text_color(theme::text_primary())
                 .child(current.to_owned()),
         )
+        .child(div().flex_1())
+        .child(spotify_logo())
 }
 
 /// A link that opens a Spotify page in the browser.
-pub fn open_in_spotify(id: &'static str, url: Option<String>) -> Option<AnyElement> {
+pub fn open_spotify(id: &'static str, url: Option<String>) -> Option<AnyElement> {
     let url = url?;
 
     Some(
@@ -399,7 +404,7 @@ pub fn open_in_spotify(id: &'static str, url: Option<String>) -> Option<AnyEleme
             .text_color(theme::text_secondary())
             .hover(|style| style.text_color(theme::accent()))
             .focus_visible(|style| style.text_color(theme::accent()))
-            .child("Open in Spotify")
+            .child("Open Spotify")
             .child(icon(IconName::ExternalLink, 12., theme::text_secondary()))
             .on_click(move |_, _, cx: &mut App| cx.open_url(&url))
             .into_any_element(),
@@ -444,6 +449,11 @@ pub fn track_row(
         .as_ref()
         .map(|album| album.name.clone())
         .unwrap_or_default();
+    let artist_line = if track.is_local {
+        format!("{} \u{00b7} Local file", track.artist_line())
+    } else {
+        track.artist_line()
+    };
     let trailing = spec.trailing.clone().unwrap_or_else(|| {
         if track.duration_ms == 0 {
             String::new()
@@ -494,7 +504,7 @@ pub fn track_row(
                     )
                 })
                 .when(spec.show_art, |this| {
-                    this.child(art(&track.art, &track.uri, 36., px(6.)))
+                    this.child(art(&track.art, &track.uri, 36., theme::ART_RADIUS_SMALL))
                 })
                 .child(
                     div()
@@ -504,6 +514,10 @@ pub fn track_row(
                         .min_w_0()
                         .child(
                             div()
+                                .id(ElementId::from((
+                                    SharedString::from(format!("{id_prefix}-title")),
+                                    spec.index,
+                                )))
                                 .truncate()
                                 .text_color(color)
                                 .font_weight(if spec.current {
@@ -511,18 +525,20 @@ pub fn track_row(
                                 } else {
                                     FontWeight::NORMAL
                                 })
+                                .tooltip(text_tooltip(track.name.clone()))
                                 .child(track.name.clone()),
                         )
                         .child(
                             div()
+                                .id(ElementId::from((
+                                    SharedString::from(format!("{id_prefix}-artists")),
+                                    spec.index,
+                                )))
                                 .truncate()
                                 .text_size(px(12.))
                                 .text_color(theme::text_secondary())
-                                .child(if track.is_local {
-                                    format!("{} \u{00b7} Local file", track.artist_line())
-                                } else {
-                                    track.artist_line()
-                                }),
+                                .tooltip(text_tooltip(artist_line.clone()))
+                                .child(artist_line),
                         ),
                 )
                 .when(spec.show_album, |this| {

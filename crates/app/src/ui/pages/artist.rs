@@ -13,7 +13,7 @@ use crate::store::AppStore;
 use crate::theme;
 use crate::ui::common::{
     CardItem, GRID_ROW, ROW_HEIGHT, TrackRowSpec, breadcrumb, card_row, error_panel, grid_columns,
-    heading, open_in_spotify, skeleton_rows, track_row, with_retry_bar,
+    heading, open_spotify, skeleton_rows, track_row, with_retry_bar,
 };
 use crate::ui::widgets::{accent_button, art, label_caps, pending_overlay, play_pause_icon};
 
@@ -258,7 +258,7 @@ impl ArtistPage {
                             .items_center()
                             .gap_3()
                             .child(play)
-                            .children(open_in_spotify("artist-open", artist.open_url.clone())),
+                            .children(open_spotify("artist-open", artist.open_url.clone())),
                     ),
             )
             .into_any_element()

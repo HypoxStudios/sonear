@@ -13,7 +13,9 @@ use crate::format::greeting;
 use crate::store::{AppStore, Route};
 use crate::theme;
 use crate::ui::common::{CardItem, card, error_panel, heading, skeleton_card};
-use crate::ui::widgets::{art, icon, pending_overlay, round_play_button};
+use crate::ui::widgets::{
+    art, icon, pending_overlay, round_play_button, spotify_logo, text_tooltip,
+};
 
 const TILE: f32 = 132.;
 const SHELF_LEN: usize = 10;
@@ -145,30 +147,35 @@ impl HomePage {
     fn search_pill(&self) -> Div {
         let store = self.store.clone();
 
-        div().flex().child(
-            div()
-                .id("home-search")
-                .flex()
-                .items_center()
-                .gap_2()
-                .w(px(260.))
-                .h(px(38.))
-                .px_3()
-                .rounded(theme::CONTROL_RADIUS)
-                .bg(theme::active_nav())
-                .cursor_pointer()
-                .tab_index(0)
-                .border_1()
-                .border_color(theme::transparent())
-                .focus_visible(|style| style.border_color(theme::accent()))
-                .text_size(px(13.))
-                .text_color(theme::text_tertiary())
-                .child(icon(IconName::Search, 15., theme::text_tertiary()))
-                .child("Search music...")
-                .on_click(move |_, _, cx| {
-                    store.update(cx, |state, cx| state.navigate(Route::Search, cx))
-                }),
-        )
+        div()
+            .flex()
+            .items_center()
+            .justify_between()
+            .child(
+                div()
+                    .id("home-search")
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .w(px(260.))
+                    .h(px(38.))
+                    .px_3()
+                    .rounded(theme::CONTROL_RADIUS)
+                    .bg(theme::active_nav())
+                    .cursor_pointer()
+                    .tab_index(0)
+                    .border_1()
+                    .border_color(theme::transparent())
+                    .focus_visible(|style| style.border_color(theme::accent()))
+                    .text_size(px(13.))
+                    .text_color(theme::text_tertiary())
+                    .child(icon(IconName::Search, 15., theme::text_tertiary()))
+                    .child("Search music...")
+                    .on_click(move |_, _, cx| {
+                        store.update(cx, |state, cx| state.navigate(Route::Search, cx))
+                    }),
+            )
+            .child(spotify_logo())
     }
 
     fn hero_card(&self, cx: &Context<Self>) -> AnyElement {
@@ -249,7 +256,7 @@ impl HomePage {
             .border_1()
             .border_color(theme::transparent())
             .focus_visible(|style| style.border_color(theme::accent()))
-            .child(art(&hero.art, &hero.uri, 128., theme::CARD_RADIUS))
+            .child(art(&hero.art, &hero.uri, 128., theme::ART_RADIUS))
             .child(
                 div()
                     .flex()
@@ -315,7 +322,8 @@ impl HomePage {
                         .border_1()
                         .border_color(theme::transparent())
                         .focus_visible(|style| style.border_color(theme::accent()))
-                        .child(art(&track.art, &track.uri, TILE - 2., theme::CARD_RADIUS))
+                        .tooltip(text_tooltip(track.name.clone()))
+                        .child(art(&track.art, &track.uri, TILE - 2., theme::ART_RADIUS))
                         .child(crate::ui::common::card_text(
                             &track.name,
                             &track.artist_line(),

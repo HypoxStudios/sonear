@@ -19,7 +19,7 @@ use crate::ui::common::{
     CardItem, GRID_ROW, card_row, error_panel, grid_columns, map_page, skeleton_card,
     with_retry_bar,
 };
-use crate::ui::widgets::icon;
+use crate::ui::widgets::{icon, spotify_logo};
 
 const TABS: [(LibraryTab, &str); 4] = [
     (LibraryTab::Playlists, "Playlists"),
@@ -344,11 +344,18 @@ impl Render for LibraryPage {
                     .pb_4()
                     .child(
                         div()
-                            .text_size(px(30.))
-                            .font_weight(FontWeight::BOLD)
-                            .font_family(theme::FONT_DISPLAY)
-                            .text_color(theme::text_primary())
-                            .child("Your Library"),
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .child(
+                                div()
+                                    .text_size(px(30.))
+                                    .font_weight(FontWeight::BOLD)
+                                    .font_family(theme::FONT_DISPLAY)
+                                    .text_color(theme::text_primary())
+                                    .child("Your Library"),
+                            )
+                            .child(spotify_logo()),
                     )
                     .child(
                         div()

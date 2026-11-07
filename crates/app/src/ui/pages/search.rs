@@ -20,7 +20,7 @@ use crate::ui::common::{
     CardItem, GRID_ROW, ROW_HEIGHT, TrackRowSpec, card_row, error_panel, grid_columns, heading,
     skeleton_rows, track_row,
 };
-use crate::ui::widgets::{accent_button, icon};
+use crate::ui::widgets::{accent_button, icon, spotify_logo};
 
 const DEBOUNCE: Duration = Duration::from_millis(300);
 const HEADER_HEIGHT: f32 = 46.;
@@ -572,7 +572,9 @@ impl Render for SearchPage {
                                         .cleanable(true),
                                 ),
                             ),
-                    ),
+                    )
+                    .child(div().flex_1())
+                    .child(spotify_logo()),
             )
             .child(div().flex_1().min_h_0().child(body))
     }

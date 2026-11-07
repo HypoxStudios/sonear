@@ -4,11 +4,12 @@ use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
 use gpui_kit::component::Sizable as _;
 use gpui_kit::component::spinner::Spinner;
+use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
-    AnyElement, Div, ElementId, Entity as UiEntity, Hsla, InteractiveElement as _, IntoElement,
-    ObjectFit, ParentElement as _, Pixels, SharedString, Stateful, Styled as _, StyledImage as _,
-    div, img, linear_color_stop, linear_gradient, px,
+    AnyElement, AnyView, App, Div, ElementId, Entity as UiEntity, Hsla, InteractiveElement as _,
+    IntoElement, ObjectFit, ParentElement as _, Pixels, SharedString, Stateful, Styled as _,
+    StyledImage as _, Svg, Window, div, img, linear_color_stop, linear_gradient, px, svg,
 };
 use sonear_core::model::Artwork;
 use sonear_soloist::protocol::Entity;
@@ -170,6 +171,36 @@ pub fn ghost_button(
                 .focus_visible(|style| style.border_color(theme::accent()))
         })
         .when(!enabled, |this| this.opacity(0.4))
+}
+
+/// The full Spotify logo for the top row of pages that show Spotify content.
+/// Only the sides carry the clear space; callers keep the rows above and below free.
+pub fn spotify_logo() -> Svg {
+    svg()
+        .path(assets::SPOTIFY_LOGO)
+        .flex_none()
+        .w(px(theme::SPOTIFY_LOGO_HEIGHT * theme::SPOTIFY_LOGO_ASPECT))
+        .h(px(theme::SPOTIFY_LOGO_HEIGHT))
+        .mx(px(theme::SPOTIFY_CLEAR_SPACE))
+        .text_color(theme::spotify_mark())
+}
+
+/// The Spotify icon, for places too small for the full logo.
+pub fn spotify_icon() -> Svg {
+    svg()
+        .path(assets::SPOTIFY_ICON)
+        .flex_none()
+        .w(px(theme::SPOTIFY_ICON_SIZE * theme::SPOTIFY_ICON_ASPECT))
+        .h(px(theme::SPOTIFY_ICON_SIZE))
+        .mx(px(theme::SPOTIFY_CLEAR_SPACE))
+        .text_color(theme::spotify_mark())
+}
+
+/// A tooltip builder showing `text`, for `.tooltip(...)` on a stateful element.
+pub fn text_tooltip(text: impl Into<SharedString>) -> impl Fn(&mut Window, &mut App) -> AnyView {
+    let text = text.into();
+
+    move |window, cx| Tooltip::new(text.clone()).build(window, cx)
 }
 
 pub fn accent_button(

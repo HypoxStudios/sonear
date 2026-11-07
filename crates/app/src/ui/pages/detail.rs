@@ -21,7 +21,7 @@ use crate::format::{long_duration, plain_text};
 use crate::store::AppStore;
 use crate::theme;
 use crate::ui::common::{
-    ROW_HEIGHT, TrackRowSpec, breadcrumb, error_panel, open_in_spotify, skeleton_rows, track_row,
+    ROW_HEIGHT, TrackRowSpec, breadcrumb, error_panel, open_spotify, skeleton_rows, track_row,
     with_retry_bar,
 };
 use crate::ui::widgets::{
@@ -499,10 +499,10 @@ impl DetailPage {
             .px_8()
             .py_4()
             .child(match header {
-                Some(header) => art(&header.art, &title, art_size, theme::CARD_RADIUS),
+                Some(header) => art(&header.art, &title, art_size, theme::ART_RADIUS),
                 None => div()
                     .size(px(art_size))
-                    .rounded(theme::CARD_RADIUS)
+                    .rounded(theme::ART_RADIUS)
                     .bg(theme::skeleton())
                     .into_any_element(),
             })
@@ -559,7 +559,7 @@ impl DetailPage {
                             .child(play)
                             .children(heart)
                             .children(
-                                open_in_spotify(
+                                open_spotify(
                                     "detail-open",
                                     header.and_then(|header| header.open_url.clone()),
                                 )

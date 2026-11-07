@@ -15,7 +15,9 @@ use sonear_core::playback::now_ms;
 use sonear_soloist::Status;
 use sonear_soloist::protocol::{PlayStatus, RepeatMode};
 
-use super::widgets::{cover_for, heart_button, icon, icon_button, round_play_button};
+use super::widgets::{
+    cover_for, heart_button, icon, icon_button, round_play_button, spotify_icon, text_tooltip,
+};
 use crate::format::clock;
 use crate::store::AppStore;
 use crate::theme;
@@ -259,7 +261,7 @@ impl Render for PlayerBar {
             .child(cover_for(
                 item.as_ref().and_then(|i| i.album()).or(item.as_ref()),
                 52.,
-                px(8.),
+                theme::ART_RADIUS_SMALL,
             ))
             .child(
                 div()
@@ -278,7 +280,8 @@ impl Render for PlayerBar {
                             } else {
                                 theme::text_tertiary()
                             })
-                            .when_some(open_url, |this, url| {
+                            .tooltip(text_tooltip(title.clone()))
+                            .when_some(open_url.clone(), |this, url| {
                                 this.cursor_pointer()
                                     .hover(|style| style.text_color(theme::accent()))
                                     .on_click(move |_, _, cx| cx.open_url(&url))
@@ -287,12 +290,27 @@ impl Render for PlayerBar {
                     )
                     .child(
                         div()
+                            .id("player-artists")
                             .truncate()
                             .text_size(px(12.))
                             .text_color(theme::text_secondary())
+                            .tooltip(text_tooltip(subtitle.clone()))
                             .child(subtitle),
                     ),
             )
+            .when(item.is_some(), |this| {
+                this.child(
+                    div()
+                        .id("player-spotify")
+                        .flex_none()
+                        .tooltip(text_tooltip("Open Spotify"))
+                        .when_some(open_url, |this, url| {
+                            this.cursor_pointer()
+                                .on_click(move |_, _, cx| cx.open_url(&url))
+                        })
+                        .child(spotify_icon()),
+                )
+            })
             .child({
                 let store = self.store.clone();
 

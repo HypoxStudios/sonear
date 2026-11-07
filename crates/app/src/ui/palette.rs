@@ -17,7 +17,7 @@ use crate::data::{self, Load};
 use crate::keymap;
 use crate::store::{AppStore, Route};
 use crate::theme;
-use crate::ui::widgets::{art, icon};
+use crate::ui::widgets::{art, icon, spotify_icon};
 
 const DEBOUNCE: Duration = Duration::from_millis(300);
 const MIN_SEARCH_CHARS: usize = 2;
@@ -510,7 +510,7 @@ fn cover_row(
     let radius = if round {
         px(theme::PALETTE_COVER / 2.)
     } else {
-        theme::PALETTE_COVER_RADIUS
+        theme::ART_RADIUS_SMALL
     };
 
     div()
@@ -553,6 +553,7 @@ impl Render for PaletteView {
         }
 
         let groups = self.model(cx);
+        let spotify_results = self.results.is_some() && !self.query.is_empty();
         let queried = cx.entity().downgrade();
         let confirmed = queried.clone();
         let top = window.viewport_size().height * theme::PALETTE_TOP;
@@ -603,7 +604,18 @@ impl Render for PaletteView {
                     .border_color(theme::hairline())
                     .bg(theme::panel())
                     .on_click(|_, _, cx| cx.stop_propagation())
-                    .child(command),
+                    .child(command)
+                    .when(spotify_results, |this| {
+                        this.child(
+                            div()
+                                .flex()
+                                .justify_end()
+                                .py_1()
+                                .border_t_1()
+                                .border_color(theme::hairline())
+                                .child(spotify_icon()),
+                        )
+                    }),
             )
     }
 }

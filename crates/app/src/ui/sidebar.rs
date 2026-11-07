@@ -6,7 +6,7 @@ use gpui_kit::{
     px,
 };
 
-use super::widgets::{art, icon, icon_button, logo_mark};
+use super::widgets::{art, icon, icon_button, logo_mark, spotify_icon};
 use crate::store::{AppStore, LibraryTab, Route};
 use crate::theme;
 
@@ -165,6 +165,9 @@ pub fn sidebar(store: &Entity<AppStore>, state: &AppStore, collapsed: bool) -> A
         div().h(px(1.)).mx_2().my_2().bg(theme::hairline())
     } else {
         div()
+            .flex()
+            .items_center()
+            .justify_between()
             .px_3()
             .pt_4()
             .pb_1()
@@ -172,6 +175,7 @@ pub fn sidebar(store: &Entity<AppStore>, state: &AppStore, collapsed: bool) -> A
             .font_weight(FontWeight::MEDIUM)
             .text_color(theme::text_tertiary())
             .child("YOUR MUSIC")
+            .child(spotify_icon())
     });
 
     let liked_active = route == Route::LikedSongs;
@@ -202,7 +206,7 @@ pub fn sidebar(store: &Entity<AppStore>, state: &AppStore, collapsed: bool) -> A
         let store = store.clone();
         let target = Route::Playlist(playlist.id.clone());
         let active = route == target;
-        let leading = art(&playlist.art, &playlist.id, 24., px(5.));
+        let leading = art(&playlist.art, &playlist.id, 24., theme::ART_RADIUS_SMALL);
 
         list = list.child(
             row(

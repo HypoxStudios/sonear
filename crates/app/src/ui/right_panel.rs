@@ -12,7 +12,7 @@ use gpui_kit::{
 use sonear_core::QueueManager;
 use sonear_soloist::protocol::Entity as SoloistEntity;
 
-use super::widgets::{art, cover_for, icon, icon_button};
+use super::widgets::{art, cover_for, icon, icon_button, spotify_icon};
 use crate::store::{AppStore, UP_NEXT_ROWS};
 use crate::theme;
 
@@ -167,7 +167,7 @@ fn line_for_item(state: &AppStore, item: &SoloistEntity) -> Line {
 
     if !item.name().is_empty() {
         return Line {
-            cover: cover_for(item.album().or(Some(item)), COVER, px(8.)),
+            cover: cover_for(item.album().or(Some(item)), COVER, theme::ART_RADIUS_SMALL),
             name: item.name().to_owned(),
             artists: item.artist_line(),
             known: true,
@@ -176,13 +176,13 @@ fn line_for_item(state: &AppStore, item: &SoloistEntity) -> Line {
 
     match found {
         Some(track) => Line {
-            cover: art(&track.art, &track.uri, COVER, px(8.)),
+            cover: art(&track.art, &track.uri, COVER, theme::ART_RADIUS_SMALL),
             name: track.name.clone(),
             artists: track.artist_line(),
             known: true,
         },
         None => Line {
-            cover: cover_for(None, COVER, px(8.)),
+            cover: cover_for(None, COVER, theme::ART_RADIUS_SMALL),
             name: if looked_up.is_some() {
                 "Unknown track".to_owned()
             } else {
@@ -542,15 +542,23 @@ impl Render for RightPanel {
             .bg(theme::panel())
             .child(
                 div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
                     .flex_none()
-                    .px_4()
+                    .pl_4()
+                    .pr_2()
                     .pt_4()
                     .pb_2()
-                    .text_size(px(15.))
-                    .font_weight(FontWeight::BOLD)
-                    .font_family(theme::FONT_DISPLAY)
-                    .text_color(theme::text_primary())
-                    .child("Up next"),
+                    .child(
+                        div()
+                            .text_size(px(15.))
+                            .font_weight(FontWeight::BOLD)
+                            .font_family(theme::FONT_DISPLAY)
+                            .text_color(theme::text_primary())
+                            .child("Up next"),
+                    )
+                    .child(spotify_icon()),
             )
             .child(div().flex_1().min_h_0().child(list))
             .children(footer)

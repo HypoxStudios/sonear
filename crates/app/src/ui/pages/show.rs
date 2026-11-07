@@ -12,7 +12,7 @@ use crate::format::plain_text;
 use crate::store::AppStore;
 use crate::theme;
 use crate::ui::common::{
-    ROW_HEIGHT, TrackRowSpec, breadcrumb, error_panel, open_in_spotify, skeleton_rows, track_row,
+    ROW_HEIGHT, TrackRowSpec, breadcrumb, error_panel, open_spotify, skeleton_rows, track_row,
     with_retry_bar,
 };
 use crate::ui::widgets::{accent_button, art, label_caps, pending_overlay, play_pause_icon};
@@ -118,7 +118,7 @@ impl ShowPage {
                 .child(
                     div()
                         .size(px(140.))
-                        .rounded(theme::CARD_RADIUS)
+                        .rounded(theme::ART_RADIUS)
                         .bg(theme::skeleton()),
                 )
                 .into_any_element();
@@ -162,7 +162,7 @@ impl ShowPage {
             .flex_none()
             .px_8()
             .py_4()
-            .child(art(&show.art, &show.id, 140., theme::CARD_RADIUS))
+            .child(art(&show.art, &show.id, 140., theme::ART_RADIUS))
             .child(
                 div()
                     .flex()
@@ -199,7 +199,7 @@ impl ShowPage {
                             .items_center()
                             .gap_3()
                             .child(play)
-                            .children(open_in_spotify("show-open", show.open_url.clone())),
+                            .children(open_spotify("show-open", show.open_url.clone())),
                     ),
             )
             .into_any_element()
