@@ -8,6 +8,7 @@ use std::os::windows::process::CommandExt as _;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+use rust_i18n::t;
 use thiserror::Error;
 use windows::Win32::Foundation::{GENERIC_READ, HANDLE};
 use windows::Win32::Security::SECURITY_ATTRIBUTES;
@@ -30,6 +31,17 @@ pub enum RelocateError {
     Open(windows::core::Error),
     #[error("Could not start the copied uninstaller: {0}")]
     Spawn(std::io::Error),
+}
+
+impl RelocateError {
+    pub fn user_message(&self) -> String {
+        match self {
+            Self::Copy(error) => t!("installer.relocate.copy", detail = error.to_string()),
+            Self::Open(error) => t!("installer.relocate.open", detail = error.to_string()),
+            Self::Spawn(error) => t!("installer.relocate.spawn", detail = error.to_string()),
+        }
+        .into_owned()
+    }
 }
 
 pub fn temp_copy_path(pid: u32) -> PathBuf {

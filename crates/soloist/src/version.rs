@@ -1,4 +1,5 @@
 use chrono::{Duration, NaiveDate};
+use rust_i18n::t;
 use thiserror::Error;
 
 /// Soloist builds stop working this many days after their build date.
@@ -12,6 +13,18 @@ pub enum VersionError {
     BadDate(String),
     #[error("could not run Soloist: {0}")]
     Run(String),
+}
+
+impl VersionError {
+    /// The error in the interface language. `Display` stays English for logs.
+    pub fn user_message(&self) -> String {
+        match self {
+            Self::Unrecognised => t!("version.unrecognised"),
+            Self::BadDate(date) => t!("version.bad_date", date = date),
+            Self::Run(detail) => t!("version.run", detail = detail),
+        }
+        .into_owned()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

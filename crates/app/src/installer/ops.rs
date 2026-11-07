@@ -2,10 +2,12 @@
 //! machine goes through a `Target`, so tests can point it at temp folders and
 //! a throwaway registry key.
 
+use std::fmt;
 use std::fs::{self, File};
 use std::io::{self, Read as _, Write as _};
 use std::path::{Path, PathBuf};
 
+use rust_i18n::t;
 use sonear_core::data_dir::{is_within, probe_writable, retry_busy, same_place};
 use sonear_core::{AppPaths, KeyringStore, delete_local_data};
 use thiserror::Error;
@@ -28,24 +30,104 @@ const PUBLISHER: &str = "Hypox Studios";
 const COPY_CHUNK: usize = 256 * 1024;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub type Progress<'a> = &'a dyn Fn(f32, &'static str);
+pub type Progress<'a> = &'a dyn Fn(f32, &str);
+
+/// What an install was doing when a file operation failed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Step {
+    CreateFolder,
+    ReadSetup,
+    WriteProgram,
+    WriteLicense,
+    ReplaceProgram,
+}
+
+impl Step {
+    fn label(self) -> String {
+        match self {
+            Self::CreateFolder => t!("installer.step_error.create_folder"),
+            Self::ReadSetup => t!("installer.step_error.read_setup"),
+            Self::WriteProgram => t!("installer.step_error.write_program"),
+            Self::WriteLicense => t!("installer.step_error.write_license"),
+            Self::ReplaceProgram => t!("installer.step_error.replace_program"),
+        }
+        .into_owned()
+    }
+}
+
+impl fmt::Display for Step {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::CreateFolder => "create the install folder",
+            Self::ReadSetup => "read the setup file",
+            Self::WriteProgram => "write the program",
+            Self::WriteLicense => "write the license",
+            Self::ReplaceProgram => "replace the program",
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Place {
+    StartMenu,
+    Desktop,
+}
+
+impl Place {
+    fn label(self) -> String {
+        match self {
+            Self::StartMenu => t!("installer.place.start_menu"),
+            Self::Desktop => t!("installer.place.desktop"),
+        }
+        .into_owned()
+    }
+}
+
+impl fmt::Display for Place {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::StartMenu => "Start menu",
+            Self::Desktop => "Desktop",
+        })
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum InstallError {
     #[error("Could not {step}: {source}")]
-    Io {
-        step: &'static str,
-        source: io::Error,
-    },
+    Io { step: Step, source: io::Error },
     #[error("Could not find the {0} folder: {1}")]
-    Folder(&'static str, String),
+    Folder(Place, String),
     #[error("Could not create a shortcut: {0}")]
     Shortcut(String),
     #[error("{0}")]
     Registry(#[from] ProtocolError),
 }
 
-fn step(step: &'static str) -> impl FnOnce(io::Error) -> InstallError {
+impl InstallError {
+    /// The error in the interface language. `Display` stays English for logs.
+    pub fn user_message(&self) -> String {
+        match self {
+            Self::Io { step, source } => t!(
+                "installer.error.step",
+                step = step.label(),
+                detail = source.to_string()
+            ),
+            Self::Folder(place, detail) => {
+                t!(
+                    "installer.error.folder",
+                    place = place.label(),
+                    detail = detail
+                )
+            }
+            Self::Shortcut(detail) => t!("installer.error.shortcut", detail = detail),
+            Self::Registry(error) => return error.user_message(),
+        }
+        .into_owned()
+    }
+}
+
+fn step(step: Step) -> impl FnOnce(io::Error) -> InstallError {
     move |source| InstallError::Io { step, source }
 }
 
@@ -67,8 +149,8 @@ impl Target {
 
         Ok(Self {
             dir,
-            programs_dir: folder("Start menu", &FOLDERID_Programs)?,
-            desktop_dir: folder("Desktop", &FOLDERID_Desktop)?,
+            programs_dir: folder(Place::StartMenu, &FOLDERID_Programs)?,
+            desktop_dir: folder(Place::Desktop, &FOLDERID_Desktop)?,
             uninstall_key: UNINSTALL_KEY.to_owned(),
         })
     }
@@ -156,27 +238,29 @@ fn run_install(
 ) -> Result<(), InstallError> {
     let exe = target.exe();
 
-    progress(0., "Preparing");
-    fs::create_dir_all(&target.dir).map_err(step("create the install folder"))?;
+    progress(0., &t!("installer.progress.preparing"));
+    fs::create_dir_all(&target.dir).map_err(step(Step::CreateFolder))?;
+
+    let copying = t!("installer.progress.copying");
 
     copy_staged(source, &target.staging(), &|done| {
-        progress(done * 0.8, "Copying Sonear");
+        progress(done * 0.8, &copying);
     })?;
 
-    progress(0.84, "Adding the license");
+    progress(0.84, &t!("installer.progress.adding_license"));
 
     for (name, bytes) in [(LICENSE_NAME, LICENSE), (NOTICE_NAME, NOTICE)] {
         let path = target.dir.join(name);
 
-        fs::write(&path, bytes).map_err(step("write the license"))?;
+        fs::write(&path, bytes).map_err(step(Step::WriteLicense))?;
         made.files.push(path);
     }
 
-    progress(0.88, "Replacing the program");
-    retry_busy(|| fs::rename(target.staging(), &exe)).map_err(step("replace the program"))?;
+    progress(0.88, &t!("installer.progress.replacing"));
+    retry_busy(|| fs::rename(target.staging(), &exe)).map_err(step(Step::ReplaceProgram))?;
     made.files.push(exe.clone());
 
-    progress(0.92, "Adding shortcuts");
+    progress(0.92, &t!("installer.progress.shortcuts"));
     write_link(&target.start_menu_link(), &exe)?;
     made.files.push(target.start_menu_link());
 
@@ -185,11 +269,11 @@ fn run_install(
         made.files.push(target.desktop_link());
     }
 
-    progress(0.97, "Registering with Windows");
+    progress(0.97, &t!("installer.progress.registering"));
     register(target, &exe)?;
     made.registered = true;
 
-    progress(1., "Done");
+    progress(1., &t!("installer.progress.done"));
     info!(dir = %target.dir.display(), "installed");
 
     Ok(())
@@ -202,18 +286,14 @@ fn write_link(path: &Path, exe: &Path) -> Result<(), InstallError> {
 
 /// Copies `source` to `staging` in chunks. `progress` gets a fraction.
 fn copy_staged(source: &Path, staging: &Path, progress: &dyn Fn(f32)) -> Result<(), InstallError> {
-    let total = fs::metadata(source)
-        .map_err(step("read the setup file"))?
-        .len();
-    let mut input = File::open(source).map_err(step("read the setup file"))?;
-    let mut output = File::create(staging).map_err(step("write the program"))?;
+    let total = fs::metadata(source).map_err(step(Step::ReadSetup))?.len();
+    let mut input = File::open(source).map_err(step(Step::ReadSetup))?;
+    let mut output = File::create(staging).map_err(step(Step::WriteProgram))?;
     let mut buffer = vec![0u8; COPY_CHUNK];
     let mut done = 0u64;
 
     loop {
-        let read = input
-            .read(&mut buffer)
-            .map_err(step("read the setup file"))?;
+        let read = input.read(&mut buffer).map_err(step(Step::ReadSetup))?;
 
         if read == 0 {
             break;
@@ -221,12 +301,12 @@ fn copy_staged(source: &Path, staging: &Path, progress: &dyn Fn(f32)) -> Result<
 
         output
             .write_all(&buffer[..read])
-            .map_err(step("write the program"))?;
+            .map_err(step(Step::WriteProgram))?;
         done += read as u64;
         progress(done as f32 / total.max(1) as f32);
     }
 
-    output.sync_all().map_err(step("write the program"))
+    output.sync_all().map_err(step(Step::WriteProgram))
 }
 
 fn register(target: &Target, exe: &Path) -> Result<(), InstallError> {
@@ -282,7 +362,7 @@ pub fn uninstall(target: &Target, progress: Progress) -> Vec<String> {
     let mut problems = Vec::new();
     let owns_desktop_link = points_at(&target.desktop_link(), &target.exe());
 
-    progress(0.1, "Removing the program");
+    progress(0.1, &t!("installer.progress.removing_program"));
 
     for name in [EXE_NAME, STAGING_NAME, LICENSE_NAME, NOTICE_NAME] {
         remove_file(&target.dir.join(name), &mut problems);
@@ -290,20 +370,20 @@ pub fn uninstall(target: &Target, progress: Progress) -> Vec<String> {
 
     let _ = fs::remove_dir(&target.dir);
 
-    progress(0.5, "Removing shortcuts");
+    progress(0.5, &t!("installer.progress.removing_shortcuts"));
     remove_file(&target.start_menu_link(), &mut problems);
 
     if owns_desktop_link {
         remove_file(&target.desktop_link(), &mut problems);
     }
 
-    progress(0.8, "Removing it from installed apps");
+    progress(0.8, &t!("installer.progress.removing_apps"));
 
     if let Err(error) = protocol::delete_tree(&target.uninstall_key) {
-        problems.push(error.to_string());
+        problems.push(error.user_message());
     }
 
-    progress(1., "Done");
+    progress(1., &t!("installer.progress.done"));
 
     problems
 }
@@ -326,30 +406,30 @@ fn remove_file(path: &Path, problems: &mut Vec<String>) {
 pub fn uninstall_real(dir: PathBuf, delete_data: bool, progress: Progress) -> Vec<String> {
     let target = match Target::real(dir) {
         Ok(target) => target,
-        Err(error) => return vec![error.to_string()],
+        Err(error) => return vec![error.user_message()],
     };
     let mut problems = uninstall(&target, &|fraction, label| progress(fraction * 0.6, label));
 
-    progress(0.7, "Removing Windows registrations");
+    progress(0.7, &t!("installer.progress.removing_registrations"));
 
     if let Err(error) = app_identity::remove() {
         problems.push(error);
     }
 
     if let Err(error) = protocol::unregister() {
-        problems.push(error.to_string());
+        problems.push(error.user_message());
     }
 
     if delete_data {
-        progress(0.85, "Deleting your data");
+        progress(0.85, &t!("installer.progress.deleting_data"));
 
         match AppPaths::discover() {
             Some(paths) => problems.extend(delete_local_data(&paths, &KeyringStore)),
-            None => problems.push("Could not find your data folder.".to_owned()),
+            None => problems.push(t!("installer.error.no_data_folder").into_owned()),
         }
     }
 
-    progress(1., "Done");
+    progress(1., &t!("installer.progress.done"));
 
     problems
 }
@@ -372,10 +452,9 @@ pub fn installed_at(key: &str) -> Option<Installed> {
 
 fn explain_probe_error(error: &io::Error) -> String {
     if error.kind() == io::ErrorKind::PermissionDenied {
-        "You can't write here without administrator rights. Pick a folder in your user profile."
-            .to_owned()
+        t!("installer.check.no_admin").into_owned()
     } else {
-        format!("Sonear can't write to this folder: {error}")
+        t!("installer.check.cant_write", error = error.to_string()).into_owned()
     }
 }
 
@@ -383,22 +462,19 @@ fn explain_probe_error(error: &io::Error) -> String {
 /// Creates and removes a probe file to find out.
 pub fn check_install_dir(dir: &Path, data_root: &Path, config_dir: &Path) -> Result<(), String> {
     if !dir.is_absolute() {
-        return Err("Enter a full path, such as C:\\Users\\you\\Sonear.".to_owned());
+        return Err(t!("installer.check.full_path").into_owned());
     }
 
     if dir.parent().is_none() {
-        return Err("Pick a folder, not a whole drive.".to_owned());
+        return Err(t!("installer.check.whole_drive").into_owned());
     }
 
     if is_within(dir, data_root) || is_within(dir, config_dir) {
-        return Err("Pick a folder outside Sonear's data folders.".to_owned());
+        return Err(t!("installer.check.inside_data").into_owned());
     }
 
     if has_other_files(dir) {
-        return Err(
-            "This folder already has files in it. Pick an empty one, or add \\Sonear to the path."
-                .to_owned(),
-        );
+        return Err(t!("installer.check.has_files").into_owned());
     }
 
     probe_writable(dir).map_err(|error| explain_probe_error(&error))
@@ -456,7 +532,7 @@ mod tests {
         is_update: true,
     };
 
-    fn quiet(_: f32, _: &'static str) {}
+    fn quiet(_: f32, _: &str) {}
 
     #[test]
     fn a_fresh_install_writes_everything() {

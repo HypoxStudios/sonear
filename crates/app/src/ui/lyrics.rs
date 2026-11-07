@@ -1,10 +1,12 @@
+use rust_i18n::t;
 use std::time::{Duration, Instant};
 
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
     AnyElement, Context, ElementId, Entity, FontWeight, InteractiveElement as _, IntoElement,
-    ParentElement as _, Render, ScrollEvent, ScrollHandle, StatefulInteractiveElement as _,
-    Styled as _, Subscription, Task, Window, div, point, px, relative,
+    ParentElement as _, Render, ScrollEvent, ScrollHandle, SharedString,
+    StatefulInteractiveElement as _, Styled as _, Subscription, Task, Window, div, point, px,
+    relative,
 };
 use sonear_core::lyrics::{LyricsError, active_line, next_change_ms};
 use sonear_core::playback::now_ms;
@@ -315,7 +317,7 @@ impl LyricsPanel {
                 div()
                     .text_size(px(12.))
                     .text_color(theme::text_tertiary())
-                    .child("These lyrics aren't synced."),
+                    .child(t!("lyrics.not_synced")),
             )
             .child(
                 div()
@@ -370,7 +372,7 @@ async fn query_for(core: &Core, item: &SoloistEntity) -> Option<LyricsQuery> {
     })
 }
 
-fn message(text: &'static str) -> AnyElement {
+fn message(text: impl Into<SharedString>) -> AnyElement {
     div()
         .flex_1()
         .min_h_0()
@@ -378,7 +380,7 @@ fn message(text: &'static str) -> AnyElement {
         .pt_2()
         .text_size(px(13.))
         .text_color(theme::text_secondary())
-        .child(text)
+        .child(text.into())
         .into_any_element()
 }
 
@@ -419,15 +421,13 @@ impl Render for LyricsPanel {
             .as_ref()
             .map(|item| is_track(&item.uri));
         let body = match (playing, &self.phase) {
-            (None, _) => message("Play something to see its lyrics."),
-            (Some(false), _) => message("Lyrics are only available for songs."),
+            (None, _) => message(t!("lyrics.play_something")),
+            (Some(false), _) => message(t!("lyrics.songs_only")),
             (Some(true), Phase::Idle | Phase::Loading) => skeleton(),
             (Some(true), Phase::Ready(Lyrics::Synced(lines))) => self.synced_list(lines, cx),
             (Some(true), Phase::Ready(Lyrics::Plain(text))) => Self::plain_list(text),
-            (Some(true), Phase::Ready(Lyrics::Instrumental)) => message("Instrumental."),
-            (Some(true), Phase::Ready(Lyrics::NotFound)) => {
-                message("No lyrics found for this song.")
-            }
+            (Some(true), Phase::Ready(Lyrics::Instrumental)) => message(t!("lyrics.instrumental")),
+            (Some(true), Phase::Ready(Lyrics::NotFound)) => message(t!("lyrics.not_found")),
             (Some(true), Phase::Failed) => div()
                 .flex()
                 .flex_col()
@@ -441,15 +441,15 @@ impl Render for LyricsPanel {
                     div()
                         .text_size(px(13.))
                         .text_color(theme::text_secondary())
-                        .child("Couldn't load lyrics."),
+                        .child(t!("lyrics.load_failed")),
                 )
                 .child(
-                    ghost_button("lyrics-retry", "Try again", true).on_click(cx.listener(
-                        |panel, _, _, cx| {
+                    ghost_button("lyrics-retry", t!("common.try_again"), true).on_click(
+                        cx.listener(|panel, _, _, cx| {
                             panel.load(cx);
                             cx.notify();
-                        },
-                    )),
+                        }),
+                    ),
                 )
                 .into_any_element(),
         };
@@ -480,7 +480,7 @@ impl Render for LyricsPanel {
                             .font_weight(FontWeight::BOLD)
                             .font_family(theme::FONT_DISPLAY)
                             .text_color(theme::text_primary())
-                            .child("Lyrics"),
+                            .child(t!("lyrics.title")),
                     ),
             )
             .child(body)
@@ -501,7 +501,7 @@ impl Render for LyricsPanel {
                     .text_color(theme::text_tertiary())
                     .hover(|style| style.text_color(theme::text_secondary()))
                     .focus_visible(|style| style.text_color(theme::accent()))
-                    .child("Lyrics from LRCLIB")
+                    .child(t!("lyrics.credit"))
                     .on_click(|_, _, cx| cx.open_url(LRCLIB_URL)),
             )
     }

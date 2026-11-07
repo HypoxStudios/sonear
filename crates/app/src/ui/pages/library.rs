@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -22,10 +23,10 @@ use crate::ui::common::{
 use crate::ui::widgets::{icon, spotify_logo};
 
 const TABS: [(LibraryTab, &str); 4] = [
-    (LibraryTab::Playlists, "Playlists"),
-    (LibraryTab::Albums, "Albums"),
-    (LibraryTab::Artists, "Artists"),
-    (LibraryTab::Shows, "Shows"),
+    (LibraryTab::Playlists, "library.tab.playlists"),
+    (LibraryTab::Albums, "library.tab.albums"),
+    (LibraryTab::Artists, "library.tab.artists"),
+    (LibraryTab::Shows, "library.tab.shows"),
 ];
 
 #[derive(Default)]
@@ -154,7 +155,7 @@ impl LibraryPage {
         );
     }
 
-    fn entry(&self, id: &'static str, name: IconName, label: &'static str, route: Route) -> Div {
+    fn entry(&self, id: &'static str, name: IconName, label: String, route: Route) -> Div {
         let store = self.store.clone();
 
         div().child(
@@ -191,33 +192,30 @@ impl LibraryPage {
     fn tab_bar(&self, cx: &Context<Self>) -> Div {
         let page = cx.entity();
 
-        div()
-            .flex()
-            .gap_2()
-            .children(TABS.iter().map(|(tab, label)| {
-                let tab = *tab;
-                let page = page.clone();
-                let active = self.active == tab;
+        div().flex().gap_2().children(TABS.iter().map(|(tab, key)| {
+            let tab = *tab;
+            let page = page.clone();
+            let active = self.active == tab;
 
-                div()
-                    .id(ElementId::from(SharedString::from(format!(
-                        "library-tab-{label}"
-                    ))))
-                    .px_4()
-                    .h(px(32.))
-                    .flex()
-                    .items_center()
-                    .rounded_full()
-                    .cursor_pointer()
-                    .tab_index(0)
-                    .border_1()
-                    .border_color(theme::hairline())
-                    .text_size(px(13.))
-                    .font_weight(FontWeight::MEDIUM)
-                    .when_active(active)
-                    .child(*label)
-                    .on_click(move |_, _, cx| page.update(cx, |page, cx| page.open(tab, cx)))
-            }))
+            div()
+                .id(ElementId::from(SharedString::from(format!(
+                    "library-tab-{key}"
+                ))))
+                .px_4()
+                .h(px(32.))
+                .flex()
+                .items_center()
+                .rounded_full()
+                .cursor_pointer()
+                .tab_index(0)
+                .border_1()
+                .border_color(theme::hairline())
+                .text_size(px(13.))
+                .font_weight(FontWeight::MEDIUM)
+                .when_active(active)
+                .child(t!(*key))
+                .on_click(move |_, _, cx| page.update(cx, |page, cx| page.open(tab, cx)))
+        }))
     }
 
     fn grid(&mut self, cx: &mut Context<Self>) -> AnyElement {
@@ -247,12 +245,12 @@ impl LibraryPage {
             return empty_state(
                 IconName::Library,
                 match tab {
-                    LibraryTab::Playlists => "No playlists yet",
-                    LibraryTab::Albums => "No saved albums",
-                    LibraryTab::Artists => "No followed artists",
-                    LibraryTab::Shows => "No saved shows",
+                    LibraryTab::Playlists => t!("library.empty.playlists"),
+                    LibraryTab::Albums => t!("library.empty.albums"),
+                    LibraryTab::Artists => t!("library.empty.artists"),
+                    LibraryTab::Shows => t!("library.empty.shows"),
                 },
-                "What you save or follow in Spotify shows up here.",
+                t!("library.empty.body"),
             );
         }
 
@@ -353,7 +351,7 @@ impl Render for LibraryPage {
                                     .font_weight(FontWeight::BOLD)
                                     .font_family(theme::FONT_DISPLAY)
                                     .text_color(theme::text_primary())
-                                    .child("Your Library"),
+                                    .child(t!("route.library")),
                             )
                             .child(spotify_logo()),
                     )
@@ -364,13 +362,13 @@ impl Render for LibraryPage {
                             .child(self.entry(
                                 "entry-liked",
                                 IconName::Heart,
-                                "Liked Songs",
+                                Route::LikedSongs.label(),
                                 Route::LikedSongs,
                             ))
                             .child(self.entry(
                                 "entry-history",
                                 IconName::Clock,
-                                "History",
+                                Route::History.label(),
                                 Route::History,
                             )),
                     )

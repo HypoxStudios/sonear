@@ -1,4 +1,5 @@
 use futures_util::{SinkExt, StreamExt};
+use rust_i18n::t;
 use thiserror::Error;
 use tokio::sync::{broadcast, mpsc};
 use tokio_tungstenite::tungstenite::Message;
@@ -14,6 +15,17 @@ pub enum ClientError {
     Connect(String),
     #[error("the connection to Soloist is closed")]
     Closed,
+}
+
+impl ClientError {
+    /// The error in the interface language. `Display` stays English for logs.
+    pub fn user_message(&self) -> String {
+        match self {
+            Self::Connect(detail) => t!("client.connect", detail = detail),
+            Self::Closed => t!("client.closed"),
+        }
+        .into_owned()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

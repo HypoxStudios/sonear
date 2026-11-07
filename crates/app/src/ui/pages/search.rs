@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -60,6 +61,7 @@ pub struct SearchPage {
     query: String,
     searched: String,
     generation: u64,
+    language_seen: u64,
     loading: bool,
     error: Option<LibraryError>,
     results: Results,
@@ -71,18 +73,18 @@ pub struct SearchPage {
 
 fn kind_name(kind: SearchKind) -> &'static str {
     match kind {
-        SearchKind::Track => "Songs",
-        SearchKind::Artist => "Artists",
-        SearchKind::Album => "Albums",
-        SearchKind::Playlist => "Playlists",
-        SearchKind::Show => "Podcasts",
+        SearchKind::Track => "search.kind.songs",
+        SearchKind::Artist => "search.kind.artists",
+        SearchKind::Album => "search.kind.albums",
+        SearchKind::Playlist => "search.kind.playlists",
+        SearchKind::Show => "search.kind.shows",
     }
 }
 
 impl SearchPage {
     pub fn new(store: Entity<AppStore>, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let input =
-            cx.new(|cx| InputState::new(window, cx).placeholder("What do you want to listen to?"));
+        let input = cx.new(|cx| InputState::new(window, cx).placeholder(t!("search.placeholder")));
+        let language_seen = store.read(cx).language_version;
         let handle = input.read(cx).focus_handle(cx);
 
         window.focus(&handle, cx);
@@ -108,6 +110,7 @@ impl SearchPage {
             query: String::new(),
             searched: String::new(),
             generation: 0,
+            language_seen,
             loading: false,
             error: None,
             results: Results::default(),
@@ -392,8 +395,8 @@ impl SearchPage {
         if self.query.is_empty() {
             return empty_state(
                 IconName::Search,
-                "Search Spotify",
-                "Find songs, artists, albums, playlists and podcasts. Results appear as you type.",
+                t!("search.empty.title"),
+                t!("search.empty.body"),
             );
         }
 
@@ -412,8 +415,8 @@ impl SearchPage {
         if self.nothing_found() {
             return empty_state(
                 IconName::Search,
-                format!("No results for \u{201c}{}\u{201d}", self.query),
-                "Check the spelling, or try a shorter search or the name of an artist.",
+                t!("search.none.title", query = self.query.as_str()),
+                t!("search.none.body"),
             );
         }
 
@@ -455,7 +458,7 @@ impl SearchPage {
                                 .px_6()
                                 .pb_2()
                                 .h(px(HEADER_HEIGHT))
-                                .child(heading(*title))
+                                .child(heading(t!(*title)))
                                 .into_any_element(),
                             Row::Track(position) => {
                                 let track = this.results.tracks.items.get(*position)?;
@@ -511,7 +514,7 @@ impl SearchPage {
                                                 "search-more",
                                                 kind as usize,
                                             )),
-                                            "Show more",
+                                            t!("search.show_more"),
                                             None,
                                             true,
                                         )
@@ -538,6 +541,15 @@ impl SearchPage {
 
 impl Render for SearchPage {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let language = self.store.read(cx).language_version;
+
+        if language != self.language_seen {
+            self.language_seen = language;
+            self.input.update(cx, |input, cx| {
+                input.set_placeholder(t!("search.placeholder"), window, cx);
+            });
+        }
+
         let body = self.body(window, cx);
 
         div()

@@ -10,8 +10,10 @@ use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::component::switch::Switch;
 use gpui_kit::{
     AnyElement, AppContext as _, Context, Div, Entity, IntoElement, ParentElement as _,
-    PathPromptOptions, Render, StatefulInteractiveElement as _, Styled as _, Task, Window, div, px,
+    PathPromptOptions, Render, SharedString, StatefulInteractiveElement as _, Styled as _, Task,
+    Window, div, px,
 };
+use rust_i18n::t;
 use sonear_core::AppPaths;
 use sonear_core::data_dir::resolve_target;
 use sonear_core::update::compare_versions;
@@ -19,7 +21,7 @@ use sonear_core::update::compare_versions;
 use super::job::{Job, Reporter, Snapshot, watch};
 use super::ops::{self, InstallOptions, Installed, Target};
 use super::{
-    CLOSE_AND_RETRY, chrome, default_install_dir, open_and_quit, sonear_is_open, take_over,
+    chrome, close_and_retry, default_install_dir, open_and_quit, sonear_is_open, take_over,
 };
 use crate::instance::InstanceGuard;
 use crate::theme;
@@ -31,9 +33,22 @@ const DEMO: bool = cfg!(feature = "demo");
 const MIN_WORK: Duration = Duration::from_millis(600);
 const DEMO_STEP: Duration = Duration::from_millis(500);
 
-const INSTALL_STEPS: [&str; 4] = ["Welcome", "Location", "Install", "Finish"];
-const UPDATE_STEPS: [&str; 3] = ["Welcome", "Install", "Finish"];
-const UNINSTALL_STEPS: [&str; 3] = ["Confirm", "Remove", "Finish"];
+const INSTALL_STEPS: [&str; 4] = [
+    "installer.step.welcome",
+    "installer.step.location",
+    "installer.step.install",
+    "installer.step.finish",
+];
+const UPDATE_STEPS: [&str; 3] = [
+    "installer.step.welcome",
+    "installer.step.install",
+    "installer.step.finish",
+];
+const UNINSTALL_STEPS: [&str; 3] = [
+    "installer.step.confirm",
+    "installer.step.remove",
+    "installer.step.finish",
+];
 
 pub enum Flow {
     Install {
@@ -68,7 +83,7 @@ struct Done {
 struct Welcome {
     title: String,
     detail: Option<String>,
-    button: &'static str,
+    button: String,
 }
 
 fn welcome_text(installed: &str, new: &str) -> Welcome {
@@ -76,19 +91,20 @@ fn welcome_text(installed: &str, new: &str) -> Welcome {
 
     match compare_versions(installed, new) {
         Ordering::Less => Welcome {
-            title: format!("Update Sonear to {new}"),
-            detail: known.then(|| format!("You have {installed}.")),
-            button: "Update",
+            title: t!("installer.update.title", new = new).into_owned(),
+            detail: known
+                .then(|| t!("installer.update.detail", installed = installed).into_owned()),
+            button: t!("installer.update.button").into_owned(),
         },
         Ordering::Equal => Welcome {
-            title: format!("Reinstall Sonear {new}"),
-            detail: Some("This version is already installed.".to_owned()),
-            button: "Reinstall",
+            title: t!("installer.reinstall.title", new = new).into_owned(),
+            detail: Some(t!("installer.reinstall.detail").into_owned()),
+            button: t!("installer.reinstall.button").into_owned(),
         },
         Ordering::Greater => Welcome {
-            title: format!("Replace Sonear {installed} with {new}"),
-            detail: Some("The installed version is newer.".to_owned()),
-            button: "Replace",
+            title: t!("installer.replace.title", installed = installed, new = new).into_owned(),
+            detail: Some(t!("installer.replace.detail").into_owned()),
+            button: t!("installer.replace.button").into_owned(),
         },
     }
 }
@@ -129,7 +145,8 @@ impl Wizard {
             Flow::Uninstall { .. } => Page::Confirm,
         };
         let dir_input = cx.new(|cx| {
-            let mut input = InputState::new(window, cx).placeholder("Install folder");
+            let mut input = InputState::new(window, cx)
+                .placeholder(t!("installer.folder_placeholder").into_owned());
 
             input.set_value(shown.display().to_string(), window, cx);
 
@@ -175,7 +192,7 @@ impl Wizard {
         matches!(self.flow, Flow::Uninstall { .. })
     }
 
-    fn steps(&self) -> &'static [&'static str] {
+    fn step_keys(&self) -> &'static [&'static str] {
         if self.is_uninstall() {
             &UNINSTALL_STEPS
         } else if self.installed().is_some() {
@@ -185,9 +202,16 @@ impl Wizard {
         }
     }
 
+    fn steps(&self) -> Vec<SharedString> {
+        self.step_keys()
+            .iter()
+            .map(|key| SharedString::from(t!(*key).into_owned()))
+            .collect()
+    }
+
     fn step_index(&self) -> usize {
-        let last = self.steps().len() - 1;
-        let has_location = self.steps().len() == INSTALL_STEPS.len();
+        let last = self.step_keys().len() - 1;
+        let has_location = self.step_keys().len() == INSTALL_STEPS.len();
 
         match &self.page {
             Page::Welcome | Page::Confirm => 0,
@@ -270,10 +294,10 @@ impl Wizard {
                 simulate(
                     reporter,
                     &[
-                        (0.3, "Copying Sonear"),
-                        (0.7, "Adding shortcuts"),
-                        (0.95, "Registering with Windows"),
-                        (1., "Done"),
+                        (0.3, t!("installer.progress.copying")),
+                        (0.7, t!("installer.progress.shortcuts")),
+                        (0.95, t!("installer.progress.registering")),
+                        (1., t!("installer.progress.done")),
                     ],
                 );
 
@@ -281,12 +305,12 @@ impl Wizard {
             }
 
             let guard = take_over()?;
-            let target = Target::real(dir).map_err(|error| error.to_string())?;
+            let target = Target::real(dir).map_err(|error| error.user_message())?;
 
             ops::install(&target, &source, options, &|fraction, label| {
                 reporter.step(fraction, label);
             })
-            .map_err(|error| error.to_string())?;
+            .map_err(|error| error.user_message())?;
 
             Ok(Done {
                 guard: Some(guard),
@@ -307,10 +331,10 @@ impl Wizard {
                 simulate(
                     reporter,
                     &[
-                        (0.3, "Removing the program"),
-                        (0.6, "Removing shortcuts"),
-                        (0.9, "Removing it from installed apps"),
-                        (1., "Done"),
+                        (0.3, t!("installer.progress.removing_program")),
+                        (0.6, t!("installer.progress.removing_shortcuts")),
+                        (0.9, t!("installer.progress.removing_apps")),
+                        (1., t!("installer.progress.done")),
                     ],
                 );
 
@@ -400,7 +424,7 @@ impl Wizard {
     fn switch_row(
         &self,
         id: &'static str,
-        label: &'static str,
+        label: String,
         checked: bool,
         change: impl Fn(&mut Wizard, bool) + 'static,
         cx: &mut Context<Self>,
@@ -415,7 +439,7 @@ impl Wizard {
                 Switch::new(id)
                     .checked(checked)
                     .color(theme::accent())
-                    .accessibility_label(label)
+                    .accessibility_label(label.clone())
                     .on_change(move |on, _, cx| {
                         wizard.update(cx, |wizard, cx| {
                             change(wizard, *on);
@@ -432,29 +456,21 @@ impl Wizard {
     }
 
     fn warning(&self) -> Option<AnyElement> {
-        self.running.then(|| {
-            chrome::message(
-                "Sonear is open. It will close when you continue.",
-                theme::warning(),
-            )
-        })
+        self.running
+            .then(|| chrome::message(t!("installer.running"), theme::warning()))
     }
 
     fn welcome_page(&self, cx: &mut Context<Self>) -> Div {
         let Some(installed) = self.installed() else {
             return chrome::page(
-                "Welcome to Sonear",
+                t!("installer.welcome.title"),
                 div()
                     .flex()
                     .flex_col()
                     .gap_3()
-                    .child(chrome::text(
-                        "A desktop player for Spotify. It needs Spotify Premium.",
-                    ))
-                    .child(chrome::note(
-                        "Not affiliated with Spotify. Open source under Apache-2.0.",
-                    )),
-                accent_button("welcome-next", "Next", None, true)
+                    .child(chrome::text(t!("installer.welcome.body")))
+                    .child(chrome::note(t!("installer.welcome.note"))),
+                accent_button("welcome-next", t!("installer.welcome.next"), None, true)
                     .on_click(cx.listener(|wizard, _, _, cx| wizard.go(Page::Location, cx))),
             );
         };
@@ -467,7 +483,7 @@ impl Wizard {
                 .flex_col()
                 .gap_3()
                 .children(welcome.detail.map(chrome::text))
-                .child(chrome::note("Your data is not touched."))
+                .child(chrome::note(t!("installer.data_untouched")))
                 .children(self.warning()),
             accent_button("welcome-install", welcome.button, None, true)
                 .on_click(cx.listener(|wizard, _, _, cx| wizard.start_install(cx))),
@@ -475,49 +491,56 @@ impl Wizard {
     }
 
     fn location_page(&self, cx: &mut Context<Self>) -> Div {
-        let body =
-            div()
-                .flex()
-                .flex_col()
-                .gap_3()
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap_2()
-                        .child(div().flex_1().child(Input::new(&self.dir_input)))
-                        .child(ghost_button("location-browse", "Browse", true).on_click(
-                            cx.listener(|wizard, _, window, cx| wizard.browse(window, cx)),
-                        )),
-                )
-                .children(
-                    self.location_error
-                        .clone()
-                        .map(|error| chrome::message(error, theme::danger())),
-                )
-                .child(self.switch_row(
-                    "location-desktop",
-                    "Add a shortcut to the desktop",
-                    self.desktop_shortcut,
-                    |wizard, on| wizard.desktop_shortcut = on,
-                    cx,
-                ))
-                .child(chrome::note("Sonear is also added to the Start menu."))
-                .children(self.warning());
+        let body = div()
+            .flex()
+            .flex_col()
+            .gap_3()
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(div().flex_1().child(Input::new(&self.dir_input)))
+                    .child(
+                        ghost_button("location-browse", t!("installer.location.browse"), true)
+                            .on_click(
+                                cx.listener(|wizard, _, window, cx| wizard.browse(window, cx)),
+                            ),
+                    ),
+            )
+            .children(
+                self.location_error
+                    .clone()
+                    .map(|error| chrome::message(error, theme::danger())),
+            )
+            .child(self.switch_row(
+                "location-desktop",
+                t!("installer.location.desktop").into_owned(),
+                self.desktop_shortcut,
+                |wizard, on| wizard.desktop_shortcut = on,
+                cx,
+            ))
+            .child(chrome::note(t!("installer.location.start_menu")))
+            .children(self.warning());
 
         chrome::page(
-            "Where should Sonear go?",
+            t!("installer.location.title"),
             body,
             div()
                 .flex()
                 .gap_2()
                 .child(
-                    ghost_button("location-back", "Back", true)
+                    ghost_button("location-back", t!("installer.back"), true)
                         .on_click(cx.listener(|wizard, _, _, cx| wizard.go(Page::Welcome, cx))),
                 )
                 .child(
-                    accent_button("location-install", "Install", None, true)
-                        .on_click(cx.listener(|wizard, _, _, cx| wizard.install_from_location(cx))),
+                    accent_button(
+                        "location-install",
+                        t!("installer.location.install"),
+                        None,
+                        true,
+                    )
+                    .on_click(cx.listener(|wizard, _, _, cx| wizard.install_from_location(cx))),
                 ),
         )
     }
@@ -527,9 +550,7 @@ impl Wizard {
             .flex()
             .flex_col()
             .gap_4()
-            .child(chrome::text(
-                "This removes the program and its shortcuts from this computer.",
-            ))
+            .child(chrome::text(t!("installer.confirm.body")))
             .child(
                 div()
                     .flex()
@@ -537,29 +558,27 @@ impl Wizard {
                     .gap_1()
                     .child(self.switch_row(
                         "confirm-delete-data",
-                        "Also delete my data",
+                        t!("installer.confirm.delete_data").into_owned(),
                         self.delete_data,
                         |wizard, on| wizard.delete_data = on,
                         cx,
                     ))
-                    .child(chrome::note(
-                        "History, queue, cache, settings, your login and Soloist.",
-                    )),
+                    .child(chrome::note(t!("installer.confirm.delete_data_note"))),
             )
             .children(self.warning());
 
         chrome::page(
-            "Uninstall Sonear?",
+            t!("installer.confirm.title"),
             body,
             div()
                 .flex()
                 .gap_2()
                 .child(
-                    ghost_button("confirm-cancel", "Cancel", true)
+                    ghost_button("confirm-cancel", t!("common.cancel"), true)
                         .on_click(cx.listener(|_, _, _, cx| cx.quit())),
                 )
                 .child(
-                    danger_button("confirm-uninstall", "Uninstall", true)
+                    danger_button("confirm-uninstall", t!("installer.confirm.uninstall"), true)
                         .on_click(cx.listener(|wizard, _, _, cx| wizard.start_uninstall(cx))),
                 ),
         )
@@ -567,11 +586,11 @@ impl Wizard {
 
     fn working_page(&self) -> Div {
         let title = if self.is_uninstall() {
-            "Removing Sonear"
+            t!("installer.working.remove")
         } else if self.installed().is_some() {
-            "Updating Sonear"
+            t!("installer.working.update")
         } else {
-            "Installing Sonear"
+            t!("installer.working.install")
         };
 
         chrome::page(
@@ -594,40 +613,40 @@ impl Wizard {
                 .map(|problem| chrome::message(problem.clone(), theme::warning()));
 
             return chrome::done_page(
-                "Sonear is uninstalled",
+                t!("installer.finish.uninstalled"),
                 div()
                     .flex()
                     .flex_col()
                     .gap_2()
                     .children(
                         (!self.problems.is_empty())
-                            .then(|| chrome::text("Some things could not be removed:")),
+                            .then(|| chrome::text(t!("installer.finish.problems"))),
                     )
                     .children(problems),
-                accent_button("finish-close", "Close", None, true)
+                accent_button("finish-close", t!("common.close"), None, true)
                     .on_click(cx.listener(|wizard, _, _, cx| wizard.finish(cx))),
             );
         }
 
         chrome::done_page(
-            "Sonear is installed",
+            t!("installer.finish.installed"),
             self.switch_row(
                 "finish-open",
-                "Open Sonear now",
+                t!("installer.finish.open_now").into_owned(),
                 self.open_now,
                 |wizard, on| wizard.open_now = on,
                 cx,
             ),
-            accent_button("finish-done", "Finish", None, true)
+            accent_button("finish-done", t!("installer.finish.finish"), None, true)
                 .on_click(cx.listener(|wizard, _, _, cx| wizard.finish(cx))),
         )
     }
 
     fn failed_page(&self, error: &str, cx: &mut Context<Self>) -> Div {
         let title = if self.is_uninstall() {
-            "Sonear could not be uninstalled"
+            t!("installer.failed.uninstall")
         } else {
-            "Sonear could not be installed"
+            t!("installer.failed.install")
         };
 
         chrome::page(
@@ -645,18 +664,18 @@ impl Wizard {
                         .child(chrome::message(error.to_owned(), theme::danger())),
                 )
                 .children(
-                    (error == CLOSE_AND_RETRY)
-                        .then(|| chrome::note("Quit it from the tray icon, then try again.")),
+                    (error == close_and_retry())
+                        .then(|| chrome::note(t!("installer.failed.quit_hint"))),
                 ),
             div()
                 .flex()
                 .gap_2()
                 .child(
-                    ghost_button("failed-close", "Close", true)
+                    ghost_button("failed-close", t!("common.close"), true)
                         .on_click(cx.listener(|_, _, _, cx| cx.quit())),
                 )
                 .child(
-                    accent_button("failed-retry", "Try again", None, true)
+                    accent_button("failed-retry", t!("common.try_again"), None, true)
                         .on_click(cx.listener(|wizard, _, _, cx| wizard.retry(cx))),
                 ),
         )
@@ -664,7 +683,7 @@ impl Wizard {
 }
 
 /// Pretends to work for the demo build, which touches nothing.
-fn simulate(reporter: &Reporter, steps: &[(f32, &str)]) {
+fn simulate(reporter: &Reporter, steps: &[(f32, std::borrow::Cow<'static, str>)]) {
     for (fraction, label) in steps {
         reporter.step(*fraction, label);
         std::thread::sleep(DEMO_STEP);
@@ -682,12 +701,12 @@ impl Render for Wizard {
             Page::Failed(error) => self.failed_page(&error, cx),
         };
         let title = if self.is_uninstall() {
-            "Uninstall Sonear"
+            t!("installer.title.uninstall")
         } else {
-            "Sonear Setup"
+            t!("installer.title.setup")
         };
 
-        chrome::frame(title, self.steps(), self.step_index(), page)
+        chrome::frame(title.into_owned(), &self.steps(), self.step_index(), page)
     }
 }
 
@@ -702,7 +721,7 @@ mod tests {
             Welcome {
                 title: "Update Sonear to 0.2.0".to_owned(),
                 detail: Some("You have 0.1.0.".to_owned()),
-                button: "Update",
+                button: "Update".to_owned(),
             }
         );
     }

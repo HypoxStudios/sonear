@@ -2,6 +2,7 @@ use std::fs;
 use std::sync::Arc;
 use std::time::Duration;
 
+use rust_i18n::t;
 use sonear_soloist::install::{
     DOWNLOAD_URL, InstallError, InstallProgress, Installer, ProcessProbe, SignatureVerifier,
 };
@@ -108,14 +109,18 @@ impl SoloistManager {
         self.supervisor.stop().await;
 
         if let Err(error) = self.secrets.delete(SOLOIST_API_KEY) {
-            problems.push(format!("Soloist key: {error}"));
+            problems.push(format!(
+                "{}: {}",
+                t!("problem.soloist_key"),
+                error.user_message()
+            ));
         }
 
         let dirs = self.supervisor.dirs();
 
         for (name, dir) in [
-            ("Soloist data", dirs.data()),
-            ("Soloist cache", dirs.cache()),
+            (t!("problem.soloist_data"), dirs.data()),
+            (t!("problem.soloist_cache"), dirs.cache()),
         ] {
             if let Err(error) = fs::remove_dir_all(&dir)
                 && error.kind() != std::io::ErrorKind::NotFound

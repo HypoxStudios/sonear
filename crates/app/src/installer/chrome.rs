@@ -9,13 +9,14 @@ use gpui_kit::{
     ParentElement as _, SharedString, Styled as _, TitlebarOptions, WindowBounds,
     WindowControlArea, WindowOptions, div, px, relative, size,
 };
+use rust_i18n::t;
 
 use crate::theme;
 use crate::ui::widgets::{icon, logo_mark, panel};
 
 /// A fixed-size window centred on the screen. Its title bar is drawn by
 /// `frame`, so there is nothing to maximise.
-pub fn window_options(title: &'static str, cx: &App) -> WindowOptions {
+pub fn window_options(title: SharedString, cx: &App) -> WindowOptions {
     WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
             None,
@@ -23,7 +24,7 @@ pub fn window_options(title: &'static str, cx: &App) -> WindowOptions {
             cx,
         ))),
         titlebar: Some(TitlebarOptions {
-            title: Some(SharedString::new_static(title)),
+            title: Some(title),
             ..TitleBar::title_bar_options()
         }),
         is_resizable: false,
@@ -31,7 +32,7 @@ pub fn window_options(title: &'static str, cx: &App) -> WindowOptions {
     }
 }
 
-fn title_bar(title: &'static str) -> Div {
+fn title_bar(title: SharedString) -> Div {
     div()
         .relative()
         .flex()
@@ -104,12 +105,18 @@ pub fn rail_header() -> Div {
             div()
                 .text_size(px(12.))
                 .text_color(theme::text_tertiary())
-                .child(format!("Version {}", env!("CARGO_PKG_VERSION"))),
+                .child(
+                    t!(
+                        "installer.rail_version",
+                        version = env!("CARGO_PKG_VERSION")
+                    )
+                    .into_owned(),
+                ),
         )
 }
 
 /// One row per step, with the steps before `current` ticked.
-pub fn step_list(steps: &[&'static str], current: usize) -> Div {
+pub fn step_list(steps: &[SharedString], current: usize) -> Div {
     let list = steps.iter().enumerate().map(|(index, label)| {
         let color = if index <= current {
             theme::text_primary()
@@ -129,14 +136,14 @@ pub fn step_list(steps: &[&'static str], current: usize) -> Div {
                     .when(index == current, |this| {
                         this.font_weight(FontWeight::MEDIUM)
                     })
-                    .child(*label),
+                    .child(label.clone()),
             )
     });
 
     div().flex().flex_col().gap_3().children(list)
 }
 
-fn rail(steps: &[&'static str], current: usize) -> Div {
+fn rail(steps: &[SharedString], current: usize) -> Div {
     panel()
         .w(theme::WIZARD_RAIL_WIDTH)
         .flex_none()
@@ -150,8 +157,8 @@ fn rail(steps: &[&'static str], current: usize) -> Div {
 /// The whole window: title bar, rail and `page`. With no `steps` the rail
 /// shows only the logo.
 pub fn frame(
-    title: &'static str,
-    steps: &[&'static str],
+    title: impl Into<SharedString>,
+    steps: &[SharedString],
     current: usize,
     page: impl IntoElement,
 ) -> Div {
@@ -162,7 +169,7 @@ pub fn frame(
         .bg(theme::window())
         .font_family(theme::FONT)
         .text_color(theme::text_primary())
-        .child(title_bar(title))
+        .child(title_bar(title.into()))
         .child(
             div()
                 .flex()

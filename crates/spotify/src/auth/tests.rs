@@ -370,3 +370,25 @@ async fn no_refresh_token_means_login() {
 fn secrets_never_print() {
     assert_eq!(format!("{:?}", Secret::new("hunter2")), "[redacted]");
 }
+
+#[test]
+fn the_page_is_served_in_spanish() {
+    let approved = render_page_in(Page::Approved, "es");
+
+    assert!(approved.contains("<html lang=\"es\">"));
+    assert!(approved.contains("<h1>Todo listo aquí</h1>"));
+    assert!(approved.contains("Spotify aprobó a Sonear. Vuelve a la app para continuar."));
+    assert!(approved.contains("<footer>Puedes cerrar esta pestaña.</footer>"));
+    assert!(approved.contains("<body class=\"on\">"));
+
+    assert!(render_page_in(Page::Denied, "es").contains("<h1>Sin conectar</h1>"));
+    assert!(render_page_in(Page::Invalid, "es").contains("<h1>Este enlace no es válido</h1>"));
+
+    for outcome in [Page::Approved, Page::Denied, Page::Invalid] {
+        for locale in ["en", "es"] {
+            assert!(!render_page_in(outcome, locale).contains("{{"));
+        }
+    }
+
+    assert!(render_page_in(Page::Approved, "en").contains("<html lang=\"en\">"));
+}

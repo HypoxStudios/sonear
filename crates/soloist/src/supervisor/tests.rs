@@ -258,7 +258,7 @@ async fn retries_with_backoff_then_fails() {
     };
 
     assert_eq!(fx.spawner.spawn_count(), 6);
-    assert!(reason.contains("code 1"));
+    assert!(reason.to_string().contains("code 1"));
     assert!(recent_log.iter().any(|line| line == "boom"));
 
     let waited: Duration = BACKOFF.iter().sum();
@@ -279,7 +279,10 @@ async fn missing_port_file_times_out() {
         unreachable!()
     };
 
-    assert!(reason.contains("did not report its port"), "{reason}");
+    assert!(
+        reason.to_string().contains("did not report its port"),
+        "{reason}"
+    );
     assert_eq!(fx.spawner.spawn_count(), 6);
     assert!(begin.elapsed() >= Duration::from_secs(10 * 6));
 }
@@ -317,7 +320,7 @@ async fn recent_log_never_contains_the_key() {
 
     assert!(recent_log.iter().all(|line| !line.contains(KEY)));
     assert!(recent_log.iter().any(|line| line.contains(REDACTED)));
-    assert!(!reason.contains(KEY));
+    assert!(!reason.to_string().contains(KEY));
     assert!(
         fx.supervisor
             .recent_log()

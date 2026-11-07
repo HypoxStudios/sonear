@@ -8,6 +8,7 @@ use gpui_kit::{
     Action, App, KeyBinding, KeyBindingContextPredicate, Keystroke, NoAction, OperatingSystem,
     actions,
 };
+use rust_i18n::t;
 use tracing::warn;
 
 actions!(
@@ -58,25 +59,31 @@ pub enum Group {
 impl Group {
     pub const ALL: [Self; 4] = [Self::Playback, Self::Queue, Self::Navigation, Self::General];
 
-    pub fn label(self) -> &'static str {
+    pub fn label(self) -> String {
         match self {
-            Self::Playback => "Playback",
-            Self::Queue => "Queue",
-            Self::Navigation => "Navigation",
-            Self::General => "General",
+            Self::Playback => t!("group.playback"),
+            Self::Queue => t!("group.queue"),
+            Self::Navigation => t!("group.navigation"),
+            Self::General => t!("group.general"),
         }
+        .into_owned()
     }
 }
 
 pub struct Shortcut {
     pub id: &'static str,
-    pub label: &'static str,
     pub group: Group,
     pub default: Option<&'static str>,
     action: fn() -> Box<dyn Action>,
 }
 
 impl Shortcut {
+    pub fn label(&self) -> String {
+        let key = format!("shortcut.{}", self.id);
+
+        t!(&key).into_owned()
+    }
+
     pub fn action(&self) -> Box<dyn Action> {
         (self.action)()
     }
@@ -97,10 +104,9 @@ impl Shortcut {
 }
 
 macro_rules! shortcut {
-    ($id:literal, $label:literal, $group:ident, $default:expr, $action:ident) => {
+    ($id:literal, $group:ident, $default:expr, $action:ident) => {
         Shortcut {
             id: $id,
-            label: $label,
             group: Group::$group,
             default: $default,
             action: || Box::new($action),
@@ -109,132 +115,40 @@ macro_rules! shortcut {
 }
 
 pub static SHORTCUTS: [Shortcut; 24] = [
-    shortcut!(
-        "palette",
-        "Command palette",
-        General,
-        Some("ctrl-k"),
-        OpenPalette
-    ),
-    shortcut!(
-        "shortcuts",
-        "Keyboard shortcuts",
-        General,
-        Some("ctrl-/"),
-        OpenShortcuts
-    ),
+    shortcut!("palette", General, Some("ctrl-k"), OpenPalette),
+    shortcut!("shortcuts", General, Some("ctrl-/"), OpenShortcuts),
     shortcut!(
         "toggle_mini_player",
-        "Mini player",
         General,
         Some("ctrl-shift-m"),
         ToggleMiniPlayer
     ),
-    shortcut!(
-        "settings",
-        "Settings",
-        General,
-        Some("ctrl-,"),
-        OpenSettings
-    ),
-    shortcut!(
-        "play_pause",
-        "Play or pause",
-        Playback,
-        Some("space"),
-        TogglePlayPause
-    ),
-    shortcut!(
-        "next",
-        "Next track",
-        Playback,
-        Some("ctrl-right"),
-        NextTrack
-    ),
-    shortcut!(
-        "previous",
-        "Previous track",
-        Playback,
-        Some("ctrl-left"),
-        PreviousTrack
-    ),
-    shortcut!(
-        "seek_forward",
-        "Forward 10 seconds",
-        Playback,
-        Some("shift-right"),
-        SeekForward
-    ),
-    shortcut!(
-        "seek_back",
-        "Back 10 seconds",
-        Playback,
-        Some("shift-left"),
-        SeekBack
-    ),
-    shortcut!(
-        "volume_up",
-        "Volume up",
-        Playback,
-        Some("ctrl-up"),
-        VolumeUp
-    ),
-    shortcut!(
-        "volume_down",
-        "Volume down",
-        Playback,
-        Some("ctrl-down"),
-        VolumeDown
-    ),
-    shortcut!(
-        "shuffle",
-        "Shuffle",
-        Playback,
-        Some("ctrl-s"),
-        ToggleShuffle
-    ),
-    shortcut!("repeat", "Repeat", Playback, Some("ctrl-r"), CycleRepeat),
-    shortcut!(
-        "like",
-        "Like current track",
-        Playback,
-        Some("alt-shift-b"),
-        LikeCurrent
-    ),
-    shortcut!(
-        "toggle_queue",
-        "Show or hide queue",
-        Queue,
-        Some("alt-shift-q"),
-        ToggleQueue
-    ),
-    shortcut!(
-        "toggle_lyrics",
-        "Lyrics",
-        Queue,
-        Some("ctrl-shift-l"),
-        ToggleLyrics
-    ),
-    shortcut!("clear_queue", "Clear queue", Queue, None, ClearQueue),
+    shortcut!("settings", General, Some("ctrl-,"), OpenSettings),
+    shortcut!("play_pause", Playback, Some("space"), TogglePlayPause),
+    shortcut!("next", Playback, Some("ctrl-right"), NextTrack),
+    shortcut!("previous", Playback, Some("ctrl-left"), PreviousTrack),
+    shortcut!("seek_forward", Playback, Some("shift-right"), SeekForward),
+    shortcut!("seek_back", Playback, Some("shift-left"), SeekBack),
+    shortcut!("volume_up", Playback, Some("ctrl-up"), VolumeUp),
+    shortcut!("volume_down", Playback, Some("ctrl-down"), VolumeDown),
+    shortcut!("shuffle", Playback, Some("ctrl-s"), ToggleShuffle),
+    shortcut!("repeat", Playback, Some("ctrl-r"), CycleRepeat),
+    shortcut!("like", Playback, Some("alt-shift-b"), LikeCurrent),
+    shortcut!("toggle_queue", Queue, Some("alt-shift-q"), ToggleQueue),
+    shortcut!("toggle_lyrics", Queue, Some("ctrl-shift-l"), ToggleLyrics),
+    shortcut!("clear_queue", Queue, None, ClearQueue),
     shortcut!(
         "toggle_sidebar",
-        "Show or hide sidebar",
         Navigation,
         Some("alt-shift-l"),
         ToggleSidebar
     ),
-    shortcut!("go_home", "Go to Home", Navigation, None, GoHome),
-    shortcut!("go_search", "Search", Navigation, Some("ctrl-l"), GoSearch),
-    shortcut!(
-        "go_library",
-        "Go to Your Library",
-        Navigation,
-        None,
-        GoLibrary
-    ),
-    shortcut!("go_liked", "Go to Liked Songs", Navigation, None, GoLiked),
-    shortcut!("go_history", "Go to History", Navigation, None, GoHistory),
-    shortcut!("back", "Go back", Navigation, Some("alt-left"), GoBack),
+    shortcut!("go_home", Navigation, None, GoHome),
+    shortcut!("go_search", Navigation, Some("ctrl-l"), GoSearch),
+    shortcut!("go_library", Navigation, None, GoLibrary),
+    shortcut!("go_liked", Navigation, None, GoLiked),
+    shortcut!("go_history", Navigation, None, GoHistory),
+    shortcut!("back", Navigation, Some("alt-left"), GoBack),
 ];
 
 pub type Binding = (&'static Shortcut, Option<String>);

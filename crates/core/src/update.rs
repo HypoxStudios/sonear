@@ -13,6 +13,7 @@ use futures_util::StreamExt as _;
 use minisign_verify::{PublicKey, Signature};
 use reqwest::redirect::Policy;
 use reqwest::{Response, StatusCode, Url, header};
+use rust_i18n::t;
 use serde::Deserialize;
 use thiserror::Error;
 use tokio::io::AsyncWriteExt as _;
@@ -60,6 +61,22 @@ pub enum UpdateError {
 }
 
 impl UpdateError {
+    /// The error in the interface language. `Display` stays English for logs.
+    pub fn user_message(&self) -> String {
+        match self {
+            Self::Network(detail) => t!("update.network", detail = detail),
+            Self::Status(status) => t!("update.status", status = status),
+            Self::Release(detail) => t!("update.release", detail = detail),
+            Self::TooLarge => t!("update.too_large"),
+            Self::Signature(detail) => t!("update.signature", detail = detail),
+            Self::WrongVersion { expected, found } => {
+                t!("update.wrong_version", found = found, expected = expected)
+            }
+            Self::Io(error) => t!("update.io", detail = error.to_string()),
+        }
+        .into_owned()
+    }
+
     /// Whether the file itself is to blame, not the connection.
     fn is_untrusted(&self) -> bool {
         matches!(self, Self::Signature(_) | Self::WrongVersion { .. })

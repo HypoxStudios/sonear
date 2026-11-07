@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 use base64::Engine as _;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use rand::Rng as _;
+use rust_i18n::t;
 use serde::Deserialize;
 use sha2::{Digest as _, Sha256};
 use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
@@ -187,19 +188,47 @@ async fn respond(stream: &mut TcpStream, status: &str, headers: &str, body: &str
 
 /// Answers with the page left in the browser. Only fixed text reaches it, never
 /// values from the request.
-async fn respond_page(
-    stream: &mut TcpStream,
-    status: &str,
-    state: &str,
-    title: &str,
-    message: &str,
-) {
-    let page = PAGE_TEMPLATE
-        .replace("{{state}}", state)
-        .replace("{{title}}", title)
-        .replace("{{message}}", message);
+async fn respond_page(stream: &mut TcpStream, status: &str, outcome: Page) {
+    respond(stream, status, PAGE_HEADERS, &render_page(outcome)).await;
+}
 
-    respond(stream, status, PAGE_HEADERS, &page).await;
+#[derive(Clone, Copy)]
+enum Page {
+    Approved,
+    Denied,
+    Invalid,
+}
+
+/// The page in the interface language, which the app has already set.
+fn render_page(outcome: Page) -> String {
+    render_page_in(outcome, &rust_i18n::locale())
+}
+
+fn render_page_in(outcome: Page, locale: &str) -> String {
+    let (state, title, message) = match outcome {
+        Page::Approved => (
+            "on",
+            t!("page.approved.title", locale = locale),
+            t!("page.approved.message", locale = locale),
+        ),
+        Page::Denied => (
+            "off",
+            t!("page.denied.title", locale = locale),
+            t!("page.denied.message", locale = locale),
+        ),
+        Page::Invalid => (
+            "off",
+            t!("page.invalid.title", locale = locale),
+            t!("page.invalid.message", locale = locale),
+        ),
+    };
+
+    PAGE_TEMPLATE
+        .replace("{{lang}}", locale)
+        .replace("{{state}}", state)
+        .replace("{{title}}", &title)
+        .replace("{{message}}", &message)
+        .replace("{{footer}}", &t!("page.footer", locale = locale))
 }
 
 /// Waits for the single redirect from Spotify and returns the code. Requests
@@ -227,37 +256,15 @@ pub async fn wait_for_callback(
                     respond(&mut stream, status, TEXT_HEADERS, "Not found").await;
                 }
                 Callback::Rejected => {
-                    respond_page(
-                        &mut stream,
-                        status,
-                        "off",
-                        "This link isn\u{2019}t valid",
-                        "It may be from an earlier attempt. Start again from Sonear.",
-                    )
-                    .await;
+                    respond_page(&mut stream, status, Page::Invalid).await;
                 }
                 Callback::Code(code) => {
-                    respond_page(
-                        &mut stream,
-                        status,
-                        "on",
-                        "All done here",
-                        "Spotify approved Sonear. Head back to the app to continue.",
-                    )
-                    .await;
+                    respond_page(&mut stream, status, Page::Approved).await;
 
                     return Ok(code);
                 }
                 Callback::Denied(reason) => {
-                    respond_page(
-                        &mut stream,
-                        status,
-                        "off",
-                        "Not connected",
-                        "Sonear didn\u{2019}t get access to your Spotify account. You can try \
-                         again from the app.",
-                    )
-                    .await;
+                    respond_page(&mut stream, status, Page::Denied).await;
 
                     return Err(AuthError::Denied(reason));
                 }

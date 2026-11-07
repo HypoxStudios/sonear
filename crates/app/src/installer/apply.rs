@@ -13,6 +13,7 @@ use gpui_kit::{
     AppContext as _, Context, IntoElement, ParentElement as _, Render,
     StatefulInteractiveElement as _, Styled as _, Task, Window, div,
 };
+use rust_i18n::t;
 use sonear_core::data_dir::same_place;
 use tracing::{error, info};
 
@@ -27,15 +28,14 @@ use crate::theme;
 use crate::ui::widgets::accent_button;
 
 const DEMO: bool = cfg!(feature = "demo");
-const TITLE: &str = "Updating Sonear";
 const MIN_WORK: Duration = Duration::from_millis(1200);
 const DEMO_STEP: Duration = Duration::from_millis(700);
 const DEMO_STEPS: [(f32, &str); 5] = [
-    (0.1, "Preparing"),
-    (0.4, "Copying Sonear"),
-    (0.7, "Replacing the program"),
-    (0.9, "Adding shortcuts"),
-    (1., "Done"),
+    (0.1, "installer.progress.preparing"),
+    (0.4, "installer.progress.copying"),
+    (0.7, "installer.progress.replacing"),
+    (0.9, "installer.progress.shortcuts"),
+    (1., "installer.progress.done"),
 ];
 
 /// Starts the downloaded update `file` to replace the Sonear in `install_dir`,
@@ -55,7 +55,7 @@ pub fn launch(file: &Path, install_dir: &Path) -> Result<u32, String> {
 
     started
         .map(|child| child.id())
-        .map_err(|error| format!("Could not start the update: {error}"))
+        .map_err(|error| t!("apply.start_failed", error = error.to_string()).into_owned())
 }
 
 /// What a finished update hands back.
@@ -86,12 +86,12 @@ fn run_apply(dir: &Path, reporter: &Reporter) -> Result<Applied, String> {
         super::installed().is_some_and(|installed| same_place(&installed.dir, dir));
 
     if !installed_here {
-        return Err("Sonear is not installed in that folder.".to_owned());
+        return Err(t!("apply.not_installed_here").into_owned());
     }
 
-    let source =
-        std::env::current_exe().map_err(|error| format!("Could not find the update: {error}"))?;
-    let target = Target::real(dir.to_owned()).map_err(|error| error.to_string())?;
+    let source = std::env::current_exe()
+        .map_err(|error| t!("apply.no_update_file", error = error.to_string()).into_owned())?;
+    let target = Target::real(dir.to_owned()).map_err(|error| error.user_message())?;
     let options = InstallOptions {
         desktop_shortcut: false,
         is_update: true,
@@ -100,7 +100,7 @@ fn run_apply(dir: &Path, reporter: &Reporter) -> Result<Applied, String> {
     ops::install(&target, &source, options, &|fraction, label| {
         reporter.step(fraction, label);
     })
-    .map_err(|error| error.to_string())?;
+    .map_err(|error| error.user_message())?;
 
     Ok(Applied {
         guard: Some(guard),
@@ -109,8 +109,8 @@ fn run_apply(dir: &Path, reporter: &Reporter) -> Result<Applied, String> {
 }
 
 fn simulate_apply(reporter: &Reporter) {
-    for (fraction, label) in DEMO_STEPS {
-        reporter.step(fraction, label);
+    for (fraction, key) in DEMO_STEPS {
+        reporter.step(fraction, &t!(key));
         std::thread::sleep(DEMO_STEP);
     }
 }
@@ -144,7 +144,7 @@ impl Applier {
             stage: Stage::Working,
             job: Some(job),
             fraction: 0.,
-            label: "Waiting for Sonear to close".to_owned(),
+            label: t!("installer.progress.waiting").into_owned(),
             dir,
             guard: None,
             busy,
@@ -211,30 +211,30 @@ impl Render for Applier {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let page = match &self.stage {
             Stage::Working => chrome::page(
-                TITLE,
+                t!("installer.title.update"),
                 div()
                     .flex()
                     .flex_col()
                     .gap_3()
                     .child(chrome::progress_bar(self.fraction))
                     .child(chrome::note(self.label.clone()))
-                    .child(chrome::note("Sonear opens again when it is done.")),
+                    .child(chrome::note(t!("installer.opens_again"))),
                 div(),
             ),
             Stage::Failed(error) => chrome::page(
-                "Sonear could not be updated",
+                t!("apply.failed_title"),
                 div()
                     .flex()
                     .flex_col()
                     .gap_3()
                     .child(chrome::message(error.clone(), theme::danger()))
-                    .child(chrome::text("Your current version still works.")),
-                accent_button("apply-back", "Back to Sonear", None, true)
+                    .child(chrome::text(t!("apply.current_works"))),
+                accent_button("apply-back", t!("installer.back_to_sonear"), None, true)
                     .on_click(cx.listener(|applier, _, _, cx| applier.back_to_sonear(cx))),
             ),
         };
 
-        chrome::frame(TITLE, &[], 0, page)
+        chrome::frame(t!("installer.title.update"), &[], 0, page)
     }
 }
 
@@ -242,12 +242,15 @@ impl Render for Applier {
 /// stays up until this one has the focus, so the wait for it to exit happens
 /// behind the window.
 pub fn run(dir: PathBuf, after_pid: Option<u32>) {
-    super::run_window(TITLE, move |window, cx| {
-        let busy = Arc::new(AtomicBool::new(true));
-        let closing = busy.clone();
+    super::run_window(
+        t!("installer.title.update").into_owned(),
+        move |window, cx| {
+            let busy = Arc::new(AtomicBool::new(true));
+            let closing = busy.clone();
 
-        window.on_window_should_close(cx, move |_, _| !closing.load(Ordering::Relaxed));
+            window.on_window_should_close(cx, move |_, _| !closing.load(Ordering::Relaxed));
 
-        cx.new(|cx| Applier::new(dir, after_pid, busy, cx))
-    });
+            cx.new(|cx| Applier::new(dir, after_pid, busy, cx))
+        },
+    );
 }

@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::rc::Rc;
 
 use gpui_kit::component::{VirtualListScrollHandle, v_virtual_list};
@@ -164,14 +165,14 @@ impl ArtistPage {
         let top = self.top_tracks().len();
 
         if top > 0 {
-            rows.push(Row::Heading("Popular"));
+            rows.push(Row::Heading("artist.popular"));
             rows.extend((0..top).map(Row::Track));
         }
 
         let count = self.albums.items.len();
 
         if count > 0 {
-            rows.push(Row::Heading("Albums"));
+            rows.push(Row::Heading("artist.albums"));
 
             for start in (0..count).step_by(columns) {
                 rows.push(Row::Cards(start, (start + columns).min(count)));
@@ -209,7 +210,11 @@ impl ArtistPage {
         let play = {
             let mut button = accent_button(
                 "artist-play",
-                if playing_here { "Pause" } else { "Play" },
+                if playing_here {
+                    t!("common.pause")
+                } else {
+                    t!("common.play")
+                },
                 Some(play_pause_icon(playing_here, 14., theme::on_accent())),
                 true,
             )
@@ -242,7 +247,7 @@ impl ArtistPage {
                     .flex_col()
                     .gap_2()
                     .min_w_0()
-                    .child(label_caps("Artist"))
+                    .child(label_caps(t!("route.artist")))
                     .child(
                         div()
                             .truncate()
@@ -284,7 +289,7 @@ impl ArtistPage {
                 .py_4()
                 .text_size(px(13.))
                 .text_color(theme::text_secondary())
-                .child("No albums to show.")
+                .child(t!("artist.no_albums"))
                 .into_any_element();
         }
 
@@ -324,7 +329,7 @@ impl ArtistPage {
                                 .px_6()
                                 .pb_2()
                                 .h(px(HEADING_HEIGHT))
-                                .child(heading(*title))
+                                .child(heading(t!(*title)))
                                 .into_any_element(),
                             Row::Track(position) => {
                                 let track = this.top_tracks().get(*position)?;

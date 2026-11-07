@@ -1,0 +1,1430 @@
+_version: 2
+
+apply.current_works:
+  en: "Your current version still works."
+  es: "Tu versión actual sigue funcionando."
+apply.failed_title:
+  en: "Sonear could not be updated"
+  es: "No se pudo actualizar Sonear"
+apply.no_update_file:
+  en: "Could not find the update: %{error}"
+  es: "No se encontró la actualización: %{error}"
+apply.not_installed_here:
+  en: "Sonear is not installed in that folder."
+  es: "Sonear no está instalado en esa carpeta."
+apply.start_failed:
+  en: "Could not start the update: %{error}"
+  es: "No se pudo iniciar la actualización: %{error}"
+
+artist.albums:
+  en: "Albums"
+  es: "Álbumes"
+artist.no_albums:
+  en: "No albums to show."
+  es: "No hay álbumes para mostrar."
+artist.popular:
+  en: "Popular"
+  es: "Populares"
+
+common.cancel:
+  en: "Cancel"
+  es: "Cancelar"
+common.close:
+  en: "Close"
+  es: "Cerrar"
+common.continue:
+  en: "Continue"
+  es: "Continuar"
+common.copied:
+  en: "Copied"
+  es: "Copiado"
+common.copy:
+  en: "Copy"
+  es: "Copiar"
+common.download_update:
+  en: "Download update"
+  es: "Descargar actualización"
+common.key_placeholder:
+  en: "Paste your Soloist key"
+  es: "Pega tu clave de Soloist"
+common.load_more_failed:
+  en: "Couldn’t load more. %{error}"
+  es: "No se pudo cargar más. %{error}"
+common.local_file:
+  en: "Local file"
+  es: "Archivo local"
+common.log_out:
+  en: "Log out"
+  es: "Cerrar sesión"
+common.open_spotify:
+  en: "Open Spotify"
+  es: "Abrir Spotify"
+common.pause:
+  en: "Pause"
+  es: "Pausar"
+common.play:
+  en: "Play"
+  es: "Reproducir"
+common.retry:
+  en: "Retry"
+  es: "Reintentar"
+common.settings:
+  en: "Settings"
+  es: "Configuración"
+common.shortcuts:
+  en: "Keyboard shortcuts"
+  es: "Atajos de teclado"
+common.tracks_one:
+  en: "1 track"
+  es: "1 canción"
+common.tracks_other:
+  en: "%{count} tracks"
+  es: "%{count} canciones"
+common.try_again:
+  en: "Try again"
+  es: "Intentar de nuevo"
+
+date.mo.apr:
+  en: "Apr"
+  es: "abr"
+date.mo.aug:
+  en: "Aug"
+  es: "ago"
+date.mo.dec:
+  en: "Dec"
+  es: "dic"
+date.mo.feb:
+  en: "Feb"
+  es: "feb"
+date.mo.jan:
+  en: "Jan"
+  es: "ene"
+date.mo.jul:
+  en: "Jul"
+  es: "jul"
+date.mo.jun:
+  en: "Jun"
+  es: "jun"
+date.mo.mar:
+  en: "Mar"
+  es: "mar"
+date.mo.may:
+  en: "May"
+  es: "may"
+date.mo.nov:
+  en: "Nov"
+  es: "nov"
+date.mo.oct:
+  en: "Oct"
+  es: "oct"
+date.mo.sep:
+  en: "Sep"
+  es: "sep"
+date.played_at:
+  en: "%{weekday}, %{month} %{day} · %{time}"
+  es: "%{weekday}, %{day} %{month} · %{time}"
+date.wd.fri:
+  en: "Fri"
+  es: "vie"
+date.wd.mon:
+  en: "Mon"
+  es: "lun"
+date.wd.sat:
+  en: "Sat"
+  es: "sáb"
+date.wd.sun:
+  en: "Sun"
+  es: "dom"
+date.wd.thu:
+  en: "Thu"
+  es: "jue"
+date.wd.tue:
+  en: "Tue"
+  es: "mar"
+date.wd.wed:
+  en: "Wed"
+  es: "mié"
+
+detail.by:
+  en: "By %{owner}"
+  es: "Por %{owner}"
+detail.empty:
+  en: "Nothing here yet."
+  es: "Todavía no hay nada aquí."
+detail.liked_description:
+  en: "Everything you've saved."
+  es: "Todo lo que has guardado."
+detail.not_exposed:
+  en: "Spotify doesn't let apps list the tracks in playlists you don't own. Press Play, and what's coming up appears under Up next."
+  es: "Spotify no permite que las apps lean las canciones de las playlists que no son tuyas. Presiona Reproducir y lo que sigue aparecerá en A continuación."
+detail.seen_of_total:
+  en: "Spotify doesn't let apps list the tracks in playlists you don't own, so this shows the %{seen} of %{total} tracks seen while playing. More appear as it plays."
+  es: "Spotify no permite que las apps lean las canciones de las playlists que no son tuyas, así que aquí se muestran las %{seen} de %{total} canciones vistas durante la reproducción. Aparecen más a medida que se reproduce."
+detail.seen_only:
+  en: "Spotify doesn't let apps list the tracks in playlists you don't own, so this shows the %{seen} tracks seen while playing. More appear as it plays."
+  es: "Spotify no permite que las apps lean las canciones de las playlists que no son tuyas, así que aquí se muestran las %{seen} canciones vistas durante la reproducción. Aparecen más a medida que se reproduce."
+
+duration.hours:
+  en: "%{hours} hr"
+  es: "%{hours} h"
+duration.hours_minutes:
+  en: "%{hours} hr %{minutes} min"
+  es: "%{hours} h %{minutes} min"
+duration.minutes:
+  en: "%{minutes} min"
+  es: "%{minutes} min"
+
+greeting.afternoon:
+  en: "Good afternoon."
+  es: "Buenas tardes."
+greeting.evening:
+  en: "Good evening."
+  es: "Buenas noches."
+greeting.morning:
+  en: "Good morning."
+  es: "Buenos días."
+
+group.general:
+  en: "General"
+  es: "General"
+group.navigation:
+  en: "Navigation"
+  es: "Navegación"
+group.playback:
+  en: "Playback"
+  es: "Reproducción"
+group.queue:
+  en: "Queue"
+  es: "Fila"
+
+history.clear:
+  en: "Clear history"
+  es: "Eliminar historial"
+history.empty.body:
+  en: "Plays from Spotify show up here after the first sync, and new ones every 15 minutes."
+  es: "Las reproducciones de Spotify aparecen aquí después de la primera sincronización, y las nuevas cada 15 minutos."
+history.empty.title:
+  en: "No history yet"
+  es: "Todavía no hay historial"
+
+home.hero.library:
+  en: "Your library"
+  es: "Tu biblioteca"
+home.hero.playlist:
+  en: "Your playlist"
+  es: "Tu playlist"
+home.nothing_yet:
+  en: "Nothing to pick up yet. What you play shows up here."
+  es: "Todavía no hay nada para retomar. Lo que reproduzcas aparecerá aquí."
+home.on_repeat:
+  en: "On repeat"
+  es: "En repetición"
+home.pick_up:
+  en: "Pick up where you left off."
+  es: "Retoma donde te quedaste."
+home.recent:
+  en: "Recently played"
+  es: "Reproducido recientemente"
+home.search_placeholder:
+  en: "Search music..."
+  es: "Buscar música..."
+home.your_playlists:
+  en: "Your playlists"
+  es: "Tus playlists"
+
+install.downloading:
+  en: "Downloading %{received}"
+  es: "Descargando %{received}"
+install.downloading_of:
+  en: "Downloading %{received} of %{total}"
+  es: "Descargando %{received} de %{total}"
+install.failed:
+  en: "The download was not installed: %{reason}"
+  es: "La descarga no se instaló: %{reason}"
+install.installing:
+  en: "Installing"
+  es: "Instalando"
+install.verifying:
+  en: "Checking that the download is signed by Spotify"
+  es: "Comprobando que la descarga esté firmada por Spotify"
+
+installer.back:
+  en: "Back"
+  es: "Atrás"
+installer.back_to_sonear:
+  en: "Back to Sonear"
+  es: "Volver a Sonear"
+installer.check.cant_write:
+  en: "Sonear can't write to this folder: %{error}"
+  es: "Sonear no puede escribir en esta carpeta: %{error}"
+installer.check.full_path:
+  en: "Enter a full path, such as C:\\Users\\you\\Sonear."
+  es: "Escribe una ruta completa, como C:\\Users\\tu-usuario\\Sonear."
+installer.check.has_files:
+  en: "This folder already has files in it. Pick an empty one, or add \\Sonear to the path."
+  es: "Esta carpeta ya tiene archivos. Elige una vacía o agrega \\Sonear a la ruta."
+installer.check.inside_data:
+  en: "Pick a folder outside Sonear's data folders."
+  es: "Elige una carpeta fuera de las carpetas de datos de Sonear."
+installer.check.no_admin:
+  en: "You can't write here without administrator rights. Pick a folder in your user profile."
+  es: "No puedes escribir aquí sin permisos de administrador. Elige una carpeta de tu perfil de usuario."
+installer.check.whole_drive:
+  en: "Pick a folder, not a whole drive."
+  es: "Elige una carpeta, no una unidad completa."
+installer.close_and_retry:
+  en: "Close Sonear and try again."
+  es: "Cierra Sonear e inténtalo de nuevo."
+installer.confirm.body:
+  en: "This removes the program and its shortcuts from this computer."
+  es: "Esto quita el programa y sus accesos directos de esta computadora."
+installer.confirm.delete_data:
+  en: "Also delete my data"
+  es: "Eliminar también mis datos"
+installer.confirm.delete_data_note:
+  en: "History, queue, cache, settings, your login and Soloist."
+  es: "Historial, fila, caché, configuración, tu sesión y Soloist."
+installer.confirm.title:
+  en: "Uninstall Sonear?"
+  es: "¿Desinstalar Sonear?"
+installer.confirm.uninstall:
+  en: "Uninstall"
+  es: "Desinstalar"
+installer.data_untouched:
+  en: "Your data is not touched."
+  es: "No se tocan tus datos."
+installer.error.folder:
+  en: "Could not find the %{place} folder: %{detail}"
+  es: "No se encontró la carpeta %{place}: %{detail}"
+installer.error.no_data_folder:
+  en: "Could not find your data folder."
+  es: "No se encontró tu carpeta de datos."
+installer.error.shortcut:
+  en: "Could not create a shortcut: %{detail}"
+  es: "No se pudo crear un acceso directo: %{detail}"
+installer.error.step:
+  en: "Could not %{step}: %{detail}"
+  es: "No se pudo %{step}: %{detail}"
+installer.failed.install:
+  en: "Sonear could not be installed"
+  es: "No se pudo instalar Sonear"
+installer.failed.quit_hint:
+  en: "Quit it from the tray icon, then try again."
+  es: "Sal de Sonear desde el ícono de la bandeja del sistema y vuelve a intentarlo."
+installer.failed.uninstall:
+  en: "Sonear could not be uninstalled"
+  es: "No se pudo desinstalar Sonear"
+installer.finish.finish:
+  en: "Finish"
+  es: "Finalizar"
+installer.finish.installed:
+  en: "Sonear is installed"
+  es: "Sonear está instalado"
+installer.finish.open_now:
+  en: "Open Sonear now"
+  es: "Abrir Sonear ahora"
+installer.finish.problems:
+  en: "Some things could not be removed:"
+  es: "No se pudieron quitar algunas cosas:"
+installer.finish.uninstalled:
+  en: "Sonear is uninstalled"
+  es: "Sonear está desinstalado"
+installer.folder_placeholder:
+  en: "Install folder"
+  es: "Carpeta de instalación"
+installer.location.browse:
+  en: "Browse"
+  es: "Examinar"
+installer.location.desktop:
+  en: "Add a shortcut to the desktop"
+  es: "Agregar un acceso directo al escritorio"
+installer.location.install:
+  en: "Install"
+  es: "Instalar"
+installer.location.start_menu:
+  en: "Sonear is also added to the Start menu."
+  es: "Sonear también se agrega al menú Inicio."
+installer.location.title:
+  en: "Where should Sonear go?"
+  es: "¿Dónde quieres instalar Sonear?"
+installer.not_installed:
+  en: "Sonear is not installed."
+  es: "Sonear no está instalado."
+installer.opens_again:
+  en: "Sonear opens again when it is done."
+  es: "Sonear se abre de nuevo al terminar."
+installer.place.desktop:
+  en: "Desktop"
+  es: "Escritorio"
+installer.place.start_menu:
+  en: "Start menu"
+  es: "Menú Inicio"
+installer.progress.adding_license:
+  en: "Adding the license"
+  es: "Agregando la licencia"
+installer.progress.copying:
+  en: "Copying Sonear"
+  es: "Copiando Sonear"
+installer.progress.deleting_data:
+  en: "Deleting your data"
+  es: "Eliminando tus datos"
+installer.progress.done:
+  en: "Done"
+  es: "Listo"
+installer.progress.preparing:
+  en: "Preparing"
+  es: "Preparando"
+installer.progress.registering:
+  en: "Registering with Windows"
+  es: "Registrando en Windows"
+installer.progress.removing_apps:
+  en: "Removing it from installed apps"
+  es: "Quitándolo de las apps instaladas"
+installer.progress.removing_program:
+  en: "Removing the program"
+  es: "Quitando el programa"
+installer.progress.removing_registrations:
+  en: "Removing Windows registrations"
+  es: "Quitando los registros de Windows"
+installer.progress.removing_shortcuts:
+  en: "Removing shortcuts"
+  es: "Quitando los accesos directos"
+installer.progress.replacing:
+  en: "Replacing the program"
+  es: "Reemplazando el programa"
+installer.progress.shortcuts:
+  en: "Adding shortcuts"
+  es: "Agregando accesos directos"
+installer.progress.waiting:
+  en: "Waiting for Sonear to close"
+  es: "Esperando a que Sonear se cierre"
+installer.rail_version:
+  en: "Version %{version}"
+  es: "Versión %{version}"
+installer.registry.create:
+  en: "could not create a key in the Windows registry (error %{code})"
+  es: "No se pudo crear una clave en el Registro de Windows (error %{code})"
+installer.registry.exe:
+  en: "could not find the Sonear program: %{detail}"
+  es: "No se encontró el programa de Sonear: %{detail}"
+installer.registry.remove:
+  en: "could not remove the Windows registry (error %{code})"
+  es: "No se pudieron quitar los datos del Registro de Windows (error %{code})"
+installer.registry.write:
+  en: "could not write to the Windows registry (error %{code})"
+  es: "No se pudo escribir en el Registro de Windows (error %{code})"
+installer.reinstall.button:
+  en: "Reinstall"
+  es: "Reinstalar"
+installer.reinstall.detail:
+  en: "This version is already installed."
+  es: "Esta versión ya está instalada."
+installer.reinstall.title:
+  en: "Reinstall Sonear %{new}"
+  es: "Reinstalar Sonear %{new}"
+installer.relocate.copy:
+  en: "Could not copy the uninstaller to the temp folder: %{detail}"
+  es: "No se pudo copiar el desinstalador a la carpeta temporal: %{detail}"
+installer.relocate.open:
+  en: "Could not open the copied uninstaller: %{detail}"
+  es: "No se pudo abrir el desinstalador copiado: %{detail}"
+installer.relocate.spawn:
+  en: "Could not start the copied uninstaller: %{detail}"
+  es: "No se pudo iniciar el desinstalador copiado: %{detail}"
+installer.replace.button:
+  en: "Replace"
+  es: "Reemplazar"
+installer.replace.detail:
+  en: "The installed version is newer."
+  es: "La versión instalada es más reciente."
+installer.replace.title:
+  en: "Replace Sonear %{installed} with %{new}"
+  es: "Reemplazar Sonear %{installed} por %{new}"
+installer.running:
+  en: "Sonear is open. It will close when you continue."
+  es: "Sonear está abierto. Se cerrará cuando continúes."
+installer.step.confirm:
+  en: "Confirm"
+  es: "Confirmar"
+installer.step.finish:
+  en: "Finish"
+  es: "Finalizar"
+installer.step.install:
+  en: "Install"
+  es: "Instalar"
+installer.step.location:
+  en: "Location"
+  es: "Ubicación"
+installer.step.remove:
+  en: "Remove"
+  es: "Eliminar"
+installer.step.welcome:
+  en: "Welcome"
+  es: "Bienvenida"
+installer.step_error.create_folder:
+  en: "create the install folder"
+  es: "crear la carpeta de instalación"
+installer.step_error.read_setup:
+  en: "read the setup file"
+  es: "leer el archivo de instalación"
+installer.step_error.replace_program:
+  en: "replace the program"
+  es: "reemplazar el programa"
+installer.step_error.write_license:
+  en: "write the license"
+  es: "escribir la licencia"
+installer.step_error.write_program:
+  en: "write the program"
+  es: "escribir el programa"
+installer.title.move:
+  en: "Moving your data"
+  es: "Moviendo tus datos"
+installer.title.setup:
+  en: "Sonear Setup"
+  es: "Instalación de Sonear"
+installer.title.uninstall:
+  en: "Uninstall Sonear"
+  es: "Desinstalar Sonear"
+installer.title.update:
+  en: "Updating Sonear"
+  es: "Actualizando Sonear"
+installer.update.button:
+  en: "Update"
+  es: "Actualizar"
+installer.update.detail:
+  en: "You have %{installed}."
+  es: "Tienes la versión %{installed}."
+installer.update.title:
+  en: "Update Sonear to %{new}"
+  es: "Actualizar Sonear a %{new}"
+installer.welcome.body:
+  en: "A desktop player for Spotify. It needs Spotify Premium."
+  es: "Un reproductor de escritorio para Spotify. Necesita Spotify Premium."
+installer.welcome.next:
+  en: "Next"
+  es: "Siguiente"
+installer.welcome.note:
+  en: "Not affiliated with Spotify. Open source under Apache-2.0."
+  es: "No está afiliado a Spotify. Código abierto con licencia Apache-2.0."
+installer.welcome.title:
+  en: "Welcome to Sonear"
+  es: "Te damos la bienvenida a Sonear"
+installer.working.install:
+  en: "Installing Sonear"
+  es: "Instalando Sonear"
+installer.working.remove:
+  en: "Removing Sonear"
+  es: "Eliminando Sonear"
+installer.working.update:
+  en: "Updating Sonear"
+  es: "Actualizando Sonear"
+
+legal.privacy:
+  en: "Privacy policy"
+  es: "Política de privacidad"
+legal.terms:
+  en: "End-user agreement"
+  es: "Acuerdo de usuario final"
+
+library.empty.albums:
+  en: "No saved albums"
+  es: "No hay álbumes guardados"
+library.empty.artists:
+  en: "No followed artists"
+  es: "No sigues a ningún artista"
+library.empty.body:
+  en: "What you save or follow in Spotify shows up here."
+  es: "Lo que guardes o sigas en Spotify aparecerá aquí."
+library.empty.playlists:
+  en: "No playlists yet"
+  es: "Todavía no tienes playlists"
+library.empty.shows:
+  en: "No saved shows"
+  es: "No hay podcasts guardados"
+library.tab.albums:
+  en: "Albums"
+  es: "Álbumes"
+library.tab.artists:
+  en: "Artists"
+  es: "Artistas"
+library.tab.playlists:
+  en: "Playlists"
+  es: "Playlists"
+library.tab.shows:
+  en: "Shows"
+  es: "Podcasts"
+
+lyrics.credit:
+  en: "Lyrics from LRCLIB"
+  es: "Letra de LRCLIB"
+lyrics.instrumental:
+  en: "Instrumental."
+  es: "Instrumental."
+lyrics.load_failed:
+  en: "Couldn't load lyrics."
+  es: "No se pudo cargar la letra."
+lyrics.not_found:
+  en: "No lyrics found for this song."
+  es: "No se encontró la letra de esta canción."
+lyrics.not_synced:
+  en: "These lyrics aren't synced."
+  es: "Esta letra no está sincronizada."
+lyrics.play_something:
+  en: "Play something to see its lyrics."
+  es: "Reproduce algo para ver su letra."
+lyrics.songs_only:
+  en: "Lyrics are only available for songs."
+  es: "La letra solo está disponible para canciones."
+lyrics.title:
+  en: "Lyrics"
+  es: "Letra"
+
+mini.show:
+  en: "Show Sonear"
+  es: "Mostrar Sonear"
+
+mover.done_title:
+  en: "Your data is moved"
+  es: "Tus datos se movieron"
+mover.failed_body:
+  en: "Your data was not moved."
+  es: "Tus datos no se movieron."
+mover.failed_title:
+  en: "Could not move your data"
+  es: "No se pudieron mover tus datos"
+mover.leftover:
+  en: "The old folder could not be removed:"
+  es: "No se pudo quitar la carpeta anterior:"
+mover.missing.body:
+  en: "Sonear keeps its history, queue and Soloist in this folder, but it is not there. If it is on a drive that is not connected, connect it and try again."
+  es: "Sonear guarda su historial, su fila y Soloist en esta carpeta, pero no está ahí. Si está en una unidad que no está conectada, conéctala e inténtalo de nuevo."
+mover.missing.default:
+  en: "Use the default folder"
+  es: "Usar la carpeta predeterminada"
+mover.missing.no_settings:
+  en: "Could not find your settings."
+  es: "No se encontró tu configuración."
+mover.missing.quit:
+  en: "Quit"
+  es: "Salir"
+mover.missing.save_failed:
+  en: "Could not save the setting: %{error}"
+  es: "No se pudo guardar el ajuste: %{error}"
+mover.missing.title:
+  en: "Sonear can't find its data folder"
+  es: "Sonear no encuentra su carpeta de datos"
+mover.progress:
+  en: "%{done} of %{total}"
+  es: "%{done} de %{total}"
+mover.save_failed:
+  en: "Could not save the new location: %{error}"
+  es: "No se pudo guardar la nueva ubicación: %{error}"
+
+palette.albums:
+  en: "Albums"
+  es: "Álbumes"
+palette.artists:
+  en: "Artists"
+  es: "Artistas"
+palette.commands:
+  en: "Commands"
+  es: "Comandos"
+palette.go_to:
+  en: "Go to"
+  es: "Ir a"
+palette.nothing_found:
+  en: "Nothing found"
+  es: "No se encontró nada"
+palette.open_album:
+  en: "Open album"
+  es: "Abrir álbum"
+palette.open_artist:
+  en: "Open artist"
+  es: "Abrir artista"
+palette.open_playlist:
+  en: "Open playlist"
+  es: "Abrir playlist"
+palette.open_show:
+  en: "Open show"
+  es: "Abrir podcast"
+palette.placeholder:
+  en: "Type a command or search Spotify"
+  es: "Escribe un comando o busca en Spotify"
+palette.play_episode:
+  en: "Play episode"
+  es: "Reproducir episodio"
+palette.play_track:
+  en: "Play track"
+  es: "Reproducir canción"
+palette.playlists:
+  en: "Playlists"
+  es: "Playlists"
+palette.search_for:
+  en: "Search for “%{query}”"
+  es: "Buscar “%{query}”"
+palette.songs:
+  en: "Songs"
+  es: "Canciones"
+palette.spotify_link:
+  en: "Spotify link"
+  es: "Enlace de Spotify"
+palette.your_playlists:
+  en: "Your playlists"
+  es: "Tus playlists"
+
+player.choose_sonear:
+  en: "Choose Sonear in Spotify"
+  es: "Elige Sonear en Spotify"
+player.mini_player:
+  en: "Mini player"
+  es: "Reproductor mini"
+player.nothing_playing:
+  en: "Nothing playing"
+  es: "Nada en reproducción"
+player.status.demo:
+  en: "Demo"
+  es: "Demo"
+player.status.key_needed:
+  en: "Key needed"
+  es: "Falta la clave"
+player.status.not_installed:
+  en: "Not installed"
+  es: "No instalado"
+player.status.offline:
+  en: "Offline"
+  es: "Sin conexión"
+player.status.pair:
+  en: "Pair device"
+  es: "Vincular dispositivo"
+player.status.ready:
+  en: "Soloist"
+  es: "Soloist"
+player.status.starting:
+  en: "Starting"
+  es: "Iniciando"
+player.status.stopped:
+  en: "Stopped"
+  es: "Detenido"
+player.status.update_needed:
+  en: "Update needed"
+  es: "Falta actualizar"
+
+right.ai_hint:
+  en: "AI controls available"
+  es: "Controles de IA disponibles"
+right.clear:
+  en: "Clear"
+  es: "Vaciar"
+right.empty:
+  en: "Nothing queued."
+  es: "No hay nada en la fila."
+right.from_spotify:
+  en: "From Spotify"
+  es: "De Spotify"
+right.in_queue:
+  en: "In queue"
+  es: "En la fila"
+right.loading:
+  en: "Loading…"
+  es: "Cargando…"
+right.notice:
+  en: "Playing on another device. Your queue picks up when playback returns here."
+  es: "Se está reproduciendo en otro dispositivo. Tu fila continúa cuando la reproducción vuelva aquí."
+right.then:
+  en: "Then"
+  es: "Luego"
+right.unknown_track:
+  en: "Unknown track"
+  es: "Canción desconocida"
+right.up_next:
+  en: "Up next"
+  es: "A continuación"
+
+route.album:
+  en: "Album"
+  es: "Álbum"
+route.artist:
+  en: "Artist"
+  es: "Artista"
+route.history:
+  en: "History"
+  es: "Historial"
+route.home:
+  en: "Home"
+  es: "Inicio"
+route.library:
+  en: "Your Library"
+  es: "Tu biblioteca"
+route.liked:
+  en: "Liked Songs"
+  es: "Favoritos"
+route.playlist:
+  en: "Playlist"
+  es: "Playlist"
+route.search:
+  en: "Search"
+  es: "Buscar"
+route.settings:
+  en: "Settings"
+  es: "Configuración"
+route.show:
+  en: "Show"
+  es: "Podcast"
+
+search.empty.body:
+  en: "Find songs, artists, albums, playlists and podcasts. Results appear as you type."
+  es: "Encuentra canciones, artistas, álbumes, playlists y podcasts. Los resultados aparecen mientras escribes."
+search.empty.title:
+  en: "Search Spotify"
+  es: "Buscar en Spotify"
+search.kind.albums:
+  en: "Albums"
+  es: "Álbumes"
+search.kind.artists:
+  en: "Artists"
+  es: "Artistas"
+search.kind.playlists:
+  en: "Playlists"
+  es: "Playlists"
+search.kind.shows:
+  en: "Podcasts"
+  es: "Podcasts"
+search.kind.songs:
+  en: "Songs"
+  es: "Canciones"
+search.none.body:
+  en: "Check the spelling, or try a shorter search or the name of an artist."
+  es: "Revisa la ortografía, o prueba con una búsqueda más corta o con el nombre de un artista."
+search.none.title:
+  en: "No results for “%{query}”"
+  es: "No hay resultados para “%{query}”"
+search.placeholder:
+  en: "What do you want to listen to?"
+  es: "¿Qué quieres escuchar?"
+search.show_more:
+  en: "Show more"
+  es: "Mostrar más"
+
+settings.about.independent:
+  en: "Sonear is independent and isn't affiliated with or endorsed by Spotify."
+  es: "Sonear es independiente y no está afiliado ni respaldado por Spotify."
+settings.about.license:
+  en: "License: Apache-2.0"
+  es: "Licencia: Apache-2.0"
+settings.about.ready:
+  en: "Sonear %{version} is ready."
+  es: "Sonear %{version} está lista."
+settings.about.source:
+  en: "Source code"
+  es: "Código fuente"
+settings.about.updates.body:
+  en: "Asks GitHub for new versions and downloads them. Sonear only installs a version signed by its makers, and only when you restart."
+  es: "Consulta a GitHub si hay versiones nuevas y las descarga. Sonear solo instala una versión firmada por sus creadores, y solo cuando lo reinicias."
+settings.about.updates.title:
+  en: "Check for updates"
+  es: "Buscar actualizaciones"
+settings.about.whats_new:
+  en: "What's new"
+  es: "Novedades"
+settings.accent.body:
+  en: "Tints buttons and sliders with a colour from the playing song's cover."
+  es: "Tiñe los botones y los controles deslizantes con un color de la portada de la canción en reproducción."
+settings.accent.title:
+  en: "Accent from cover art"
+  es: "Color de acento según la portada"
+settings.account.client_id:
+  en: "Client ID %{id}…"
+  es: "Client ID %{id}…"
+settings.account.delete.body:
+  en: "Also removes your Soloist key, pairing and settings, and starts setup again."
+  es: "También elimina la clave y la vinculación de Soloist y la configuración, y vuelve a empezar la configuración inicial."
+settings.account.delete.button:
+  en: "Delete all data"
+  es: "Eliminar todos los datos"
+settings.account.delete.title:
+  en: "Delete all Sonear data"
+  es: "Eliminar todos los datos de Sonear"
+settings.account.demo_body:
+  en: "Nothing is stored."
+  es: "No se guarda nada."
+settings.account.demo_title:
+  en: "Demo mode"
+  es: "Modo demo"
+settings.account.logout_body:
+  en: "Removes your login, cached details, cover art, history and queue from this computer."
+  es: "Elimina de esta computadora tu sesión, los detalles en caché, las portadas, el historial y la fila."
+settings.account.revoke.body:
+  en: "Spotify keeps its own list of apps that can reach your account."
+  es: "Spotify mantiene su propia lista de apps que pueden acceder a tu cuenta."
+settings.account.revoke.link:
+  en: "Manage apps on Spotify"
+  es: "Administrar apps en Spotify"
+settings.account.revoke.title:
+  en: "Revoke access"
+  es: "Revocar acceso"
+settings.account.signed_in:
+  en: "Signed in as %{name}"
+  es: "Sesión iniciada como %{name}"
+settings.account.title:
+  en: "Account"
+  es: "Cuenta"
+settings.crossfade.body:
+  en: "Follows your Spotify account. Change it in the Spotify app under Settings › Playback."
+  es: "Sigue tu cuenta de Spotify. Cámbialo en la app de Spotify, en Configuración › Reproducción."
+settings.crossfade.title:
+  en: "Crossfade"
+  es: "Fundido cruzado"
+settings.device.body:
+  en: "The name Spotify apps show for this computer."
+  es: "El nombre que las apps de Spotify muestran para esta computadora."
+settings.device.placeholder:
+  en: "Device name"
+  es: "Nombre del dispositivo"
+settings.device.title:
+  en: "Device name"
+  es: "Nombre del dispositivo"
+settings.history.clear.body:
+  en: "Deletes the list of plays Sonear keeps. Nothing changes in your Spotify account."
+  es: "Elimina la lista de reproducciones que guarda Sonear. No cambia nada en tu cuenta de Spotify."
+settings.history.clear.title:
+  en: "Clear history"
+  es: "Eliminar historial"
+settings.history.keep.body:
+  en: "Months. Older plays are deleted from this computer."
+  es: "Meses. Las reproducciones más antiguas se eliminan de esta computadora."
+settings.history.keep.title:
+  en: "Keep history for"
+  es: "Conservar el historial durante"
+settings.keyboard.body:
+  en: "See every shortcut and change the keys."
+  es: "Mira todos los atajos y cambia las teclas."
+settings.keyboard.title:
+  en: "Keyboard shortcuts"
+  es: "Atajos de teclado"
+settings.language.body:
+  en: "The language Sonear uses."
+  es: "El idioma que usa Sonear."
+settings.language.title:
+  en: "Language"
+  es: "Idioma"
+settings.links.body:
+  en: "Open spotify: links from your browser and other apps in Sonear. Windows asks you to pick Sonear under Default apps."
+  es: "Abre en Sonear los enlaces spotify: del navegador y de otras apps. Windows te pide elegir Sonear en Aplicaciones predeterminadas."
+settings.links.choose:
+  en: "Choose in Windows"
+  es: "Elegir en Windows"
+settings.links.failed:
+  en: "Could not change spotify: link handling: %{error}"
+  es: "No se pudo cambiar el manejo de los enlaces spotify: %{error}"
+settings.links.remove:
+  en: "Remove"
+  es: "Quitar"
+settings.links.set_up:
+  en: "Set up"
+  es: "Configurar"
+settings.links.title:
+  en: "Spotify links"
+  es: "Enlaces de Spotify"
+settings.links.update:
+  en: "Update"
+  es: "Actualizar"
+settings.lyrics.body:
+  en: "Shows lyrics from LRCLIB. While the panel is open, the song's title, artist, album and length are sent to lrclib.net."
+  es: "Muestra letras de LRCLIB. Mientras el panel está abierto, el título, el artista, el álbum y la duración de la canción se envían a lrclib.net."
+settings.lyrics.title:
+  en: "Lyrics"
+  es: "Letra"
+settings.open:
+  en: "Open"
+  es: "Abrir"
+settings.save:
+  en: "Save"
+  es: "Guardar"
+settings.section.about:
+  en: "About"
+  es: "Acerca de"
+settings.section.account:
+  en: "Spotify account"
+  es: "Cuenta de Spotify"
+settings.section.general:
+  en: "General"
+  es: "General"
+settings.section.history:
+  en: "History"
+  es: "Historial"
+settings.section.keyboard:
+  en: "Keyboard"
+  es: "Teclado"
+settings.section.playback:
+  en: "Playback"
+  es: "Reproducción"
+settings.section.soloist:
+  en: "Soloist"
+  es: "Soloist"
+settings.section.storage:
+  en: "Storage"
+  es: "Almacenamiento"
+settings.soloist.built:
+  en: "%{version} · built %{date}"
+  es: "%{version} · compilada el %{date}"
+settings.soloist.expired:
+  en: "expired"
+  es: "caducó"
+settings.soloist.expires_in:
+  en: "expires in %{days} days"
+  es: "caduca en %{days} días"
+settings.soloist.expires_tomorrow:
+  en: "expires tomorrow"
+  es: "caduca mañana"
+settings.soloist.key.body:
+  en: "Stored in Windows Credential Manager."
+  es: "Se guarda en el Administrador de credenciales de Windows."
+settings.soloist.key.change:
+  en: "Change key"
+  es: "Cambiar clave"
+settings.soloist.key.empty:
+  en: "Paste your Soloist key first."
+  es: "Pega primero tu clave de Soloist."
+settings.soloist.key.title:
+  en: "Soloist key"
+  es: "Clave de Soloist"
+settings.soloist.update:
+  en: "Update"
+  es: "Actualizar"
+settings.soloist.updating:
+  en: "Updating…"
+  es: "Actualizando…"
+settings.soloist.version:
+  en: "Version"
+  es: "Versión"
+settings.soloist.version_unknown:
+  en: "Version unknown"
+  es: "Versión desconocida"
+settings.storage.body:
+  en: "History, queue, cover art, cached details and Soloist. Settings stay in %APPDATA%\\Sonear and your login in Windows Credential Manager."
+  es: "Historial, fila, portadas, detalles en caché y Soloist. La configuración se queda en %APPDATA%\\Sonear y tu sesión en el Administrador de credenciales de Windows."
+settings.storage.change:
+  en: "Change"
+  es: "Cambiar"
+settings.storage.default:
+  en: "Use default"
+  es: "Usar la predeterminada"
+settings.storage.title:
+  en: "Data folder"
+  es: "Carpeta de datos"
+settings.tray.body:
+  en: "Closing the window keeps Sonear and the music running. Quit from the tray icon."
+  es: "Al cerrar la ventana, Sonear y la música siguen en marcha. Sal desde el ícono de la bandeja."
+settings.tray.title:
+  en: "Keep running in the tray"
+  es: "Mantener en la bandeja del sistema"
+
+setup.connect.body:
+  en: "Spotify requires every app that reads your library to use your own free developer app. It takes about two minutes and Sonear never sees your password."
+  es: "Spotify exige que toda app que lea tu biblioteca use tu propia app de desarrollador gratuita. Toma unos dos minutos y Sonear nunca ve tu contraseña."
+setup.connect.button:
+  en: "Connect Spotify"
+  es: "Conectar Spotify"
+setup.connect.note:
+  en: "Spotify Premium is required. The developer app is yours, for your own personal use. Your login is stored in Windows Credential Manager."
+  es: "Se requiere Spotify Premium. La app de desarrollador es tuya, para tu uso personal. Tu sesión se guarda en el Administrador de credenciales de Windows."
+setup.connect.open_dashboard:
+  en: "Open the Spotify dashboard"
+  es: "Abrir el panel de Spotify"
+setup.connect.placeholder:
+  en: "Paste your Client ID"
+  es: "Pega tu Client ID"
+setup.connect.step1:
+  en: "Create an app in the Spotify dashboard. Any name works."
+  es: "Crea una app en el panel de Spotify. Sirve cualquier nombre."
+setup.connect.step2:
+  en: "Add this exact redirect URI to it:"
+  es: "Agrega esta URI de redirección exacta:"
+setup.connect.step3:
+  en: "Tick “Web API” under the APIs the app will use."
+  es: "Marca “Web API” en las APIs que usará la app."
+setup.connect.step4:
+  en: "Paste the app's Client ID here:"
+  es: "Pega aquí el Client ID de la app:"
+setup.connect.title:
+  en: "Connect Spotify"
+  es: "Conectar Spotify"
+setup.download.about:
+  en: "About Soloist downloads"
+  es: "Acerca de las descargas de Soloist"
+setup.download.body:
+  en: "Sonear plays music through Soloist, Spotify's own player. It is downloaded directly from Spotify, and only when you click the button below."
+  es: "Sonear reproduce música con Soloist, el reproductor de Spotify. Se descarga directamente de Spotify, y solo cuando haces clic en el botón de abajo."
+setup.download.expired_body:
+  en: "Spotify's player builds stop working after 90 days. Download the latest build to keep listening."
+  es: "Las versiones del reproductor de Spotify dejan de funcionar a los 90 días. Descarga la más reciente para seguir escuchando."
+setup.download.expired_title:
+  en: "This Soloist build has expired"
+  es: "Esta versión de Soloist caducó"
+setup.download.title:
+  en: "Set up playback"
+  es: "Configura la reproducción"
+setup.expired.body:
+  en: "Spotify needs you to log in again. Your settings and Client ID are still here."
+  es: "Spotify necesita que inicies sesión de nuevo. Tu configuración y tu Client ID siguen aquí."
+setup.expired.button:
+  en: "Log in with Spotify"
+  es: "Iniciar sesión con Spotify"
+setup.expired.other_id:
+  en: "Use a different Client ID"
+  es: "Usar otro Client ID"
+setup.expired.title:
+  en: "Log in again"
+  es: "Inicia sesión de nuevo"
+setup.failed.change_key:
+  en: "Change Soloist key"
+  es: "Cambiar clave de Soloist"
+setup.failed.title:
+  en: "Soloist stopped"
+  es: "Soloist se detuvo"
+setup.key.body:
+  en: "Create a personal Soloist key in the Spotify developer dashboard. It needs Spotify Premium."
+  es: "Crea una clave personal de Soloist en el panel de desarrolladores de Spotify. Requiere Spotify Premium."
+setup.key.note:
+  en: "Your key is stored in Windows Credential Manager, not in a file."
+  es: "Tu clave se guarda en el Administrador de credenciales de Windows, no en un archivo."
+setup.key.open_dashboard:
+  en: "Open the dashboard"
+  es: "Abrir el panel"
+setup.key.save:
+  en: "Save key"
+  es: "Guardar clave"
+setup.key.title:
+  en: "Add your Soloist key"
+  es: "Agrega tu clave de Soloist"
+setup.language.body:
+  en: "You can change it any time in Settings."
+  es: "Puedes cambiarlo cuando quieras en Configuración."
+setup.language.title:
+  en: "Choose your language"
+  es: "Elige tu idioma"
+setup.legal.accept:
+  en: "Agree and continue"
+  es: "Aceptar y continuar"
+setup.legal.accept_note:
+  en: "By continuing you accept both documents."
+  es: "Al continuar, aceptas ambos documentos."
+setup.legal.independent:
+  en: "Sonear is independent. It isn't made or endorsed by Spotify."
+  es: "Sonear es independiente. No lo crea ni lo respalda Spotify."
+setup.legal.local:
+  en: "Everything stays on this computer. Sonear sends nothing to its makers."
+  es: "Todo se queda en esta computadora. Sonear no envía nada a sus creadores."
+setup.legal.needs:
+  en: "You need Spotify Premium, your own Spotify developer app and a Soloist key."
+  es: "Necesitas Spotify Premium, tu propia app de desarrollador de Spotify y una clave de Soloist."
+setup.legal.title:
+  en: "Before you start"
+  es: "Antes de empezar"
+setup.pair.note:
+  en: "If Windows Firewall asks, allow Soloist on private networks."
+  es: "Si el Firewall de Windows lo pide, permite Soloist en redes privadas."
+setup.pair.spinner:
+  en: "Waiting for pairing"
+  es: "Esperando la vinculación"
+setup.pair.step1:
+  en: "Open Spotify on your phone, on the same Wi-Fi."
+  es: "Abre Spotify en tu teléfono, conectado al mismo Wi-Fi."
+setup.pair.step2:
+  en: "Open the list of devices and choose “%{device}”."
+  es: "Abre la lista de dispositivos y elige “%{device}”."
+setup.pair.title:
+  en: "Pair this computer"
+  es: "Vincula esta computadora"
+setup.rail.agreement:
+  en: "Agreement"
+  es: "Acuerdo"
+setup.rail.download:
+  en: "Download Soloist"
+  es: "Descargar Soloist"
+setup.rail.key:
+  en: "Soloist key"
+  es: "Clave de Soloist"
+setup.rail.language:
+  en: "Language"
+  es: "Idioma"
+setup.rail.pair:
+  en: "Pair device"
+  es: "Vincular dispositivo"
+setup.rail.spotify:
+  en: "Spotify account"
+  es: "Cuenta de Spotify"
+setup.starting.spinner:
+  en: "One moment"
+  es: "Un momento"
+setup.starting.title:
+  en: "Starting Soloist"
+  es: "Iniciando Soloist"
+setup.waiting.body:
+  en: "Sonear opened Spotify in your browser. Approve access there and this screen moves on by itself."
+  es: "Sonear abrió Spotify en tu navegador. Aprueba el acceso allí y esta pantalla avanzará sola."
+setup.waiting.redirect_note:
+  en: "If the browser shows “Invalid redirect URI”, add this address to your Spotify app's settings:"
+  es: "Si el navegador muestra “Invalid redirect URI”, agrega esta dirección a la configuración de tu app de Spotify:"
+setup.waiting.reopen:
+  en: "Open browser again"
+  es: "Abrir el navegador de nuevo"
+setup.waiting.spinner:
+  en: "Waiting for your approval"
+  es: "Esperando tu aprobación"
+setup.waiting.title:
+  en: "Approve in your browser"
+  es: "Aprueba en tu navegador"
+
+shell.banner.expired:
+  en: "This Soloist build has expired."
+  es: "Esta versión de Soloist caducó."
+shell.banner.expires_in:
+  en: "This Soloist build expires in %{days} days."
+  es: "Esta versión de Soloist caduca en %{days} días."
+shell.banner.expires_tomorrow:
+  en: "This Soloist build expires tomorrow."
+  es: "Esta versión de Soloist caduca mañana."
+shell.confirm.clear_history.action:
+  en: "Clear history"
+  es: "Eliminar historial"
+shell.confirm.clear_history.body:
+  en: "This deletes the list of plays Sonear keeps on this computer. Nothing changes in your Spotify account."
+  es: "Esto elimina la lista de reproducciones que Sonear guarda en esta computadora. No cambia nada en tu cuenta de Spotify."
+shell.confirm.clear_history.title:
+  en: "Clear history?"
+  es: "¿Eliminar el historial?"
+shell.confirm.delete_all.action:
+  en: "Delete everything"
+  es: "Eliminar todo"
+shell.confirm.delete_all.body:
+  en: "This removes your Spotify login, Soloist key and pairing, history, queue, cached data, cover art and settings from this computer. The Soloist program stays, so you won't download it again. Setup starts again from the beginning."
+  es: "Esto elimina de esta computadora tu sesión de Spotify, la clave y la vinculación de Soloist, el historial, la fila, los datos en caché, las portadas y la configuración. El programa Soloist se conserva, así que no tendrás que descargarlo de nuevo. La configuración inicial vuelve a empezar desde el principio."
+shell.confirm.delete_all.title:
+  en: "Delete all Sonear data?"
+  es: "¿Eliminar todos los datos de Sonear?"
+shell.confirm.logout.action:
+  en: "Log out"
+  es: "Cerrar sesión"
+shell.confirm.logout.body:
+  en: "This removes your Spotify login, cached data, cover art, listening history and queue from this computer. Your Soloist key, install and pairing stay."
+  es: "Esto elimina de esta computadora tu sesión de Spotify, los datos en caché, las portadas, el historial de reproducción y la fila. Tu clave de Soloist, la instalación y la vinculación se conservan."
+shell.confirm.logout.title:
+  en: "Log out of Spotify?"
+  es: "¿Cerrar sesión en Spotify?"
+shell.confirm.move_data.action:
+  en: "Move and restart"
+  es: "Mover y reiniciar"
+shell.confirm.move_data.body:
+  en: "Sonear will close, move your data to %{path} and open again. Playback stops while it moves."
+  es: "Sonear se cerrará, moverá tus datos a %{path} y se abrirá de nuevo. La reproducción se detiene mientras se mueven."
+shell.confirm.move_data.title:
+  en: "Move your data?"
+  es: "¿Mover tus datos?"
+shell.rate.quota:
+  en: "Spotify's request quota is used up. It resets later and is shared by your whole developer account."
+  es: "Se agotó la cuota de solicitudes de Spotify. Se restablece más tarde y la comparte toda tu cuenta de desarrollador."
+shell.rate.slow:
+  en: "Spotify asked Sonear to slow down"
+  es: "Spotify pidió a Sonear que vaya más despacio"
+
+shortcut.back:
+  en: "Go back"
+  es: "Volver"
+shortcut.clear_queue:
+  en: "Clear queue"
+  es: "Vaciar la fila"
+shortcut.go_history:
+  en: "Go to History"
+  es: "Ir a Historial"
+shortcut.go_home:
+  en: "Go to Home"
+  es: "Ir a Inicio"
+shortcut.go_library:
+  en: "Go to Your Library"
+  es: "Ir a Tu biblioteca"
+shortcut.go_liked:
+  en: "Go to Liked Songs"
+  es: "Ir a Favoritos"
+shortcut.go_search:
+  en: "Search"
+  es: "Buscar"
+shortcut.like:
+  en: "Like current track"
+  es: "Agregar la canción actual a Favoritos"
+shortcut.next:
+  en: "Next track"
+  es: "Canción siguiente"
+shortcut.palette:
+  en: "Command palette"
+  es: "Paleta de comandos"
+shortcut.play_pause:
+  en: "Play or pause"
+  es: "Reproducir o pausar"
+shortcut.previous:
+  en: "Previous track"
+  es: "Canción anterior"
+shortcut.repeat:
+  en: "Repeat"
+  es: "Repetir"
+shortcut.seek_back:
+  en: "Back 10 seconds"
+  es: "Retroceder 10 segundos"
+shortcut.seek_forward:
+  en: "Forward 10 seconds"
+  es: "Adelantar 10 segundos"
+shortcut.settings:
+  en: "Settings"
+  es: "Configuración"
+shortcut.shortcuts:
+  en: "Keyboard shortcuts"
+  es: "Atajos de teclado"
+shortcut.shuffle:
+  en: "Shuffle"
+  es: "Aleatorio"
+shortcut.toggle_lyrics:
+  en: "Lyrics"
+  es: "Letra"
+shortcut.toggle_mini_player:
+  en: "Mini player"
+  es: "Reproductor mini"
+shortcut.toggle_queue:
+  en: "Show or hide queue"
+  es: "Mostrar u ocultar la fila"
+shortcut.toggle_sidebar:
+  en: "Show or hide sidebar"
+  es: "Mostrar u ocultar la barra lateral"
+shortcut.volume_down:
+  en: "Volume down"
+  es: "Bajar volumen"
+shortcut.volume_up:
+  en: "Volume up"
+  es: "Subir volumen"
+
+shortcuts.already_used:
+  en: "Already used by %{owner}, which always keeps a key."
+  es: "Ya la usa «%{owner}», que siempre conserva una tecla."
+shortcuts.help:
+  en: "Click a binding, then press the new keys. Esc cancels, Backspace unbinds."
+  es: "Haz clic en un atajo y presiona las teclas nuevas. Esc cancela y Retroceso lo quita."
+shortcuts.invalid_key:
+  en: "That key can't be used."
+  es: "Esa tecla no se puede usar."
+shortcuts.locked:
+  en: "This one can't be unbound, so you can always get back to this list."
+  es: "Este atajo no se puede quitar, para que siempre puedas volver a esta lista."
+shortcuts.not_set:
+  en: "Not set"
+  es: "Sin asignar"
+shortcuts.press_keys:
+  en: "Press keys…"
+  es: "Presiona una tecla…"
+shortcuts.removed_from:
+  en: "Removed from %{owner}"
+  es: "Se quitó de «%{owner}»"
+shortcuts.reset:
+  en: "Reset to defaults"
+  es: "Restablecer valores"
+shortcuts.title:
+  en: "Keyboard shortcuts"
+  es: "Atajos de teclado"
+
+show.no_episodes:
+  en: "No episodes yet."
+  es: "Todavía no hay episodios."
+show.podcast:
+  en: "Podcast"
+  es: "Podcast"
+
+sidebar.restart_to_update:
+  en: "Restart to update"
+  es: "Actualizar ahora"
+sidebar.update_ready:
+  en: "Sonear %{version} is ready"
+  es: "Sonear %{version} está lista"
+sidebar.your_music:
+  en: "Your music"
+  es: "Tu música"
+
+store.demo.client_id_rejected:
+  en: "Spotify did not accept that Client ID."
+  es: "Spotify no aceptó ese Client ID."
+store.key.save_failed:
+  en: "Could not save the key: %{reason}"
+  es: "No se pudo guardar la clave: %{reason}"
+store.problem.link_registration:
+  en: "Spotify link registration: %{error}"
+  es: "Registro de enlaces de Spotify: %{error}"
+store.problem.start_menu:
+  en: "Start Menu shortcut: %{error}"
+  es: "Acceso directo del menú Inicio: %{error}"
+store.toast.added_to_queue:
+  en: "Added to queue"
+  es: "Se agregó a la fila"
+store.toast.default_folder_missing:
+  en: "Could not find the default folder."
+  es: "No se encontró la carpeta predeterminada."
+store.toast.deleted_all:
+  en: "Everything Sonear stored was deleted."
+  es: "Se eliminó todo lo que Sonear había guardado."
+store.toast.deleted_partial:
+  en: "Deleted, but some data could not be removed: %{problems}"
+  es: "Eliminado, pero no se pudieron eliminar algunos datos: %{problems}"
+store.toast.device_saved:
+  en: "Device name saved."
+  es: "Se guardó el nombre del dispositivo."
+store.toast.disconnected:
+  en: "Disconnected. The login, cached data, history and queue were removed from this computer."
+  es: "Desconectado. Se eliminaron de esta computadora la sesión, los datos en caché, el historial y la fila."
+store.toast.disconnected_partial:
+  en: "Disconnected, but some data could not be removed: %{problems}"
+  es: "Desconectado, pero no se pudieron eliminar algunos datos: %{problems}"
+store.toast.mini_player_failed:
+  en: "Could not open the mini player."
+  es: "No se pudo abrir el reproductor mini."
+store.toast.move_demo:
+  en: "Moving data isn't available in demo mode."
+  es: "Mover los datos no está disponible en el modo demo."
+store.toast.move_failed:
+  en: "Could not start moving your data: %{error}"
+  es: "No se pudo iniciar el traslado de tus datos: %{error}"
+store.toast.queue_full:
+  en: "Your queue is full."
+  es: "Tu fila está llena."
+store.toast.soloist_restarted:
+  en: "Soloist restarted as “%{name}”."
+  es: "Soloist se reinició como “%{name}”."
+store.update.check_failed:
+  en: "The update could not be checked, so it was not used."
+  es: "No se pudo comprobar la actualización, así que no se usó."
+store.update.not_installed:
+  en: "Sonear is not installed, so it can't update itself."
+  es: "Sonear no está instalado, así que no puede actualizarse solo."
+
+tray.hint_text:
+  en: "Music keeps playing. Quit from the tray icon."
+  es: "La música sigue sonando. Sal desde el ícono de la bandeja del sistema."
+tray.hint_title:
+  en: "Sonear is still running"
+  es: "Sonear sigue en marcha"
+tray.mini_player:
+  en: "Mini player"
+  es: "Reproductor mini"
+tray.next:
+  en: "Next"
+  es: "Siguiente"
+tray.pause:
+  en: "Pause"
+  es: "Pausar"
+tray.play:
+  en: "Play"
+  es: "Reproducir"
+tray.previous:
+  en: "Previous"
+  es: "Anterior"
+tray.quit:
+  en: "Quit Sonear"
+  es: "Salir de Sonear"
+tray.show:
+  en: "Show Sonear"
+  es: "Mostrar Sonear"

@@ -1,0 +1,67 @@
+_version: 2
+
+auth.denied:
+  en: "Spotify refused the login: %{reason}"
+  es: "Spotify rechazó el inicio de sesión: %{reason}"
+auth.cancelled:
+  en: "the login was cancelled"
+  es: "Se canceló el inicio de sesión"
+auth.listen:
+  en: "could not listen for the login: %{detail}"
+  es: "No se pudo esperar el inicio de sesión: %{detail}"
+auth.port_busy:
+  en: "port 27196 is already in use, close the program using it and try again"
+  es: "El puerto 27196 ya está en uso. Cierra el programa que lo usa e inténtalo de nuevo."
+auth.timed_out:
+  en: "the login timed out"
+  es: "Se agotó el tiempo del inicio de sesión"
+
+error.api:
+  en: "Spotify answered %{status}: %{message}"
+  es: "Spotify respondió %{status}: %{message}"
+error.decode:
+  en: "could not read Spotify's answer: %{detail}"
+  es: "No se pudo leer la respuesta de Spotify: %{detail}"
+error.forbidden:
+  en: "Spotify does not allow this request"
+  es: "Spotify no permite esta solicitud"
+error.invalid_id:
+  en: "not a Spotify ID: %{id}"
+  es: "No es un ID de Spotify: %{id}"
+error.needs_login:
+  en: "Spotify needs you to log in again"
+  es: "Spotify necesita que vuelvas a iniciar sesión"
+error.network:
+  en: "could not reach Spotify: %{detail}"
+  es: "No se pudo conectar con Spotify: %{detail}"
+error.not_found:
+  en: "Spotify could not find that"
+  es: "Spotify no encontró eso"
+error.quota:
+  en: "the Spotify request quota for this developer account is used up"
+  es: "Se agotó la cuota de solicitudes de Spotify para esta cuenta de desarrollador"
+error.rate_limited:
+  en: "Spotify asked Sonear to slow down for %{seconds} s"
+  es: "Spotify pidió a Sonear que vaya más despacio durante %{seconds} s"
+
+page.approved.message:
+  en: "Spotify approved Sonear. Head back to the app to continue."
+  es: "Spotify aprobó a Sonear. Vuelve a la app para continuar."
+page.approved.title:
+  en: "All done here"
+  es: "Todo listo aquí"
+page.denied.message:
+  en: "Sonear didn’t get access to your Spotify account. You can try again from the app."
+  es: "Sonear no obtuvo acceso a tu cuenta de Spotify. Puedes intentarlo de nuevo desde la app."
+page.denied.title:
+  en: "Not connected"
+  es: "Sin conectar"
+page.footer:
+  en: "You can close this tab."
+  es: "Puedes cerrar esta pestaña."
+page.invalid.message:
+  en: "It may be from an earlier attempt. Start again from Sonear."
+  es: "Puede ser de un intento anterior. Empieza de nuevo desde Sonear."
+page.invalid.title:
+  en: "This link isn’t valid"
+  es: "Este enlace no es válido"

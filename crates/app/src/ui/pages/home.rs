@@ -4,12 +4,14 @@ use gpui_kit::{
     ParentElement as _, Render, SharedString, StatefulInteractiveElement as _, Styled as _,
     Subscription, Task, Window, div, px,
 };
+use rust_i18n::t;
 use sonear_core::LibraryError;
 use sonear_core::history::{Hero, HeroKind};
 use sonear_core::model::{Page, Playlist, Track};
 
 use crate::data::{self, Load, Slot};
 use crate::format::greeting;
+use crate::i18n::plural;
 use crate::store::{AppStore, Route};
 use crate::theme;
 use crate::ui::common::{CardItem, card, error_panel, heading, skeleton_card};
@@ -170,7 +172,7 @@ impl HomePage {
                     .text_size(px(13.))
                     .text_color(theme::text_tertiary())
                     .child(icon(IconName::Search, 15., theme::text_tertiary()))
-                    .child("Search music...")
+                    .child(t!("home.search_placeholder"))
                     .on_click(move |_, _, cx| {
                         store.update(cx, |state, cx| state.navigate(Route::Search, cx))
                     }),
@@ -186,7 +188,7 @@ impl HomePage {
                 value: Some(hero), ..
             } => hero.clone(),
             Load::Ready { value: None, .. } => {
-                return hint_card("Nothing to pick up yet. What you play shows up here.");
+                return hint_card(t!("home.nothing_yet"));
             }
             Load::Loading => return hero_skeleton(),
             Load::Failed(error) => {
@@ -198,11 +200,12 @@ impl HomePage {
             }
         };
         let (label, route) = match hero.kind {
-            HeroKind::Playlist => ("YOUR PLAYLIST", Route::Playlist(hero.id.clone())),
-            HeroKind::Album => ("ALBUM", Route::Album(hero.id.clone())),
-            HeroKind::Artist => ("ARTIST", Route::Artist(hero.id.clone())),
-            HeroKind::LikedSongs => ("YOUR LIBRARY", Route::LikedSongs),
+            HeroKind::Playlist => (t!("home.hero.playlist"), Route::Playlist(hero.id.clone())),
+            HeroKind::Album => (t!("route.album"), Route::Album(hero.id.clone())),
+            HeroKind::Artist => (t!("route.artist"), Route::Artist(hero.id.clone())),
+            HeroKind::LikedSongs => (t!("home.hero.library"), Route::LikedSongs),
         };
+        let label = label.to_uppercase();
         let model = &state.playback;
         let playing_here = model.is_playing()
             && model
@@ -210,11 +213,9 @@ impl HomePage {
                 .as_ref()
                 .is_some_and(|context| context.uri == hero.uri);
         let pending = state.pending_play && !playing_here;
-        let count = hero.track_count.map(|count| {
-            let noun = if count == 1 { "track" } else { "tracks" };
-
-            format!("{count} {noun}")
-        });
+        let count = hero
+            .track_count
+            .map(|count| plural(u64::from(count), "common.tracks_one", "common.tracks_other"));
         let store = self.store.clone();
         let open = self.store.clone();
         let target = route.clone();
@@ -304,7 +305,7 @@ impl HomePage {
     fn track_shelf(
         &self,
         id: &'static str,
-        title: &'static str,
+        title: impl Into<SharedString>,
         slot: &Slot<Vec<Track>>,
     ) -> Option<Div> {
         match &slot.state {
@@ -350,7 +351,7 @@ impl HomePage {
 
     fn playlist_shelf(&self) -> Option<Div> {
         match &self.playlists.state {
-            Load::Loading => Some(shelf("Your playlists", skeleton_tiles())),
+            Load::Loading => Some(shelf(t!("home.your_playlists"), skeleton_tiles())),
             Load::Failed(_) => None,
             Load::Ready { value, .. } => {
                 if value.items.is_empty() {
@@ -367,13 +368,13 @@ impl HomePage {
                             card(index, &CardItem::from(playlist), TILE, &self.store)
                         });
 
-                Some(shelf("Your playlists", tiles.collect()))
+                Some(shelf(t!("home.your_playlists"), tiles.collect()))
             }
         }
     }
 }
 
-fn shelf(title: &'static str, tiles: Vec<AnyElement>) -> Div {
+fn shelf(title: impl Into<SharedString>, tiles: Vec<AnyElement>) -> Div {
     div()
         .flex()
         .flex_col()
@@ -459,8 +460,8 @@ impl Render for HomePage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let hour = chrono::Timelike::hour(&chrono::Local::now());
         let hero = self.hero_card(cx);
-        let on_repeat = self.track_shelf("on-repeat", "On repeat", &self.on_repeat);
-        let recent = self.track_shelf("recent", "Recently played", &self.recent);
+        let on_repeat = self.track_shelf("on-repeat", t!("home.on_repeat"), &self.on_repeat);
+        let recent = self.track_shelf("recent", t!("home.recent"), &self.recent);
         let playlists = self.playlist_shelf();
 
         div()
@@ -485,7 +486,7 @@ impl Render for HomePage {
                     .pt_1()
                     .text_size(px(14.))
                     .text_color(theme::text_secondary())
-                    .child("Pick up where you left off."),
+                    .child(t!("home.pick_up")),
             )
             .child(hero)
             .children(on_repeat)

@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
+use rust_i18n::t;
 use tokio::sync::broadcast;
 
 use crate::events::AppEvent;
@@ -143,9 +144,9 @@ impl LikeStore {
             Err(error) => {
                 lock(&self.state).known.insert(uri.to_owned(), before);
                 let _ = self.events.send(AppEvent::Likes);
-                let _ = self.events.send(AppEvent::Notice(format!(
-                    "Couldn't update your saved music. {error}"
-                )));
+                let _ = self.events.send(AppEvent::Notice(
+                    t!("likes.update_failed", error = error.user_message()).into_owned(),
+                ));
 
                 Err(error)
             }

@@ -2,6 +2,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
+use rust_i18n::t;
 use sonear_soloist::client::ClientEvent;
 use sonear_soloist::protocol::RepeatMode;
 use thiserror::Error;
@@ -30,6 +31,16 @@ const LIKED_NO: u8 = 2;
 pub enum PlayerError {
     #[error("Soloist is not connected")]
     NotConnected,
+}
+
+impl PlayerError {
+    /// The error in the interface language. `Display` stays English for logs.
+    pub fn user_message(&self) -> String {
+        match self {
+            Self::NotConnected => t!("player.not_connected"),
+        }
+        .into_owned()
+    }
 }
 
 /// Transport operations. Implementations are fire-and-forget: the result of
@@ -364,6 +375,10 @@ fn fallback_uri(request: &PlaybackRequest) -> Option<String> {
     }
 }
 
+fn start_failed(error: &LibraryError) -> String {
+    t!("player.start_failed", error = error.user_message()).into_owned()
+}
+
 fn notice(inner: &Inner, text: impl Into<String>) {
     let _ = inner.events.send(AppEvent::Notice(text.into()));
 }
@@ -472,12 +487,9 @@ async fn route_plain(inner: &Inner, request: &PlaybackRequest) {
         Attempt::Started => {}
         Attempt::NoDevice => {
             socket_fallback(inner, request);
-            notice(
-                inner,
-                "Soloist isn't listed by Spotify yet, so only the clicked track was started.",
-            );
+            notice(inner, t!("player.no_device"));
         }
-        Attempt::Failed(error) => notice(inner, format!("Couldn't start playback. {error}")),
+        Attempt::Failed(error) => notice(inner, start_failed(&error)),
     }
 }
 
@@ -507,10 +519,7 @@ async fn route_liked(inner: &Inner, request: PlaybackRequest) {
         Attempt::Started => inner.liked_support.store(LIKED_YES, Ordering::Relaxed),
         Attempt::NoDevice => {
             socket_fallback(inner, &request);
-            notice(
-                inner,
-                "Soloist isn't listed by Spotify yet, so only the clicked track was started.",
-            );
+            notice(inner, t!("player.no_device"));
         }
         Attempt::Failed(
             error @ (LibraryError::Forbidden | LibraryError::NotFound | LibraryError::Api(_)),
@@ -519,7 +528,7 @@ async fn route_liked(inner: &Inner, request: PlaybackRequest) {
             inner.liked_support.store(LIKED_NO, Ordering::Relaxed);
             route_plain(inner, &tracks).await;
         }
-        Attempt::Failed(error) => notice(inner, format!("Couldn't start playback. {error}")),
+        Attempt::Failed(error) => notice(inner, start_failed(&error)),
     }
 }
 

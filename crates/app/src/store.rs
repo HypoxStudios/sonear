@@ -6,7 +6,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui_kit::{AnyWindowHandle, AppContext as _, Context, Entity, SharedString, Task, Window};
-use sonear_core::config::LEGAL_VERSION;
+use rust_i18n::t;
+use sonear_core::config::{LEGAL_VERSION, Language};
 use sonear_core::data_dir::check_target;
 use sonear_core::model::ItemKind;
 use sonear_core::model::{PlayOffset, PlaybackRequest, Playlist, Profile, Track};
@@ -24,6 +25,7 @@ use tracing::warn;
 
 use crate::cover_accent::{self, Accent};
 use crate::data::{self, Env, Load, Slot};
+use crate::i18n;
 use crate::keymap;
 use crate::legal::LegalDoc;
 use crate::theme;
@@ -69,19 +71,20 @@ pub enum Route {
 
 impl Route {
     /// What the breadcrumb calls the page you came from.
-    pub fn label(&self) -> &'static str {
+    pub fn label(&self) -> String {
         match self {
-            Self::Home => "Home",
-            Self::Search => "Search",
-            Self::Library(_) => "Your Library",
-            Self::LikedSongs => "Liked Songs",
-            Self::History => "History",
-            Self::Settings => "Settings",
-            Self::Album(_) => "Album",
-            Self::Artist(_) => "Artist",
-            Self::Playlist(_) => "Playlist",
-            Self::Show(_) => "Show",
+            Self::Home => t!("route.home"),
+            Self::Search => t!("route.search"),
+            Self::Library(_) => t!("route.library"),
+            Self::LikedSongs => t!("route.liked"),
+            Self::History => t!("route.history"),
+            Self::Settings => t!("route.settings"),
+            Self::Album(_) => t!("route.album"),
+            Self::Artist(_) => t!("route.artist"),
+            Self::Playlist(_) => t!("route.playlist"),
+            Self::Show(_) => t!("route.show"),
         }
+        .into_owned()
     }
 
     /// Whether the sidebar should mark `item` as the current section.
@@ -117,6 +120,7 @@ impl InstallState {
 /// The screen the guided setup shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SetupStep {
+    Language,
     Agreement,
     Spotify,
     Download,
@@ -135,11 +139,17 @@ pub struct SetupState {
     pub key_error: Option<String>,
     pub editing_key: bool,
     pub legal_accepted: bool,
+    /// Whether a language was saved or the user already went through setup.
+    pub language_chosen: bool,
     pub connected: bool,
 }
 
 impl SetupState {
     pub fn step(&self) -> SetupStep {
+        if !self.language_chosen {
+            return SetupStep::Language;
+        }
+
         if !self.legal_accepted {
             return SetupStep::Agreement;
         }
@@ -243,6 +253,10 @@ pub struct AppStore {
     pub lyrics_enabled: bool,
     pub cover_accent: bool,
     pub close_to_tray: bool,
+    /// The language the interface shows.
+    language: Language,
+    /// Bumped on every language change, so views holding text they built earlier rebuild it.
+    pub language_version: u64,
     main_window_hidden: bool,
     mini_player: Option<AnyWindowHandle>,
     main_window: Option<AnyWindowHandle>,
@@ -317,6 +331,8 @@ impl AppStore {
             lyrics_enabled: config.lyrics_enabled,
             cover_accent: config.cover_accent,
             close_to_tray: config.close_to_tray,
+            language: i18n::initial(&config),
+            language_version: 0,
             main_window_hidden: false,
             mini_player: None,
             main_window: None,
@@ -408,6 +424,11 @@ impl AppStore {
             key_error: self.key_error.clone(),
             editing_key: self.editing_key,
             legal_accepted: self.legal_accepted(),
+            language_chosen: {
+                let config = self.core.config.get();
+
+                config.language.is_some() || config.legal_accepted > 0
+            },
             connected: self.connected(),
         };
 
@@ -545,6 +566,28 @@ impl AppStore {
         });
     }
 
+    pub fn language(&self) -> Language {
+        self.language
+    }
+
+    /// Shows `language` everywhere without saving it, for the setup picker.
+    pub fn preview_language(&mut self, language: Language, cx: &mut Context<Self>) {
+        i18n::apply(language);
+        self.language_version += 1;
+        cx.refresh_windows();
+        cx.notify();
+    }
+
+    /// Saves and shows `language`. `refresh_windows` redraws cached pages too,
+    /// so none of them needs rebuilding for text drawn at render time.
+    pub fn set_language(&mut self, language: Language, cx: &mut Context<Self>) {
+        self.language = language;
+        self.core
+            .config
+            .update(|config| config.language = Some(language));
+        self.preview_language(language, cx);
+    }
+
     pub fn set_close_to_tray(&mut self, enabled: bool, cx: &mut Context<Self>) {
         self.close_to_tray = enabled;
         self.core
@@ -623,7 +666,7 @@ impl AppStore {
                 }
                 Err(error) => {
                     warn!(%error, "could not open the mini player");
-                    state.show_toast("Could not open the mini player.", cx);
+                    state.show_toast(t!("store.toast.mini_player_failed"), cx);
                 }
             });
         });
@@ -849,9 +892,9 @@ impl AppStore {
         self.queue_requested.insert(track.uri.clone());
 
         if self.core.queue.add(&track.uri, QueueSource::User) {
-            self.show_toast("Added to queue", cx);
+            self.show_toast(t!("store.toast.added_to_queue"), cx);
         } else {
-            self.show_toast("Your queue is full.", cx);
+            self.show_toast(t!("store.toast.queue_full"), cx);
         }
     }
 
@@ -1348,7 +1391,7 @@ impl AppStore {
         if !self.is_demo()
             && let Err(error) = check_target(&self.core.paths.local_root(), &target)
         {
-            self.show_toast(error.to_string(), cx);
+            self.show_toast(error.user_message(), cx);
 
             return;
         }
@@ -1360,7 +1403,7 @@ impl AppStore {
     pub fn propose_default_data_move(&mut self, cx: &mut Context<Self>) {
         match AppPaths::default_local_root() {
             Some(target) => self.propose_data_move(target, cx),
-            None => self.show_toast("Could not find the default folder.", cx),
+            None => self.show_toast(t!("store.toast.default_folder_missing"), cx),
         }
     }
 
@@ -1404,7 +1447,7 @@ impl AppStore {
         };
 
         if self.is_demo() {
-            self.show_toast("Moving data isn't available in demo mode.", cx);
+            self.show_toast(t!("store.toast.move_demo"), cx);
 
             return;
         }
@@ -1422,7 +1465,7 @@ impl AppStore {
             Ok(child) => platform_window::quit_after_handing_focus_to(child.id(), cx),
             Err(error) => {
                 warn!(%error, "could not start the data move");
-                self.show_toast(format!("Could not start moving your data: {error}"), cx);
+                self.show_toast(t!("store.toast.move_failed", error = error.to_string()), cx);
             }
         }
     }
@@ -1443,10 +1486,13 @@ impl AppStore {
             if let Some(problems) = inbox.recv().await {
                 let _ = this.update(cx, |store, cx| {
                     let text = if problems.is_empty() {
-                        "Disconnected. The login, cached data, history and queue were removed from this computer."
-                            .to_owned()
+                        t!("store.toast.disconnected").into_owned()
                     } else {
-                        format!("Disconnected, but some data could not be removed: {}", problems.join("; "))
+                        t!(
+                            "store.toast.disconnected_partial",
+                            problems = problems.join("; ")
+                        )
+                        .into_owned()
                     };
 
                     store.show_toast(text, cx);
@@ -1480,13 +1526,21 @@ impl AppStore {
                 if !store.is_demo()
                     && let Err(error) = crate::protocol::unregister()
                 {
-                    problems.push(format!("Spotify link registration: {error}"));
+                    problems.push(
+                        t!(
+                            "store.problem.link_registration",
+                            error = error.user_message()
+                        )
+                        .into_owned(),
+                    );
                 }
 
                 if !store.is_demo()
                     && let Err(error) = crate::app_identity::remove()
                 {
-                    problems.push(format!("Start Menu shortcut: {error}"));
+                    problems.push(
+                        t!("store.problem.start_menu", error = error.to_string()).into_owned(),
+                    );
                 }
 
                 store.sidebar_collapsed = config.sidebar_collapsed;
@@ -1502,12 +1556,13 @@ impl AppStore {
                 keymap::apply(cx, &previous, &keymap::effective(&config.shortcuts));
 
                 let text = if problems.is_empty() {
-                    "Everything Sonear stored was deleted.".to_owned()
+                    t!("store.toast.deleted_all").into_owned()
                 } else {
-                    format!(
-                        "Deleted, but some data could not be removed: {}",
-                        problems.join("; ")
+                    t!(
+                        "store.toast.deleted_partial",
+                        problems = problems.join("; ")
                     )
+                    .into_owned()
                 };
 
                 store.show_toast(text, cx);
@@ -1555,7 +1610,7 @@ impl AppStore {
             .update(|config| config.device_name.clone_from(&name));
 
         let Some(manager) = self.core.soloist.clone() else {
-            self.show_toast("Device name saved.", cx);
+            self.show_toast(t!("store.toast.device_saved"), cx);
 
             return;
         };
@@ -1569,7 +1624,10 @@ impl AppStore {
         cx.spawn(async move |this, cx| {
             if inbox.recv().await.is_some() {
                 let _ = this.update(cx, |store, cx| {
-                    store.show_toast(format!("Soloist restarted as \u{201c}{name}\u{201d}."), cx);
+                    store.show_toast(
+                        t!("store.toast.soloist_restarted", name = name.as_str()),
+                        cx,
+                    );
                 });
             }
         })
@@ -1602,7 +1660,7 @@ impl AppStore {
                 })
                 .await
                 .map(|_| ())
-                .map_err(|error| error.to_string());
+                .map_err(|error| error.user_message());
 
             let _ = messages.send(InstallMessage::Finished(result));
         });
@@ -1646,7 +1704,7 @@ impl AppStore {
         };
 
         if key.trim().is_empty() {
-            self.key_error = Some("Paste your Soloist key first.".to_owned());
+            self.key_error = Some(t!("settings.soloist.key.empty").into_owned());
             cx.notify();
             return;
         }
@@ -1661,7 +1719,7 @@ impl AppStore {
             let outcome = manager
                 .save_key(&key)
                 .await
-                .map_err(|error| error.to_string());
+                .map_err(|error| error.user_message());
 
             let _ = done.send(outcome);
         });
@@ -1669,7 +1727,8 @@ impl AppStore {
         cx.spawn(async move |this, cx| {
             if let Some(Err(reason)) = result.recv().await {
                 let _ = this.update(cx, |store, cx| {
-                    store.key_error = Some(format!("Could not save the key: {reason}"));
+                    store.key_error =
+                        Some(t!("store.key.save_failed", reason = reason).into_owned());
                     cx.notify();
                 });
             }
@@ -1709,6 +1768,7 @@ fn demo_setup(mut state: SetupState) -> SetupState {
     };
 
     state.legal_accepted = true;
+    state.language_chosen = true;
     state.connected = true;
     state.editing_key = false;
     state.key_error = None;
@@ -1732,7 +1792,7 @@ fn demo_setup(mut state: SetupState) -> SetupState {
         }
         "loginfailed" => {
             state.account =
-                AccountState::LoginFailed("Spotify did not accept that Client ID.".to_owned());
+                AccountState::LoginFailed(t!("store.demo.client_id_rejected").into_owned());
             state.connected = false;
         }
         "download" => state.status = Status::NotInstalled,
@@ -1752,7 +1812,7 @@ fn demo_setup(mut state: SetupState) -> SetupState {
         }
         "failed" => {
             state.status = Status::Failed {
-                reason: "Soloist exited before it was ready.".to_owned(),
+                reason: sonear_soloist::FailReason::NotReady,
                 recent_log: vec![
                     "starting soloist".to_owned(),
                     "listening on 127.0.0.1:49152".to_owned(),
@@ -1761,6 +1821,7 @@ fn demo_setup(mut state: SetupState) -> SetupState {
             };
         }
         "starting" => {}
+        "language" => state.language_chosen = false,
         _ => state.legal_accepted = false,
     }
 
@@ -1782,6 +1843,8 @@ async fn cover_bytes(url: &str) -> Option<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
+    use sonear_soloist::FailReason;
+
     use super::*;
 
     #[test]
@@ -1801,6 +1864,28 @@ mod tests {
         assert_eq!(Route::Playlist("p".into()).label(), "Playlist");
     }
 
+    #[test]
+    fn route_labels_exist_in_both_languages() {
+        for key in [
+            "route.home",
+            "route.search",
+            "route.library",
+            "route.liked",
+            "route.history",
+            "route.settings",
+            "route.album",
+            "route.artist",
+            "route.playlist",
+            "route.show",
+        ] {
+            for locale in ["en", "es"] {
+                assert_ne!(t!(key, locale = locale), key, "{key} in {locale}");
+            }
+        }
+
+        assert_eq!(t!("route.library", locale = "es"), "Tu biblioteca");
+    }
+
     fn state(status: Status) -> SetupState {
         SetupState {
             account: AccountState::Connected,
@@ -1809,8 +1894,24 @@ mod tests {
             key_error: None,
             editing_key: false,
             legal_accepted: true,
+            language_chosen: true,
             connected: true,
         }
+    }
+
+    #[test]
+    fn language_comes_before_the_agreement() {
+        let mut setup = state(Status::NeedsKey);
+
+        setup.language_chosen = false;
+        setup.legal_accepted = false;
+        setup.connected = false;
+
+        assert_eq!(setup.step(), SetupStep::Language);
+
+        setup.language_chosen = true;
+
+        assert_eq!(setup.step(), SetupStep::Agreement);
     }
 
     #[test]
@@ -1835,7 +1936,7 @@ mod tests {
     #[test]
     fn editing_the_key_wins_over_the_status() {
         let mut setup = state(Status::Failed {
-            reason: String::new(),
+            reason: FailReason::NotReady,
             recent_log: Vec::new(),
         });
 
@@ -1859,7 +1960,7 @@ mod tests {
             ),
             (
                 Status::Failed {
-                    reason: String::new(),
+                    reason: FailReason::NotReady,
                     recent_log: Vec::new(),
                 },
                 SetupStep::Failed,

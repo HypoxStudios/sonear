@@ -13,6 +13,7 @@ use async_trait::async_trait;
 use futures_util::StreamExt;
 use reqwest::Url;
 use reqwest::redirect::Policy;
+use rust_i18n::t;
 use thiserror::Error;
 use tokio::io::AsyncWriteExt;
 use tracing::{info, warn};
@@ -55,6 +56,24 @@ pub enum InstallError {
     Swap(String),
     #[error("file error: {0}")]
     Io(#[from] io::Error),
+}
+
+impl InstallError {
+    /// The error in the interface language. `Display` stays English for logs.
+    pub fn user_message(&self) -> String {
+        match self {
+            Self::HostNotAllowed(url) => t!("install.host_not_allowed", url = url),
+            Self::Download(detail) => t!("install.download", detail = detail),
+            Self::Extract(detail) => t!("install.extract", detail = detail),
+            Self::MissingExe => t!("install.missing_exe"),
+            Self::SignatureInvalid(detail) => t!("install.signature_invalid", detail = detail),
+            Self::WrongSigner(signer) => t!("install.wrong_signer", signer = signer),
+            Self::Probe(error) => t!("install.probe", detail = error.user_message()),
+            Self::Swap(detail) => t!("install.swap", detail = detail),
+            Self::Io(error) => t!("install.io", detail = error.to_string()),
+        }
+        .into_owned()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

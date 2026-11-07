@@ -10,6 +10,7 @@ use gpui_kit::{
     AppContext as _, Context, IntoElement, ParentElement as _, Render,
     StatefulInteractiveElement as _, Styled as _, Task, Window, div,
 };
+use rust_i18n::t;
 use sonear_core::data_dir::{self, Moved};
 use sonear_core::{AppPaths, Config};
 use tracing::warn;
@@ -64,11 +65,12 @@ fn is_default(target: &Path) -> bool {
 
 fn run_move(target: &Path, reporter: &Reporter) -> Result<MoveDone, String> {
     let guard = installer::take_over()?;
-    let paths = AppPaths::discover().ok_or("Could not find your data folder.")?;
+    let paths =
+        AppPaths::discover().ok_or_else(|| t!("installer.error.no_data_folder").into_owned())?;
     let from = paths.local_root();
     let config_file = paths.config_file();
     let moved = data_dir::move_data(&from, target, &|done, total| reporter.bytes(done, total))
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| error.user_message())?;
     let saved = save_data_dir(
         &config_file,
         (!is_default(target)).then(|| target.to_owned()),
@@ -79,10 +81,10 @@ fn run_move(target: &Path, reporter: &Reporter) -> Result<MoveDone, String> {
             warn!(%undo, "could not undo the move");
         }
 
-        return Err(format!("Could not save the new location: {error}"));
+        return Err(t!("mover.save_failed", error = error).into_owned());
     }
 
-    reporter.step(1., "Done");
+    reporter.step(1., &t!("installer.progress.done"));
 
     let leftover = match moved {
         Moved::Copied => data_dir::finish_move(&from)
@@ -184,49 +186,55 @@ impl DataMover {
 impl Render for DataMover {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let back = || {
-            accent_button("mover-back", "Back to Sonear", None, true)
+            accent_button("mover-back", t!("installer.back_to_sonear"), None, true)
                 .on_click(cx.listener(|mover, _, _, cx| mover.back_to_sonear(cx)))
         };
         let page = match &self.stage {
             Stage::Moving => {
-                let counted = (self.total > 0)
-                    .then(|| format!("{} of {}", megabytes(self.done), megabytes(self.total)));
+                let counted = (self.total > 0).then(|| {
+                    t!(
+                        "mover.progress",
+                        done = megabytes(self.done),
+                        total = megabytes(self.total)
+                    )
+                    .into_owned()
+                });
 
                 chrome::page(
-                    "Moving your data",
+                    t!("installer.title.move"),
                     div()
                         .flex()
                         .flex_col()
                         .gap_3()
                         .child(chrome::progress_bar(self.fraction))
                         .child(chrome::note(counted.unwrap_or_default()))
-                        .child(chrome::note("Sonear opens again when it is done.")),
+                        .child(chrome::note(t!("installer.opens_again"))),
                     div(),
                 )
             }
             Stage::Moved(leftover) => chrome::done_page(
-                "Your data is moved",
+                t!("mover.done_title"),
                 div()
                     .flex()
                     .flex_col()
                     .gap_2()
-                    .child(chrome::text("The old folder could not be removed:"))
+                    .child(chrome::text(t!("mover.leftover")))
                     .child(chrome::message(leftover.clone(), theme::warning())),
                 back(),
             ),
             Stage::Failed(error) => chrome::page(
-                "Could not move your data",
+                t!("mover.failed_title"),
                 div()
                     .flex()
                     .flex_col()
                     .gap_3()
-                    .child(chrome::text("Your data was not moved."))
+                    .child(chrome::text(t!("mover.failed_body")))
                     .child(chrome::message(error.clone(), theme::danger())),
                 back(),
             ),
         };
 
-        chrome::frame("Moving your data", &[], 0, page)
+        chrome::frame(t!("installer.title.move"), &[], 0, page)
     }
 }
 
@@ -234,14 +242,17 @@ impl Render for DataMover {
 /// it: its window stays up until this one has the focus, so the wait for it to
 /// exit happens behind the window.
 pub fn run(target: PathBuf, after_pid: Option<u32>) {
-    installer::run_window("Moving your data", move |window, cx| {
-        let busy = Arc::new(AtomicBool::new(true));
-        let closing = busy.clone();
+    installer::run_window(
+        t!("installer.title.move").into_owned(),
+        move |window, cx| {
+            let busy = Arc::new(AtomicBool::new(true));
+            let closing = busy.clone();
 
-        window.on_window_should_close(cx, move |_, _| !closing.load(Ordering::Relaxed));
+            window.on_window_should_close(cx, move |_, _| !closing.load(Ordering::Relaxed));
 
-        cx.new(|cx| DataMover::new(target, after_pid, busy, cx))
-    });
+            cx.new(|cx| DataMover::new(target, after_pid, busy, cx))
+        },
+    );
 }
 
 struct MissingFolder {
@@ -264,14 +275,14 @@ impl MissingFolder {
     fn use_default(&mut self, cx: &mut Context<Self>) {
         if !DEMO {
             let Some(paths) = AppPaths::discover() else {
-                self.error = Some("Could not find your settings.".to_owned());
+                self.error = Some(t!("mover.missing.no_settings").into_owned());
                 cx.notify();
 
                 return;
             };
 
             if let Err(error) = save_data_dir(&paths.config_file(), None) {
-                self.error = Some(format!("Could not save the setting: {error}"));
+                self.error = Some(t!("mover.missing.save_failed", error = error).into_owned());
                 cx.notify();
 
                 return;
@@ -288,9 +299,7 @@ impl Render for MissingFolder {
             .flex()
             .flex_col()
             .gap_3()
-            .child(chrome::text(
-                "Sonear keeps its history, queue and Soloist in this folder, but it is not there. If it is on a drive that is not connected, connect it and try again.",
-            ))
+            .child(chrome::text(t!("mover.missing.body")))
             .child(chrome::message(
                 self.path.display().to_string(),
                 theme::text_primary(),
@@ -304,15 +313,15 @@ impl Render for MissingFolder {
             .flex()
             .gap_2()
             .child(
-                ghost_button("missing-quit", "Quit", true)
+                ghost_button("missing-quit", t!("mover.missing.quit"), true)
                     .on_click(cx.listener(|_, _, _, cx| cx.quit())),
             )
             .child(
-                ghost_button("missing-default", "Use the default folder", true)
+                ghost_button("missing-default", t!("mover.missing.default"), true)
                     .on_click(cx.listener(|missing, _, _, cx| missing.use_default(cx))),
             )
             .child(
-                accent_button("missing-retry", "Try again", None, true)
+                accent_button("missing-retry", t!("common.try_again"), None, true)
                     .on_click(cx.listener(|missing, _, _, cx| missing.retry(cx))),
             );
 
@@ -320,7 +329,7 @@ impl Render for MissingFolder {
             "Sonear",
             &[],
             0,
-            chrome::page("Sonear can't find its data folder", body, footer),
+            chrome::page(t!("mover.missing.title"), body, footer),
         )
     }
 }

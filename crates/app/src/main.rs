@@ -8,6 +8,7 @@ mod data;
 mod data_mover;
 mod format;
 mod http;
+mod i18n;
 mod installer;
 mod instance;
 mod keymap;
@@ -20,6 +21,8 @@ mod store;
 mod theme;
 mod tray;
 mod ui;
+
+rust_i18n::i18n!("locales", fallback = "en");
 
 use std::sync::Arc;
 
@@ -75,6 +78,8 @@ fn main() {
             }),
         )
         .init();
+
+    i18n::apply_saved();
 
     let exe = std::env::current_exe().unwrap_or_default();
     let parsed = launch::parse(std::env::args_os().skip(1), &exe);
@@ -137,6 +142,9 @@ fn run_app(link: Option<SpotifyLink>, ignored: Option<String>) {
     let handle = runtime.handle().clone();
     let handoffs = instance::serve(&handle, DEMO);
     let core = Arc::new(start_core(&handle, &paths));
+
+    i18n::apply(i18n::initial(&core.config.get()));
+
     let covers = (!DEMO).then(|| {
         cover_cache::DiskCache::open(
             paths.cover_cache_dir(),
@@ -336,7 +344,7 @@ fn run_media_command(command: MediaCommand, store: &Entity<AppStore>, cx: &mut A
 
 #[cfg(feature = "demo")]
 fn start_core(runtime: &tokio::runtime::Handle, paths: &AppPaths) -> Core {
-    let config = sonear_core::ConfigHandle::load(paths.config_dir().join("config.demo.toml"));
+    let config = sonear_core::ConfigHandle::load(paths.config_dir().join(i18n::CONFIG_FILE));
 
     Core::start_demo(runtime, config)
 }

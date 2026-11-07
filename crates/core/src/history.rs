@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use rusqlite::{Connection, params};
+use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::runtime::Handle;
@@ -42,6 +43,18 @@ pub enum HistoryError {
     Task(String),
     #[error("history file error: {0}")]
     Io(#[from] std::io::Error),
+}
+
+impl HistoryError {
+    /// The error in the interface language. `Display` stays English for logs.
+    pub fn user_message(&self) -> String {
+        match self {
+            Self::Database(error) => t!("history.database", detail = error.to_string()),
+            Self::Task(detail) => t!("history.task", detail = detail),
+            Self::Io(error) => t!("history.io", detail = error.to_string()),
+        }
+        .into_owned()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

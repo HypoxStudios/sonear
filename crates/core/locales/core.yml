@@ -1,0 +1,136 @@
+_version: 2
+
+account.bad_client_id:
+  en: "That doesn't look like a Client ID. Copy it from your app's page in the Spotify dashboard."
+  es: "Eso no parece un Client ID. Cópialo desde la página de tu app en el panel de Spotify."
+account.demo_disconnect:
+  en: "Disconnecting isn't available in demo mode."
+  es: "Desconectar no está disponible en el modo demo."
+account.demo_delete:
+  en: "Deleting data isn't available in demo mode."
+  es: "Eliminar los datos no está disponible en el modo demo."
+account.profile_failed:
+  en: "Spotify didn't return your profile. Try connecting again."
+  es: "Spotify no devolvió tu perfil. Intenta conectarte de nuevo."
+
+history.database:
+  en: "history database error: %{detail}"
+  es: "Error de la base de datos del historial: %{detail}"
+history.io:
+  en: "history file error: %{detail}"
+  es: "Error de archivo del historial: %{detail}"
+history.task:
+  en: "history task failed: %{detail}"
+  es: "Falló una tarea del historial: %{detail}"
+
+library.api:
+  en: "Spotify answered with an error (%{detail})."
+  es: "Spotify respondió con un error (%{detail})."
+library.decode:
+  en: "Spotify sent something Sonear couldn't read."
+  es: "Spotify envió algo que Sonear no pudo leer."
+library.forbidden:
+  en: "Spotify doesn't allow this for your account."
+  es: "Spotify no permite esto en tu cuenta."
+library.needs_login:
+  en: "Spotify needs you to log in again."
+  es: "Spotify necesita que vuelvas a iniciar sesión."
+library.network:
+  en: "Couldn't reach Spotify. Check your connection."
+  es: "No se pudo conectar con Spotify. Revisa tu conexión."
+library.not_found:
+  en: "Spotify couldn't find that."
+  es: "Spotify no encontró eso."
+library.quota:
+  en: "The Spotify request quota for this developer account is used up. It resets later and is shared by everything using your Client ID."
+  es: "Se agotó la cuota de solicitudes de Spotify de esta cuenta de desarrollador. Se restablece más tarde y la comparte todo lo que use tu Client ID."
+library.rate_limited:
+  en: "Spotify asked Sonear to slow down. Try again in a moment."
+  es: "Spotify pidió a Sonear que vaya más despacio. Inténtalo de nuevo en un momento."
+library.unsupported:
+  en: "This isn't available in the current mode."
+  es: "Esto no está disponible en el modo actual."
+
+likes.update_failed:
+  en: "Couldn't update your saved music. %{error}"
+  es: "No se pudo actualizar tu música guardada. %{error}"
+
+move.contains_current:
+  en: "Pick a folder that is not a parent of the current data folder."
+  es: "Elige una carpeta que no contenga la carpeta de datos actual."
+move.inside_current:
+  en: "Pick a folder outside the current data folder."
+  es: "Elige una carpeta fuera de la carpeta de datos actual."
+move.io:
+  en: "Moving the data failed: %{detail}"
+  es: "No se pudieron mover los datos: %{detail}"
+move.not_empty:
+  en: "%{path} already contains files."
+  es: "%{path} ya contiene archivos."
+move.same:
+  en: "That is the folder Sonear already uses."
+  es: "Esa es la carpeta que Sonear ya usa."
+move.unwritable:
+  en: "Sonear can't write to %{path}: %{detail}"
+  es: "Sonear no puede escribir en %{path}: %{detail}"
+
+player.no_device:
+  en: "Soloist isn't listed by Spotify yet, so only the clicked track was started."
+  es: "Spotify todavía no muestra a Soloist, así que solo se inició la canción elegida."
+player.not_connected:
+  en: "Soloist is not connected"
+  es: "Soloist no está conectado"
+player.start_failed:
+  en: "Couldn't start playback. %{error}"
+  es: "No se pudo iniciar la reproducción. %{error}"
+
+problem.config_backup:
+  en: "config backup"
+  es: "copia de la configuración"
+problem.cover_cache:
+  en: "cover cache"
+  es: "caché de portadas"
+problem.history:
+  en: "history"
+  es: "historial"
+problem.login_token:
+  en: "login token"
+  es: "token de inicio de sesión"
+problem.queue:
+  en: "queue"
+  es: "fila"
+problem.soloist_cache:
+  en: "Soloist cache"
+  es: "caché de Soloist"
+problem.soloist_data:
+  en: "Soloist data"
+  es: "datos de Soloist"
+problem.soloist_key:
+  en: "Soloist key"
+  es: "clave de Soloist"
+
+secret.store:
+  en: "secret store error: %{detail}"
+  es: "Error del almacén de secretos: %{detail}"
+
+update.io:
+  en: "file error: %{detail}"
+  es: "Error de archivo: %{detail}"
+update.network:
+  en: "could not reach GitHub: %{detail}"
+  es: "No se pudo conectar con GitHub: %{detail}"
+update.release:
+  en: "the release data could not be read: %{detail}"
+  es: "No se pudieron leer los datos de la versión: %{detail}"
+update.signature:
+  en: "the signature check failed: %{detail}"
+  es: "Falló la comprobación de la firma: %{detail}"
+update.status:
+  en: "GitHub answered %{status}"
+  es: "GitHub respondió %{status}"
+update.too_large:
+  en: "a download is larger than allowed"
+  es: "Una descarga es más grande de lo permitido"
+update.wrong_version:
+  en: "the file is signed as `%{found}`, not as `sonear %{expected}`"
+  es: "El archivo está firmado como `%{found}`, no como `sonear %{expected}`"

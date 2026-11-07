@@ -6,6 +6,7 @@ use std::io;
 use std::path::{Component, Path, PathBuf};
 use std::time::{Duration, Instant};
 
+use rust_i18n::t;
 use thiserror::Error;
 use tracing::warn;
 
@@ -35,6 +36,25 @@ pub enum MoveError {
     Unwritable { path: PathBuf, source: io::Error },
     #[error("Moving the data failed: {0}")]
     Io(#[from] io::Error),
+}
+
+impl MoveError {
+    /// The error in the interface language. `Display` stays English for logs.
+    pub fn user_message(&self) -> String {
+        match self {
+            Self::Same => t!("move.same"),
+            Self::InsideCurrent => t!("move.inside_current"),
+            Self::ContainsCurrent => t!("move.contains_current"),
+            Self::NotEmpty(path) => t!("move.not_empty", path = path.display().to_string()),
+            Self::Unwritable { path, source } => t!(
+                "move.unwritable",
+                path = path.display().to_string(),
+                detail = source.to_string()
+            ),
+            Self::Io(error) => t!("move.io", detail = error.to_string()),
+        }
+        .into_owned()
+    }
 }
 
 /// How the data got to its new place, which decides how to undo it.

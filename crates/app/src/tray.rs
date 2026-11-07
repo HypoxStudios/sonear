@@ -8,6 +8,7 @@ use std::ffi::c_void;
 use std::sync::atomic::{AtomicU8, AtomicU32, Ordering};
 use std::sync::{Once, OnceLock};
 
+use rust_i18n::t;
 use thiserror::Error;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, warn};
@@ -36,8 +37,6 @@ const ICON_ID: u32 = 1;
 const CALLBACK_MESSAGE: u32 = WM_USER + 1;
 const NIN_KEYSELECT: u32 = NIN_SELECT | 1;
 const TOOLTIP: &str = "Sonear";
-const HINT_TITLE: &str = "Sonear is still running";
-const HINT_TEXT: &str = "Music keeps playing. Quit from the tray icon.";
 /// Windows 10 1903, the first build with the dark menu switch.
 const DARK_MENUS_FROM_BUILD: u32 = 18362;
 const SET_PREFERRED_APP_MODE: usize = 135;
@@ -66,7 +65,7 @@ pub struct MenuState {
 pub enum MenuEntry {
     Item {
         id: u32,
-        label: &'static str,
+        label: String,
         enabled: bool,
         checked: bool,
     },
@@ -101,10 +100,12 @@ pub fn icon_resource(light_taskbar: Option<bool>) -> u16 {
     }
 }
 
+/// The menu in the current interface language. It is built each time the menu opens,
+/// so a language change reaches it without a restart.
 pub fn menu_model(state: MenuState) -> Vec<MenuEntry> {
-    let item = |id, label, enabled, checked| MenuEntry::Item {
+    let item = |id, label: std::borrow::Cow<'static, str>, enabled, checked| MenuEntry::Item {
         id,
-        label,
+        label: label.into_owned(),
         enabled,
         checked,
     };
@@ -112,17 +113,26 @@ pub fn menu_model(state: MenuState) -> Vec<MenuEntry> {
     vec![
         item(
             ID_PLAY_PAUSE,
-            if state.playing { "Pause" } else { "Play" },
+            if state.playing {
+                t!("tray.pause")
+            } else {
+                t!("tray.play")
+            },
             state.has_item,
             false,
         ),
-        item(ID_NEXT, "Next", state.has_item, false),
-        item(ID_PREVIOUS, "Previous", state.has_item, false),
+        item(ID_NEXT, t!("tray.next"), state.has_item, false),
+        item(ID_PREVIOUS, t!("tray.previous"), state.has_item, false),
         MenuEntry::Separator,
-        item(ID_MINI_PLAYER, "Mini player", true, state.mini_open),
-        item(ID_SHOW, "Show Sonear", true, false),
+        item(
+            ID_MINI_PLAYER,
+            t!("tray.mini_player"),
+            true,
+            state.mini_open,
+        ),
+        item(ID_SHOW, t!("tray.show"), true, false),
         MenuEntry::Separator,
-        item(ID_QUIT, "Quit Sonear", true, false),
+        item(ID_QUIT, t!("tray.quit"), true, false),
     ]
 }
 
@@ -283,8 +293,8 @@ pub fn show_hint() {
 
     data.uFlags = NIF_INFO;
     data.dwInfoFlags = NIIF_INFO;
-    copy_wide(HINT_TITLE, &mut data.szInfoTitle);
-    copy_wide(HINT_TEXT, &mut data.szInfo);
+    copy_wide(&t!("tray.hint_title"), &mut data.szInfoTitle);
+    copy_wide(&t!("tray.hint_text"), &mut data.szInfo);
 
     // SAFETY: `data` is fully initialised and outlives the call.
     unsafe {
@@ -484,7 +494,7 @@ fn show_menu(hwnd: HWND, x: i32, y: i32) {
                         flags |= MF_CHECKED;
                     }
 
-                    AppendMenuW(menu, flags, id as usize, &HSTRING::from(label))
+                    AppendMenuW(menu, flags, id as usize, &HSTRING::from(label.as_str()))
                 }
             };
         }
@@ -592,7 +602,7 @@ unsafe extern "system" fn window_proc(
 mod tests {
     use super::*;
 
-    fn labels(state: MenuState) -> Vec<(&'static str, bool, bool)> {
+    fn labels(state: MenuState) -> Vec<(String, bool, bool)> {
         menu_model(state)
             .into_iter()
             .filter_map(|entry| match entry {
@@ -618,12 +628,12 @@ mod tests {
     fn menu_follows_the_playback_state() {
         let idle = labels(MenuState::default());
 
-        assert_eq!(idle[0], ("Play", false, false));
-        assert_eq!(idle[1], ("Next", false, false));
-        assert_eq!(idle[2], ("Previous", false, false));
-        assert_eq!(idle[3], ("Mini player", true, false));
-        assert_eq!(idle[4], ("Show Sonear", true, false));
-        assert_eq!(idle[5], ("Quit Sonear", true, false));
+        assert_eq!(idle[0], ("Play".to_owned(), false, false));
+        assert_eq!(idle[1], ("Next".to_owned(), false, false));
+        assert_eq!(idle[2], ("Previous".to_owned(), false, false));
+        assert_eq!(idle[3], ("Mini player".to_owned(), true, false));
+        assert_eq!(idle[4], ("Show Sonear".to_owned(), true, false));
+        assert_eq!(idle[5], ("Quit Sonear".to_owned(), true, false));
 
         let playing = labels(MenuState {
             playing: true,
@@ -631,10 +641,10 @@ mod tests {
             mini_open: true,
         });
 
-        assert_eq!(playing[0], ("Pause", true, false));
-        assert_eq!(playing[1], ("Next", true, false));
-        assert_eq!(playing[2], ("Previous", true, false));
-        assert_eq!(playing[3], ("Mini player", true, true));
+        assert_eq!(playing[0], ("Pause".to_owned(), true, false));
+        assert_eq!(playing[1], ("Next".to_owned(), true, false));
+        assert_eq!(playing[2], ("Previous".to_owned(), true, false));
+        assert_eq!(playing[3], ("Mini player".to_owned(), true, true));
     }
 
     #[test]

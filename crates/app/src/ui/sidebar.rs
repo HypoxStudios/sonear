@@ -5,6 +5,7 @@ use gpui_kit::{
     ParentElement as _, SharedString, Stateful, StatefulInteractiveElement as _, Styled as _, div,
     px,
 };
+use rust_i18n::t;
 
 use super::widgets::{art, icon, icon_button, logo_mark, text_tooltip};
 use crate::store::{AppStore, LibraryTab, Route};
@@ -12,7 +13,6 @@ use crate::theme;
 
 struct NavItem {
     id: &'static str,
-    label: &'static str,
     icon: IconName,
     route: Route,
 }
@@ -23,19 +23,16 @@ fn nav_items() -> [NavItem; 3] {
     [
         NavItem {
             id: "nav-home",
-            label: "Home",
             icon: IconName::House,
             route: Route::Home,
         },
         NavItem {
             id: "nav-search",
-            label: "Search",
             icon: IconName::Search,
             route: Route::Search,
         },
         NavItem {
             id: "nav-library",
-            label: "Your Library",
             icon: IconName::Library,
             route: Route::Library(LibraryTab::Playlists),
         },
@@ -151,7 +148,7 @@ pub fn sidebar(store: &Entity<AppStore>, state: &AppStore, collapsed: bool) -> A
             row(
                 item.id,
                 glyph(item.icon, collapsed, active),
-                item.label,
+                item.route.label(),
                 active,
                 collapsed,
             )
@@ -174,7 +171,7 @@ pub fn sidebar(store: &Entity<AppStore>, state: &AppStore, collapsed: bool) -> A
             .text_size(px(11.))
             .font_weight(FontWeight::MEDIUM)
             .text_color(theme::text_tertiary())
-            .child("YOUR MUSIC")
+            .child(t!("sidebar.your_music").to_uppercase())
     });
 
     let liked_active = route == Route::LikedSongs;
@@ -192,7 +189,7 @@ pub fn sidebar(store: &Entity<AppStore>, state: &AppStore, collapsed: bool) -> A
             row(
                 "nav-liked",
                 glyph(IconName::Heart, collapsed, liked_active),
-                "Liked Songs",
+                Route::LikedSongs.label(),
                 liked_active,
                 collapsed,
             )
@@ -247,12 +244,12 @@ fn update_row(store: &Entity<AppStore>, version: &str, collapsed: bool) -> State
             theme::accent(),
         )
         .into_any_element(),
-        "Restart to update",
+        t!("sidebar.restart_to_update"),
         false,
         collapsed,
     )
     .text_color(theme::accent())
-    .tooltip(text_tooltip(format!("Sonear {version} is ready")))
+    .tooltip(text_tooltip(t!("sidebar.update_ready", version = version)))
     .on_click(move |_, _, cx| store.update(cx, |state, cx| state.restart_to_update(cx)))
 }
 

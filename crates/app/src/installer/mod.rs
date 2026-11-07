@@ -14,7 +14,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-use gpui_kit::{App, AppContext as _, Entity, Render, Window};
+use gpui_kit::{App, AppContext as _, Entity, Render, SharedString, Window};
+use rust_i18n::t;
 use tracing::{error, warn};
 use windows::Win32::UI::Shell::FOLDERID_LocalAppData;
 use windows::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK, MessageBoxW};
@@ -31,14 +32,19 @@ const CLOSE_WAIT: Duration = Duration::from_secs(10);
 const CLOSE_POLL: Duration = Duration::from_millis(100);
 const DETACHED_PROCESS: u32 = 0x0000_0008;
 const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
-pub const CLOSE_AND_RETRY: &str = "Close Sonear and try again.";
+
+pub fn close_and_retry() -> String {
+    t!("installer.close_and_retry").into_owned()
+}
 
 /// Opens the one window of a flow and runs until it closes. `make` builds the
 /// view; it is also the place to block closing the window.
 pub fn run_window<V: Render + 'static>(
-    title: &'static str,
+    title: impl Into<SharedString>,
     make: impl FnOnce(&mut Window, &mut App) -> Entity<V> + 'static,
 ) {
+    let title = title.into();
+
     gpui_kit::application()
         .with_assets(assets::AppAssets)
         .run(move |cx| {
@@ -74,9 +80,14 @@ pub fn run_setup() {
         }
     };
 
-    run_window("Sonear Setup", move |window, cx| {
-        cx.new(|cx| wizard::Wizard::new(wizard::Flow::Install { installed, source }, window, cx))
-    });
+    run_window(
+        t!("installer.title.setup").into_owned(),
+        move |window, cx| {
+            cx.new(|cx| {
+                wizard::Wizard::new(wizard::Flow::Install { installed, source }, window, cx)
+            })
+        },
+    );
 }
 
 /// `--uninstall`: starts a temp copy that does the work and returns at once,
@@ -90,14 +101,14 @@ pub fn run_uninstall() {
 
     let Some(installed) = installed() else {
         warn!("Sonear is not installed, nothing to uninstall");
-        show_error("Sonear is not installed.");
+        show_error(&t!("installer.not_installed"));
 
         return;
     };
 
     if let Err(error) = relocate::start_from_temp(&installed.dir) {
         error!(%error, "could not start the uninstaller");
-        show_error(&error.to_string());
+        show_error(&error.user_message());
     }
 }
 
@@ -108,7 +119,7 @@ fn show_error(text: &str) {
         MessageBoxW(
             None,
             &HSTRING::from(text),
-            &HSTRING::from("Uninstall Sonear"),
+            &HSTRING::from(t!("installer.title.uninstall").into_owned()),
             MB_OK | MB_ICONERROR,
         );
     }
@@ -116,9 +127,12 @@ fn show_error(text: &str) {
 
 /// `--uninstall-from <dir>`: the wizard, run from a temp copy.
 pub fn run_uninstall_from(dir: PathBuf) {
-    run_window("Uninstall Sonear", move |window, cx| {
-        cx.new(|cx| wizard::Wizard::new(wizard::Flow::Uninstall { dir }, window, cx))
-    });
+    run_window(
+        t!("installer.title.uninstall").into_owned(),
+        move |window, cx| {
+            cx.new(|cx| wizard::Wizard::new(wizard::Flow::Uninstall { dir }, window, cx))
+        },
+    );
 
     if !DEMO {
         relocate::keep_handle_alive_briefly();
@@ -178,7 +192,7 @@ pub fn take_over() -> Result<InstanceGuard, String> {
         }
     }
 
-    Err(CLOSE_AND_RETRY.to_owned())
+    Err(close_and_retry())
 }
 
 /// Starts `exe` on its own, with `dir` as its working folder. Returns its process ID.

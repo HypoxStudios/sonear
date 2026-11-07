@@ -1,6 +1,7 @@
 //! Album, playlist and Liked Songs share one layout: breadcrumb, large art,
 //! title, Play and heart, then the track list. The header shrinks on scroll.
 
+use rust_i18n::t;
 use std::rc::Rc;
 
 use gpui_kit::assets::IconName;
@@ -18,7 +19,8 @@ use sonear_core::seen::seen_key;
 
 use crate::data::{self, Env, Load, Paged, Slot};
 use crate::format::{long_duration, plain_text};
-use crate::store::AppStore;
+use crate::i18n::plural;
+use crate::store::{AppStore, Route};
 use crate::theme;
 use crate::ui::common::{
     ROW_HEIGHT, TrackRowSpec, breadcrumb, error_panel, open_spotify, skeleton_rows, track_row,
@@ -31,7 +33,6 @@ use crate::ui::widgets::{
 const ART_FULL: f32 = 232.;
 const ART_COMPACT: f32 = 64.;
 const COLLAPSE_OVER: f32 = 190.;
-pub const NOT_EXPOSED: &str = "Spotify doesn't let apps list the tracks in playlists you don't own. Press Play, and what's coming up appears under Up next.";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Kind {
@@ -53,9 +54,40 @@ pub struct Header {
     pub is_playlist: bool,
     pub owner_id: Option<String>,
     pub collaborative: bool,
+    /// Who made the playlist; the byline is built from it when drawn.
+    #[serde(default)]
+    pub owner_name: Option<String>,
 }
 
 impl Header {
+    fn is_liked(&self) -> bool {
+        self.context_uri.is_none()
+    }
+
+    /// Resolved when drawn, so a language change reaches a header that is already loaded.
+    fn title_text(&self) -> String {
+        if self.is_liked() {
+            Route::LikedSongs.label()
+        } else {
+            self.title.clone()
+        }
+    }
+
+    fn byline_text(&self) -> String {
+        match &self.owner_name {
+            Some(owner) => t!("detail.by", owner = owner.as_str()).into_owned(),
+            None => self.byline.clone(),
+        }
+    }
+
+    fn description_text(&self) -> String {
+        if self.is_liked() {
+            t!("detail.liked_description").into_owned()
+        } else {
+            self.description.clone()
+        }
+    }
+
     fn album(album: &Album) -> Self {
         Self {
             title: album.name.clone(),
@@ -73,17 +105,14 @@ impl Header {
             is_playlist: false,
             owner_id: None,
             collaborative: false,
+            owner_name: None,
         }
     }
 
     fn playlist(playlist: &Playlist) -> Self {
         Self {
             title: playlist.name.clone(),
-            byline: playlist
-                .owner_name
-                .clone()
-                .map(|owner| format!("By {owner}"))
-                .unwrap_or_default(),
+            byline: String::new(),
             description: plain_text(&playlist.description),
             art: playlist.art.clone(),
             context_uri: Some(playlist.uri.clone()),
@@ -92,14 +121,15 @@ impl Header {
             is_playlist: true,
             owner_id: playlist.owner_id.clone(),
             collaborative: playlist.collaborative,
+            owner_name: playlist.owner_name.clone(),
         }
     }
 
     fn liked() -> Self {
         Self {
-            title: "Liked Songs".to_owned(),
+            title: String::new(),
             byline: String::new(),
-            description: "Everything you've saved.".to_owned(),
+            description: String::new(),
             art: Artwork::default(),
             context_uri: None,
             open_url: None,
@@ -107,6 +137,7 @@ impl Header {
             is_playlist: false,
             owner_id: None,
             collaborative: false,
+            owner_name: None,
         }
     }
 
@@ -429,11 +460,10 @@ impl DetailPage {
         let art_size = ART_FULL + (ART_COMPACT - ART_FULL) * t;
         let title_size = 44. + (24. - 44.) * t;
         let expanded = t < 0.45;
-        let title = header.map_or(String::new(), |header| header.title.clone());
+        let title = header.map_or(String::new(), Header::title_text);
         let label = match self.kind {
-            Kind::Album(_) => "Album",
-            Kind::Playlist(_) => "Playlist",
-            Kind::Liked => "Playlist",
+            Kind::Album(_) => t!("route.album"),
+            Kind::Playlist(_) | Kind::Liked => t!("route.playlist"),
         };
         let count_text = self.count_text(header);
         let store = self.store.clone();
@@ -441,7 +471,11 @@ impl DetailPage {
         let play = {
             let mut button = accent_button(
                 "detail-play",
-                if playing_here { "Pause" } else { "Play" },
+                if playing_here {
+                    t!("common.pause")
+                } else {
+                    t!("common.play")
+                },
                 Some(play_pause_icon(playing_here, 14., theme::on_accent())),
                 header.is_some(),
             )
@@ -523,7 +557,7 @@ impl DetailPage {
                             .child(title.clone()),
                     )
                     .when_some(
-                        header.filter(|_| expanded).map(|h| h.byline.clone()),
+                        header.filter(|_| expanded).map(Header::byline_text),
                         |this, byline| {
                             this.when(!byline.is_empty(), |this| {
                                 this.child(
@@ -538,7 +572,7 @@ impl DetailPage {
                     .when_some(
                         header
                             .filter(|_| expanded)
-                            .map(|h| h.description.clone())
+                            .map(Header::description_text)
                             .filter(|text| !text.is_empty()),
                         |this, description| {
                             this.child(
@@ -592,7 +626,7 @@ impl DetailPage {
         let Some(count) = count else {
             return String::new();
         };
-        let noun = if count == 1 { "track" } else { "tracks" };
+        let count_label = plural(u64::from(count), "common.tracks_one", "common.tracks_other");
         let all_loaded = self.tracks.first_loaded && !self.tracks.has_more && !self.not_exposed;
 
         if all_loaded {
@@ -603,9 +637,9 @@ impl DetailPage {
                 .map(|track| track.duration_ms)
                 .sum();
 
-            format!("{count} {noun}  \u{00b7}  {}", long_duration(total))
+            format!("{count_label}  \u{00b7}  {}", long_duration(total))
         } else {
-            format!("{count} {noun}")
+            count_label
         }
     }
 
@@ -615,19 +649,17 @@ impl DetailPage {
             .tracks
             .total
             .or_else(|| header.and_then(|header| header.track_count));
-        let shown = match total {
-            Some(total) => format!("the {seen} of {total} tracks"),
-            None => format!("the {seen} tracks"),
-        };
 
-        format!(
-            "Spotify doesn't let apps list the tracks in playlists you don't own, so this shows {shown} seen while playing. More appear as it plays."
-        )
+        match total {
+            Some(total) => t!("detail.seen_of_total", seen = seen, total = total),
+            None => t!("detail.seen_only", seen = seen),
+        }
+        .into_owned()
     }
 
     fn body(&mut self, cx: &mut Context<Self>) -> AnyElement {
         if self.not_exposed && self.tracks.items.is_empty() {
-            return notice_panel(NOT_EXPOSED);
+            return notice_panel(t!("detail.not_exposed"));
         }
 
         if let Some(error) = &self.tracks.error
@@ -649,7 +681,7 @@ impl DetailPage {
                 .p_8()
                 .text_size(px(13.))
                 .text_color(theme::text_secondary())
-                .child("Nothing here yet.")
+                .child(t!("detail.empty"))
                 .into_any_element();
         }
 
@@ -812,7 +844,7 @@ impl Render for DetailPage {
         let name = self
             .header
             .value()
-            .map_or_else(|| "\u{2026}".to_owned(), |header| header.title.clone());
+            .map_or_else(|| "\u{2026}".to_owned(), Header::title_text);
         let crumb = breadcrumb(&self.store, state, &name);
         let error = self.header.error().cloned();
         let header = self.header_view(cx);

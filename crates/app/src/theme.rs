@@ -95,6 +95,7 @@ pub const SETUP_COLUMN_WIDTH: Pixels = px(520.);
 pub const SETUP_GROUP_SPACE: Pixels = px(10.);
 pub const SETUP_BADGE: f32 = 20.;
 pub const SETUP_LOG_HEIGHT: Pixels = px(180.);
+pub const SETUP_OPTION_HEIGHT: Pixels = px(44.);
 
 /// Window width below which the sidebar collapses to a rail.
 pub const COLLAPSE_BELOW: f32 = 1100.;

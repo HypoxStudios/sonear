@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -13,7 +14,7 @@ use sonear_core::QueueManager;
 use sonear_soloist::protocol::Entity as SoloistEntity;
 
 use super::widgets::{art, cover_for, icon, icon_button};
-use crate::store::{AppStore, UP_NEXT_ROWS};
+use crate::store::{AppStore, Route, UP_NEXT_ROWS};
 use crate::theme;
 
 const COVER: f32 = 40.;
@@ -22,8 +23,6 @@ const HEADING_HEIGHT: f32 = 38.;
 const NOTICE_HEIGHT: f32 = 84.;
 const DROP_END_HEIGHT: f32 = 22.;
 const EMPTY_HEIGHT: f32 = 30.;
-
-const NOTICE: &str = "Playing on another device. Your queue picks up when playback returns here.";
 
 /// What a dragged queue entry carries.
 #[derive(Clone)]
@@ -108,7 +107,7 @@ fn build_rows(state: &AppStore) -> Vec<Row> {
 
     if !queue.entries.is_empty() {
         rows.push(Row::Heading {
-            title: "In queue".into(),
+            title: t!("right.in_queue").into_owned().into(),
             clear: true,
         });
         rows.extend((0..queue.entries.len()).map(Row::Entry));
@@ -130,16 +129,16 @@ fn build_rows(state: &AppStore) -> Vec<Row> {
             .as_ref()
             .map(|context| {
                 if sonear_core::model::is_liked_context(&context.uri) {
-                    "Liked Songs"
+                    Route::LikedSongs.label()
                 } else {
-                    context.name()
+                    context.name().to_owned()
                 }
             })
             .filter(|name| !name.is_empty())
-            .unwrap_or("Then");
+            .unwrap_or_else(|| t!("right.then").into_owned());
 
         rows.push(Row::Heading {
-            title: title.to_owned().into(),
+            title: title.into(),
             clear: false,
         });
         rows.extend(context.into_iter().map(Row::Context));
@@ -184,9 +183,9 @@ fn line_for_item(state: &AppStore, item: &SoloistEntity) -> Line {
         None => Line {
             cover: cover_for(None, COVER, theme::ART_RADIUS_SMALL),
             name: if looked_up.is_some() {
-                "Unknown track".to_owned()
+                t!("right.unknown_track").into_owned()
             } else {
-                "Loading\u{2026}".to_owned()
+                t!("right.loading").into_owned()
             },
             artists: String::new(),
             known: false,
@@ -203,7 +202,7 @@ fn line_for_uri(state: &AppStore, uri: &str) -> Line {
     line_for_item(state, &placeholder)
 }
 
-fn tag(text: &'static str, color: gpui_kit::Hsla) -> AnyElement {
+fn tag(text: impl Into<SharedString>, color: gpui_kit::Hsla) -> AnyElement {
     div()
         .flex_none()
         .px_2()
@@ -213,7 +212,7 @@ fn tag(text: &'static str, color: gpui_kit::Hsla) -> AnyElement {
         .text_size(px(10.))
         .font_weight(FontWeight::MEDIUM)
         .text_color(color)
-        .child(text)
+        .child(text.into())
         .into_any_element()
 }
 
@@ -392,7 +391,7 @@ impl Render for RightPanel {
                                         .bg(theme::raised())
                                         .text_size(px(12.))
                                         .text_color(theme::text_secondary())
-                                        .child(NOTICE),
+                                        .child(t!("right.notice")),
                                 )
                                 .into_any_element(),
                             Row::Locked => {
@@ -400,7 +399,7 @@ impl Render for RightPanel {
 
                                 plain_row(
                                     line_for_uri(state, uri),
-                                    Some(tag("Up next", theme::accent())),
+                                    Some(tag(t!("right.up_next"), theme::accent())),
                                 )
                             }
                             Row::Spotify(position) => {
@@ -411,9 +410,9 @@ impl Render for RightPanel {
                                     .as_ref()
                                     .is_some_and(|locked| locked.uri == entry.item.uri);
                                 let label = if locked {
-                                    tag("Up next", theme::accent())
+                                    tag(t!("right.up_next"), theme::accent())
                                 } else {
-                                    tag("From Spotify", theme::text_secondary())
+                                    tag(t!("right.from_spotify"), theme::text_secondary())
                                 };
 
                                 plain_row(line_for_item(state, &entry.item), Some(label))
@@ -454,7 +453,7 @@ impl Render for RightPanel {
                                                 .focus_visible(|style| {
                                                     style.text_color(theme::accent())
                                                 })
-                                                .child("Clear")
+                                                .child(t!("right.clear"))
                                                 .on_click(move |_, _, _| queue.clear()),
                                         )
                                     })
@@ -496,7 +495,7 @@ impl Render for RightPanel {
                                 .pt_2()
                                 .text_size(px(12.))
                                 .text_color(theme::text_tertiary())
-                                .child("Nothing queued.")
+                                .child(t!("right.empty"))
                                 .into_any_element(),
                         })
                     })
@@ -526,7 +525,7 @@ impl Render for RightPanel {
                 .hover(|style| style.text_color(theme::text_secondary()))
                 .focus_visible(|style| style.text_color(theme::accent()))
                 .child(icon(IconName::Sparkles, 13., theme::text_tertiary()))
-                .child("AI controls available")
+                .child(t!("right.ai_hint"))
                 .on_click(move |_, _, cx| store.update(cx, |state, cx| state.dismiss_ai_hint(cx)))
         });
 
@@ -556,7 +555,7 @@ impl Render for RightPanel {
                             .font_weight(FontWeight::BOLD)
                             .font_family(theme::FONT_DISPLAY)
                             .text_color(theme::text_primary())
-                            .child("Up next"),
+                            .child(t!("right.up_next")),
                     ),
             )
             .child(div().flex_1().min_h_0().child(list))

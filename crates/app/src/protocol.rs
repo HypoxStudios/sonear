@@ -4,6 +4,7 @@
 
 use std::path::Path;
 
+use rust_i18n::t;
 use thiserror::Error;
 use windows::Win32::Foundation::{ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_SUCCESS};
 use windows::Win32::System::Registry::{
@@ -36,7 +37,39 @@ pub enum ProtocolError {
     #[error("could not find the Sonear program: {0}")]
     Exe(String),
     #[error("could not {action} the Windows registry (error {code})")]
-    Registry { action: &'static str, code: u32 },
+    Registry { action: RegistryAction, code: u32 },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RegistryAction {
+    Remove,
+    CreateKey,
+    Write,
+}
+
+impl std::fmt::Display for RegistryAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Remove => "remove",
+            Self::CreateKey => "create a key in",
+            Self::Write => "write to",
+        })
+    }
+}
+
+impl ProtocolError {
+    /// The error in the interface language. `Display` stays English for logs.
+    pub fn user_message(&self) -> String {
+        match self {
+            Self::Exe(detail) => t!("installer.registry.exe", detail = detail),
+            Self::Registry { action, code } => match action {
+                RegistryAction::Remove => t!("installer.registry.remove", code = code),
+                RegistryAction::CreateKey => t!("installer.registry.create", code = code),
+                RegistryAction::Write => t!("installer.registry.write", code = code),
+            },
+        }
+        .into_owned()
+    }
 }
 
 /// One registry value. `name` is `None` for a key's default value.
@@ -109,7 +142,7 @@ pub fn unregister() -> Result<(), ProtocolError> {
     for key in [CLASS_KEY, APP_KEY] {
         let code = unsafe { RegDeleteTreeW(HKEY_CURRENT_USER, &HSTRING::from(key)) };
 
-        check("remove", code.0, true)?;
+        check(RegistryAction::Remove, code.0, true)?;
     }
 
     let code = unsafe {
@@ -120,7 +153,7 @@ pub fn unregister() -> Result<(), ProtocolError> {
         )
     };
 
-    check("remove", code.0, true)
+    check(RegistryAction::Remove, code.0, true)
 }
 
 /// Deletes a key and everything under it. A missing key is fine.
@@ -128,7 +161,7 @@ pub(crate) fn delete_tree(key_path: &str) -> Result<(), ProtocolError> {
     // SAFETY: the key path outlives the call.
     let code = unsafe { RegDeleteTreeW(HKEY_CURRENT_USER, &HSTRING::from(key_path)) };
 
-    check("remove", code.0, true)
+    check(RegistryAction::Remove, code.0, true)
 }
 
 /// Opens Windows' Default apps page, where the user picks Sonear for `spotify:` links.
@@ -136,7 +169,7 @@ pub fn open_default_apps(cx: &mut gpui_kit::App) {
     cx.open_url(DEFAULT_APPS_URL);
 }
 
-fn check(action: &'static str, code: u32, missing_ok: bool) -> Result<(), ProtocolError> {
+fn check(action: RegistryAction, code: u32, missing_ok: bool) -> Result<(), ProtocolError> {
     if code == ERROR_SUCCESS.0 {
         return Ok(());
     }
@@ -196,7 +229,7 @@ fn write_raw(
         )
     };
 
-    check("create a key in", code.0, false)?;
+    check(RegistryAction::CreateKey, code.0, false)?;
 
     let name = name.map(HSTRING::from);
     let name = name
@@ -211,7 +244,7 @@ fn write_raw(
         let _ = RegCloseKey(key);
     }
 
-    check("write to", code.0, false)
+    check(RegistryAction::Write, code.0, false)
 }
 
 /// Reads a string value from `HKEY_CURRENT_USER`. `None` if it is missing.

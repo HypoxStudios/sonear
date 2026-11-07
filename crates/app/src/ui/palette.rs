@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::time::Duration;
 
 use gpui_kit::assets::IconName;
@@ -34,6 +35,7 @@ const KINDS: [SearchKind; 4] = [
 
 struct Entry {
     id: &'static str,
+    /// Translation key of a label that differs from the shortcut's own.
     label: Option<&'static str>,
     icon: IconName,
 }
@@ -56,7 +58,7 @@ const fn named(id: &'static str, label: &'static str, icon: IconName) -> Entry {
 
 const COMMANDS: [(&str, &[Entry]); 4] = [
     (
-        "Playback",
+        "group.playback",
         &[
             entry("play_pause", IconName::Play),
             entry("next", IconName::SkipForward),
@@ -67,7 +69,7 @@ const COMMANDS: [(&str, &[Entry]); 4] = [
         ],
     ),
     (
-        "Queue",
+        "group.queue",
         &[
             entry("toggle_queue", IconName::ListMusic),
             entry("toggle_lyrics", IconName::MicVocal),
@@ -75,17 +77,17 @@ const COMMANDS: [(&str, &[Entry]); 4] = [
         ],
     ),
     (
-        "Go to",
+        "palette.go_to",
         &[
-            named("go_home", "Home", IconName::House),
-            named("go_search", "Search", IconName::Search),
-            named("go_library", "Your Library", IconName::Library),
-            named("go_liked", "Liked Songs", IconName::Heart),
-            named("go_history", "History", IconName::Clock),
+            named("go_home", "route.home", IconName::House),
+            named("go_search", "route.search", IconName::Search),
+            named("go_library", "route.library", IconName::Library),
+            named("go_liked", "route.liked", IconName::Heart),
+            named("go_history", "route.history", IconName::Clock),
         ],
     ),
     (
-        "General",
+        "group.general",
         &[
             entry("settings", IconName::Settings),
             entry("toggle_mini_player", IconName::PictureInPicture2),
@@ -238,7 +240,7 @@ impl PaletteView {
                     }
                     Load::Failed(error) => {
                         palette.loading = false;
-                        palette.error = Some(error.to_string());
+                        palette.error = Some(error.user_message());
                     }
                 }
             },
@@ -265,7 +267,7 @@ impl PaletteView {
         cx.emit(DismissEvent);
     }
 
-    fn commands(&self, cx: &App) -> Vec<(&'static str, Vec<(CommandItem, Target)>)> {
+    fn commands(&self, cx: &App) -> Vec<(String, Vec<(CommandItem, Target)>)> {
         let query = self.query.to_lowercase();
         let state = self.store.read(cx);
         let uri = state
@@ -294,10 +296,13 @@ impl PaletteView {
                     .iter()
                     .filter_map(|entry| {
                         let shortcut = keymap::find(entry.id)?;
-                        let label = entry.label.unwrap_or(shortcut.label);
+                        let own = shortcut.label();
+                        let label = entry
+                            .label
+                            .map_or_else(|| own.clone(), |key| t!(key).into_owned());
                         let matches = query.is_empty()
                             || label.to_lowercase().contains(&query)
-                            || shortcut.label.to_lowercase().contains(&query);
+                            || own.to_lowercase().contains(&query);
 
                         let keystroke = bindings
                             .iter()
@@ -308,16 +313,16 @@ impl PaletteView {
                         matches.then(|| {
                             (
                                 CommandItem::new()
-                                    .label(label)
+                                    .label(label.clone())
                                     .action(shortcut.action())
-                                    .child(move |_, _| command_row(glyph, label, on, &keystroke)),
+                                    .child(move |_, _| command_row(glyph, &label, on, &keystroke)),
                                 Target::Command,
                             )
                         })
                     })
                     .collect();
 
-                (*heading, rows)
+                (t!(*heading).into_owned(), rows)
             })
             .collect()
     }
@@ -327,7 +332,7 @@ impl PaletteView {
 
         if self.query.is_empty() {
             for (heading, rows) in self.commands(cx) {
-                groups.add(Some(heading), rows);
+                groups.add(Some(&heading), rows);
             }
 
             self.targets = groups.targets;
@@ -343,7 +348,7 @@ impl PaletteView {
 
     fn typed_model(&self, groups: &mut Groups, cx: &App) {
         if let Some(link) = SpotifyLink::parse(&self.query) {
-            groups.add(Some("Spotify link"), vec![link_row(link)]);
+            groups.add(Some(&t!("palette.spotify_link")), vec![link_row(link)]);
 
             return;
         }
@@ -351,7 +356,7 @@ impl PaletteView {
         let query = self.query.to_lowercase();
 
         groups.add(
-            Some("Commands"),
+            Some(&t!("palette.commands")),
             self.commands(cx)
                 .into_iter()
                 .flat_map(|(_, rows)| rows)
@@ -366,7 +371,7 @@ impl PaletteView {
             .map(playlist_row)
             .collect();
 
-        groups.add(Some("Your playlists"), playlists);
+        groups.add(Some(&t!("palette.your_playlists")), playlists);
 
         if self.query.chars().count() >= MIN_SEARCH_CHARS {
             if let Some(results) = &self.results {
@@ -389,7 +394,7 @@ impl PaletteView {
                             artist.uri.clone(),
                             true,
                             artist.name.clone(),
-                            "Artist".to_owned(),
+                            t!("route.artist").into_owned(),
                             Target::Route(Route::Artist(artist.id.clone())),
                         )
                     })
@@ -405,7 +410,7 @@ impl PaletteView {
                             album.uri.clone(),
                             false,
                             album.name.clone(),
-                            format!("Album \u{00b7} {}", album.artist_line()),
+                            format!("{} \u{00b7} {}", t!("route.album"), album.artist_line()),
                             Target::Route(Route::Album(album.id.clone())),
                         )
                     })
@@ -418,10 +423,10 @@ impl PaletteView {
                     .map(playlist_row)
                     .collect();
 
-                groups.add(Some("Songs"), tracks);
-                groups.add(Some("Artists"), artists);
-                groups.add(Some("Albums"), albums);
-                groups.add(Some("Playlists"), found_playlists);
+                groups.add(Some(&t!("palette.songs")), tracks);
+                groups.add(Some(&t!("palette.artists")), artists);
+                groups.add(Some(&t!("palette.albums")), albums);
+                groups.add(Some(&t!("palette.playlists")), found_playlists);
             }
 
             if let Some(error) = &self.error {
@@ -449,7 +454,7 @@ impl PaletteView {
             None,
             vec![(
                 CommandItem::new()
-                    .label(format!("Search for \u{201c}{}\u{201d}", self.query))
+                    .label(t!("palette.search_for", query = self.query.as_str()).into_owned())
                     .icon(icon(IconName::Search, 16., theme::text_secondary())),
                 Target::Search,
             )],
@@ -472,11 +477,15 @@ fn command_row(glyph: IconName, label: &str, on: bool, keystroke: &Option<Keystr
 }
 
 fn link_row(link: SpotifyLink) -> (CommandItem, Target) {
-    let (verb, glyph) = match link {
-        SpotifyLink::Track(_) | SpotifyLink::Episode(_) => ("Play", IconName::Play),
-        _ => ("Open", IconName::ExternalLink),
+    let (label, glyph) = match link {
+        SpotifyLink::Track(_) => (t!("palette.play_track"), IconName::Play),
+        SpotifyLink::Episode(_) => (t!("palette.play_episode"), IconName::Play),
+        SpotifyLink::Album(_) => (t!("palette.open_album"), IconName::ExternalLink),
+        SpotifyLink::Playlist(_) => (t!("palette.open_playlist"), IconName::ExternalLink),
+        SpotifyLink::Artist(_) => (t!("palette.open_artist"), IconName::ExternalLink),
+        SpotifyLink::Show(_) => (t!("palette.open_show"), IconName::ExternalLink),
     };
-    let label = format!("{verb} {}", link.kind_label().to_lowercase());
+    let label = label.into_owned();
     let id = link.id().to_owned();
     let shown = label.clone();
     let item = CommandItem::new().label(label).child(move |_, _| {
@@ -500,8 +509,8 @@ fn link_row(link: SpotifyLink) -> (CommandItem, Target) {
 
 fn playlist_row(playlist: &Playlist) -> (CommandItem, Target) {
     let subtitle = match &playlist.owner_name {
-        Some(owner) => format!("Playlist \u{00b7} {owner}"),
-        None => "Playlist".to_owned(),
+        Some(owner) => format!("{} \u{00b7} {owner}", t!("route.playlist")),
+        None => t!("route.playlist").into_owned(),
     };
 
     row(
@@ -604,7 +613,7 @@ impl Render for PaletteView {
         let mut command = Command::new(&self.state)
             .filterable(false)
             .bordered(false)
-            .placeholder("Type a command or search Spotify")
+            .placeholder(t!("palette.placeholder"))
             .max_h(theme::PALETTE_MAX_HEIGHT)
             .empty(|_, _, _| {
                 div()
@@ -613,7 +622,7 @@ impl Render for PaletteView {
                     .justify_center()
                     .text_size(px(13.))
                     .text_color(theme::text_tertiary())
-                    .child("Nothing found")
+                    .child(t!("palette.nothing_found"))
             })
             .on_query(move |query, _, cx| {
                 let _ = queried.update(cx, |palette, cx| palette.set_query(query, cx));

@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 
 use async_trait::async_trait;
+use rust_i18n::t;
 use sonear_spotify::api::{Offset, PlayParams, SearchType, TimeRange};
 use sonear_spotify::{RateLimit, SpotifyClient, SpotifyError};
 use thiserror::Error;
@@ -45,6 +46,24 @@ pub enum LibraryError {
     Decode(String),
     #[error("This isn't available in the current mode.")]
     Unsupported,
+}
+
+impl LibraryError {
+    /// The error in the interface language. `Display` stays English for logs.
+    pub fn user_message(&self) -> String {
+        match self {
+            Self::NeedsLogin => t!("library.needs_login"),
+            Self::Forbidden => t!("library.forbidden"),
+            Self::NotFound => t!("library.not_found"),
+            Self::RateLimited => t!("library.rate_limited"),
+            Self::QuotaExceeded => t!("library.quota"),
+            Self::Network(_) => t!("library.network"),
+            Self::Api(detail) => t!("library.api", detail = detail),
+            Self::Decode(_) => t!("library.decode"),
+            Self::Unsupported => t!("library.unsupported"),
+        }
+        .into_owned()
+    }
 }
 
 impl From<SpotifyError> for LibraryError {

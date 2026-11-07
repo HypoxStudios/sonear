@@ -1,6 +1,7 @@
 //! The store's side of auto-updates: the background task's results, and the
 //! restart into a downloaded update, which only the user starts.
 
+use rust_i18n::t;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -181,7 +182,7 @@ impl AppStore {
         }
 
         let (Some(task), Some(installed)) = (&self.updates, installer::installed()) else {
-            self.update_failed("Sonear is not installed, so it can't update itself.", cx);
+            self.update_failed(t!("store.update.not_installed"), cx);
 
             return;
         };
@@ -212,7 +213,7 @@ impl AppStore {
                 Err(reason) => {
                     warn!(%reason, "the downloaded update did not pass its last check");
                     store.update = UpdateState::Idle;
-                    store.update_failed("The update could not be checked, so it was not used.", cx);
+                    store.update_failed(t!("store.update.check_failed"), cx);
                 }
             });
         })

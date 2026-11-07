@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::collections::BTreeMap;
 
 use gpui_kit::component::kbd::Kbd;
@@ -82,7 +83,7 @@ impl ShortcutsView {
         let spelled = keymap::spell(keystroke);
 
         if keymap::normalize(&spelled).is_none() {
-            self.note = Some((id, "That key can't be used.".to_owned()));
+            self.note = Some((id, t!("shortcuts.invalid_key").into_owned()));
             cx.notify();
 
             return;
@@ -93,7 +94,7 @@ impl ShortcutsView {
         if let Some(owner) = keymap::locked_owner(&old, id, &spelled) {
             self.note = Some((
                 id,
-                format!("Already used by {}, which always keeps a key.", owner.label),
+                t!("shortcuts.already_used", owner = owner.label()).into_owned(),
             ));
             self.stop_recording(cx);
 
@@ -102,9 +103,12 @@ impl ShortcutsView {
 
         let (next, loser) = keymap::assign(&old, id, &spelled);
 
-        self.note = loser
-            .and_then(keymap::find)
-            .map(|loser| (id, format!("Removed from {}", loser.label)));
+        self.note = loser.and_then(keymap::find).map(|loser| {
+            (
+                id,
+                t!("shortcuts.removed_from", owner = loser.label()).into_owned(),
+            )
+        });
         self.commit(&old, next, cx);
         self.stop_recording(cx);
     }
@@ -115,10 +119,7 @@ impl ShortcutsView {
         };
 
         if shortcut.locked() {
-            self.note = Some((
-                id,
-                "This one can't be unbound, so you can always get back to this list.".to_owned(),
-            ));
+            self.note = Some((id, t!("shortcuts.locked").into_owned()));
             self.stop_recording(cx);
 
             return;
@@ -190,7 +191,7 @@ impl ShortcutsView {
                 .border_color(theme::accent())
                 .text_size(px(12.))
                 .text_color(theme::accent())
-                .child("Press keys\u{2026}");
+                .child(t!("shortcuts.press_keys"));
         }
 
         match keystroke.and_then(keymap::parse) {
@@ -198,14 +199,14 @@ impl ShortcutsView {
             None => chip
                 .text_size(px(12.))
                 .text_color(theme::text_tertiary())
-                .child("Not set"),
+                .child(t!("shortcuts.not_set")),
         }
     }
 
     fn row(
         &self,
         id: &'static str,
-        label: &'static str,
+        label: String,
         keystroke: Option<&str>,
         cx: &mut Context<Self>,
     ) -> Div {
@@ -251,7 +252,8 @@ impl Render for ShortcutsView {
                 .iter()
                 .filter(|(shortcut, _)| shortcut.group == group)
             {
-                list = list.child(self.row(shortcut.id, shortcut.label, keystroke.as_deref(), cx));
+                list =
+                    list.child(self.row(shortcut.id, shortcut.label(), keystroke.as_deref(), cx));
             }
         }
 
@@ -291,7 +293,7 @@ impl Render for ShortcutsView {
                             .font_weight(FontWeight::BOLD)
                             .font_family(theme::FONT_DISPLAY)
                             .text_color(theme::text_primary())
-                            .child("Keyboard shortcuts"),
+                            .child(t!("shortcuts.title")),
                     )
                     .child(
                         div()
@@ -316,14 +318,14 @@ impl Render for ShortcutsView {
                                 div()
                                     .text_size(px(12.))
                                     .text_color(theme::text_tertiary())
-                                    .child(
-                                        "Click a binding, then press the new keys. Esc cancels, Backspace unbinds.",
-                                    ),
+                                    .child(t!("shortcuts.help")),
                             )
                             .child(
-                                ghost_button("shortcuts-reset", "Reset to defaults", true)
+                                ghost_button("shortcuts-reset", t!("shortcuts.reset"), true)
                                     .flex_none()
-                                    .on_click(cx.listener(|shortcuts, _, _, cx| shortcuts.reset(cx))),
+                                    .on_click(
+                                        cx.listener(|shortcuts, _, _, cx| shortcuts.reset(cx)),
+                                    ),
                             ),
                     ),
             )

@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::time::Duration;
 
 use gpui_kit::assets::IconName;
@@ -219,9 +220,10 @@ impl Render for MiniPlayer {
         let open_url = item
             .as_ref()
             .and_then(|item| super::player_bar::spotify_url(&item.uri));
-        let title = item
-            .as_ref()
-            .map_or("Nothing playing".to_owned(), |item| item.name().to_owned());
+        let title = item.as_ref().map_or_else(
+            || t!("player.nothing_playing").into_owned(),
+            |item| item.name().to_owned(),
+        );
         let subtitle = item
             .as_ref()
             .map(|item| item.artist_line())
@@ -270,7 +272,7 @@ impl Render for MiniPlayer {
                 this.child(
                     div()
                         .id("mini-spotify")
-                        .tooltip(text_tooltip("Open Spotify"))
+                        .tooltip(text_tooltip(t!("common.open_spotify")))
                         .child(spotify_icon_bare())
                         .when_some(open_url, |this, url| {
                             this.cursor_pointer()
@@ -346,7 +348,7 @@ impl Render for MiniPlayer {
                     true,
                 )
                 .occlude()
-                .tooltip(text_tooltip("Show Sonear"))
+                .tooltip(text_tooltip(t!("mini.show")))
                 .on_click(move |_, _, cx| {
                     show_store.update(cx, |state, cx| state.show_main_window(cx));
                 }),
@@ -362,7 +364,7 @@ impl Render for MiniPlayer {
                 )
                 .mr(px(-theme::MINI_CLOSE_INSET))
                 .occlude()
-                .tooltip(text_tooltip("Close"))
+                .tooltip(text_tooltip(t!("common.close")))
                 .on_click(move |_, _, cx| {
                     close_store.update(cx, |state, cx| state.toggle_mini_player(cx));
                 }),

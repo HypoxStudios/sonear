@@ -9,6 +9,8 @@ pub mod error;
 pub mod models;
 pub mod secret;
 
+rust_i18n::i18n!("locales", fallback = "en");
+
 pub use auth::{Auth, LoginRequest, TokenStore};
 pub use client::{RateLimit, SpotifyClient};
 pub use error::SpotifyError;
@@ -31,3 +33,6 @@ pub const REDIRECT_ADDR: &str = "127.0.0.1:27196";
 pub const SCOPES: &str = "user-read-playback-state user-modify-playback-state \
 user-read-currently-playing user-read-recently-played user-top-read user-library-read \
 user-library-modify playlist-read-private playlist-read-collaborative user-follow-read";
+
+#[cfg(test)]
+mod i18n_tests;

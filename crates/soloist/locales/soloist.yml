@@ -1,0 +1,71 @@
+_version: 2
+
+client.closed:
+  en: "the connection to Soloist is closed"
+  es: "Se cerró la conexión con Soloist"
+client.connect:
+  en: "could not connect to Soloist: %{detail}"
+  es: "No se pudo conectar con Soloist: %{detail}"
+
+fail.connection_lost:
+  en: "lost the connection to Soloist"
+  es: "Se perdió la conexión con Soloist"
+fail.create_dir:
+  en: "could not create %{dir}: %{detail}"
+  es: "No se pudo crear %{dir}: %{detail}"
+fail.exited:
+  en: "Soloist exited with code %{code}"
+  es: "Soloist se cerró con el código %{code}"
+fail.not_ready:
+  en: "Soloist exited before it was ready."
+  es: "Soloist se cerró antes de estar listo."
+fail.port_timeout:
+  en: "Soloist did not report its port within %{seconds} seconds"
+  es: "Soloist no informó su puerto en %{seconds} segundos"
+fail.start:
+  en: "could not start Soloist: %{detail}"
+  es: "No se pudo iniciar Soloist: %{detail}"
+fail.terminated:
+  en: "Soloist was terminated"
+  es: "Se terminó el proceso de Soloist"
+fail.wait:
+  en: "could not wait for Soloist: %{detail}"
+  es: "No se pudo esperar a Soloist: %{detail}"
+
+install.download:
+  en: "the download failed: %{detail}"
+  es: "Falló la descarga: %{detail}"
+install.extract:
+  en: "the downloaded archive could not be unpacked: %{detail}"
+  es: "No se pudo descomprimir el archivo descargado: %{detail}"
+install.host_not_allowed:
+  en: "refused to download from `%{url}`: only soloist-builds.spotifycdn.com over HTTPS is allowed"
+  es: "Se rechazó la descarga desde `%{url}`: solo se permite soloist-builds.spotifycdn.com por HTTPS"
+install.io:
+  en: "file error: %{detail}"
+  es: "Error de archivo: %{detail}"
+install.missing_exe:
+  en: "the archive does not contain soloist.exe"
+  es: "El archivo descargado no contiene soloist.exe"
+install.probe:
+  en: "the downloaded soloist.exe does not run: %{detail}"
+  es: "El soloist.exe descargado no se ejecuta: %{detail}"
+install.signature_invalid:
+  en: "the signature check failed: %{detail}"
+  es: "Falló la comprobación de la firma: %{detail}"
+install.swap:
+  en: "could not replace the installed Soloist: %{detail}"
+  es: "No se pudo reemplazar el Soloist instalado: %{detail}"
+install.wrong_signer:
+  en: "soloist.exe is signed by `%{signer}`, not by Spotify AB"
+  es: "soloist.exe está firmado por `%{signer}`, no por Spotify AB"
+
+version.bad_date:
+  en: "invalid build date `%{date}`"
+  es: "Fecha de compilación no válida: `%{date}`"
+version.run:
+  en: "could not run Soloist: %{detail}"
+  es: "No se pudo ejecutar Soloist: %{detail}"
+version.unrecognised:
+  en: "unrecognised version output"
+  es: "No se reconoció la versión de Soloist"

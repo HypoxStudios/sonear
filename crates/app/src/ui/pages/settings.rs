@@ -8,8 +8,10 @@ use gpui_kit::{
     SharedString, Stateful, StatefulInteractiveElement as _, Styled as _, Subscription, Window,
     div, px,
 };
+use rust_i18n::t;
 
 use sonear_core::AppPaths;
+use sonear_core::config::Language;
 use sonear_core::data_dir::resolve_target;
 
 use crate::format::megabytes;
@@ -32,6 +34,7 @@ pub struct SettingsPage {
     device_input: Entity<InputState>,
     key_input: Entity<InputState>,
     key_open: bool,
+    language_seen: u64,
     /// Read once and after each change: the page redraws on every playback event.
     links: Registration,
     _subscriptions: Vec<Subscription>,
@@ -41,7 +44,8 @@ impl SettingsPage {
     pub fn new(store: Entity<AppStore>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let device_name = store.read(cx).core.config.get().device_name;
         let device_input = cx.new(|cx| {
-            let mut input = InputState::new(window, cx).placeholder("Device name");
+            let mut input =
+                InputState::new(window, cx).placeholder(t!("settings.device.placeholder"));
 
             input.set_value(device_name, window, cx);
 
@@ -50,8 +54,9 @@ impl SettingsPage {
         let key_input = cx.new(|cx| {
             InputState::new(window, cx)
                 .masked(true)
-                .placeholder("Paste your Soloist key")
+                .placeholder(t!("common.key_placeholder"))
         });
+        let language_seen = store.read(cx).language_version;
         let subscriptions = vec![
             cx.observe(&store, |_, _, cx| cx.notify()),
             cx.subscribe(
@@ -69,6 +74,7 @@ impl SettingsPage {
             device_input,
             key_input,
             key_open: false,
+            language_seen,
             links: protocol::status(),
             _subscriptions: subscriptions,
         }
@@ -123,7 +129,7 @@ impl SettingsPage {
 
         if key.trim().is_empty() {
             self.store.update(cx, |state, cx| {
-                state.key_error = Some("Paste your Soloist key first.".to_owned());
+                state.key_error = Some(t!("settings.soloist.key.empty").into_owned());
                 cx.notify();
             });
 
@@ -157,7 +163,7 @@ impl SettingsPage {
     fn report(&self, error: protocol::ProtocolError, cx: &mut Context<Self>) {
         self.store.update(cx, |store, cx| {
             store.show_toast(
-                format!("Could not change spotify: link handling: {error}"),
+                t!("settings.links.failed", error = error.user_message()).into_owned(),
                 cx,
             );
         });
@@ -167,27 +173,27 @@ impl SettingsPage {
         let controls = div().flex().items_center().gap_2();
         let controls = match self.links {
             Registration::NotRegistered => controls.child(
-                ghost_button("links-setup", "Set up", true)
+                ghost_button("links-setup", t!("settings.links.set_up"), true)
                     .on_click(cx.listener(|page, _, _, cx| page.register_links(true, cx))),
             ),
             Registration::Registered => controls
                 .child(
-                    ghost_button("links-choose", "Choose in Windows", true)
+                    ghost_button("links-choose", t!("settings.links.choose"), true)
                         .on_click(cx.listener(|_, _, _, cx| protocol::open_default_apps(cx))),
                 )
                 .child(
-                    ghost_button("links-remove", "Remove", true)
+                    ghost_button("links-remove", t!("settings.links.remove"), true)
                         .on_click(cx.listener(|page, _, _, cx| page.remove_links(cx))),
                 ),
             Registration::Outdated => controls.child(
-                ghost_button("links-update", "Update", true)
+                ghost_button("links-update", t!("settings.links.update"), true)
                     .on_click(cx.listener(|page, _, _, cx| page.register_links(false, cx))),
             ),
         };
 
         row(
-            "Spotify links",
-            "Open spotify: links from your browser and other apps in Sonear. Windows asks you to pick Sonear under Default apps.",
+            t!("settings.links.title"),
+            t!("settings.links.body"),
             None,
             controls,
         )
@@ -197,13 +203,13 @@ impl SettingsPage {
         let store = self.store.clone();
 
         row(
-            "Lyrics",
-            "Shows lyrics from LRCLIB. While the panel is open, the song's title, artist, album and length are sent to lrclib.net.",
+            t!("settings.lyrics.title"),
+            t!("settings.lyrics.body"),
             None,
             Switch::new("settings-lyrics")
                 .checked(self.store.read(cx).lyrics_enabled)
                 .color(theme::accent())
-                .accessibility_label("Lyrics")
+                .accessibility_label(t!("settings.lyrics.title"))
                 .on_change(move |enabled, _, cx| {
                     store.update(cx, |state, cx| state.set_lyrics_enabled(*enabled, cx));
                 }),
@@ -214,13 +220,13 @@ impl SettingsPage {
         let store = self.store.clone();
 
         row(
-            "Accent from cover art",
-            "Tints buttons and sliders with a colour from the playing song's cover.",
+            t!("settings.accent.title"),
+            t!("settings.accent.body"),
             None,
             Switch::new("settings-cover-accent")
                 .checked(self.store.read(cx).cover_accent)
                 .color(theme::accent())
-                .accessibility_label("Accent from cover art")
+                .accessibility_label(t!("settings.accent.title"))
                 .on_change(move |enabled, _, cx| {
                     store.update(cx, |state, cx| state.set_cover_accent(*enabled, cx));
                 }),
@@ -231,29 +237,62 @@ impl SettingsPage {
         let store = self.store.clone();
 
         row(
-            "Keep running in the tray",
-            "Closing the window keeps Sonear and the music running. Quit from the tray icon.",
+            t!("settings.tray.title"),
+            t!("settings.tray.body"),
             None,
             Switch::new("settings-tray")
                 .checked(self.store.read(cx).close_to_tray)
                 .color(theme::accent())
-                .accessibility_label("Keep running in the tray")
+                .accessibility_label(t!("settings.tray.title"))
                 .on_change(move |enabled, _, cx| {
                     store.update(cx, |state, cx| state.set_close_to_tray(*enabled, cx));
                 }),
         )
     }
 
+    fn general_section(&self, cx: &Context<Self>) -> Div {
+        let current = self.store.read(cx).language();
+        let chips =
+            div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .children(Language::ALL.iter().enumerate().map(|(index, language)| {
+                    let store = self.store.clone();
+                    let language = *language;
+
+                    chip(
+                        ElementId::from((SharedString::from("language"), index)),
+                        language.native_name().to_owned(),
+                        current == language,
+                    )
+                    .on_click(move |_, _, cx| {
+                        store.update(cx, |state, cx| state.set_language(language, cx));
+                    })
+                }));
+
+        section(
+            t!("settings.section.general"),
+            vec![row(
+                t!("settings.language.title"),
+                t!("settings.language.body"),
+                None,
+                chips,
+            )],
+        )
+    }
+
     fn playback_section(&self, cx: &mut Context<Self>) -> Div {
         let can_save = self.can_save_device_name(cx);
-        let save = ghost_button("device-save", "Save", can_save).when(can_save, |this| {
-            this.on_click(cx.listener(|page, _, _, cx| page.save_device_name(cx)))
-        });
+        let save = ghost_button("device-save", t!("settings.save"), can_save)
+            .when(can_save, |this| {
+                this.on_click(cx.listener(|page, _, _, cx| page.save_device_name(cx)))
+            });
 
         let mut rows = vec![
             row(
-                "Device name",
-                "The name Spotify apps show for this computer.",
+                t!("settings.device.title"),
+                t!("settings.device.body"),
                 None,
                 div()
                     .flex()
@@ -267,8 +306,8 @@ impl SettingsPage {
                     .child(save),
             ),
             row(
-                "Crossfade",
-                "Follows your Spotify account. Change it in the Spotify app under Settings \u{203a} Playback.",
+                t!("settings.crossfade.title"),
+                t!("settings.crossfade.body"),
                 None,
                 div(),
             ),
@@ -282,7 +321,7 @@ impl SettingsPage {
         rows.push(self.accent_row(cx));
         rows.push(self.tray_row(cx));
 
-        section("Playback", rows)
+        section(t!("settings.section.playback"), rows)
     }
 
     fn history_section(&self, cx: &Context<Self>) -> Div {
@@ -308,19 +347,19 @@ impl SettingsPage {
         let store = self.store.clone();
 
         section(
-            "History",
+            t!("settings.section.history"),
             vec![
                 row(
-                    "Keep history for",
-                    "Months. Older plays are deleted from this computer.",
+                    t!("settings.history.keep.title"),
+                    t!("settings.history.keep.body"),
                     None,
                     chips,
                 ),
                 row(
-                    "Clear history",
-                    "Deletes the list of plays Sonear keeps. Nothing changes in your Spotify account.",
+                    t!("settings.history.clear.title"),
+                    t!("settings.history.clear.body"),
                     None,
-                    danger_button("settings-clear-history", "Clear history", true).on_click(
+                    danger_button("settings-clear-history", t!("history.clear"), true).on_click(
                         move |_, _, cx| {
                             store.update(cx, |state, cx| state.ask(Confirm::ClearHistory, cx));
                         },
@@ -334,14 +373,16 @@ impl SettingsPage {
         let store = self.store.clone();
 
         section(
-            "Keyboard",
+            t!("settings.section.keyboard"),
             vec![row(
-                "Keyboard shortcuts",
-                "See every shortcut and change the keys.",
+                t!("settings.keyboard.title"),
+                t!("settings.keyboard.body"),
                 None,
-                ghost_button("settings-shortcuts", "Open", true).on_click(move |_, _, cx| {
-                    store.update(cx, |state, cx| state.open_shortcuts(cx));
-                }),
+                ghost_button("settings-shortcuts", t!("settings.open"), true).on_click(
+                    move |_, _, cx| {
+                        store.update(cx, |state, cx| state.open_shortcuts(cx));
+                    },
+                ),
             )],
         )
     }
@@ -355,21 +396,44 @@ impl SettingsPage {
         let expiry_days = state.expiry_days;
         let busy = install.is_busy();
         let mut details = version.map_or_else(
-            || "Version unknown".to_owned(),
-            |version| format!("{} \u{00b7} built {}", version.version, version.build_date),
+            || t!("settings.soloist.version_unknown").into_owned(),
+            |version| {
+                t!(
+                    "settings.soloist.built",
+                    version = version.version,
+                    date = version.build_date
+                )
+                .into_owned()
+            },
         );
 
         match expiry_days {
-            Some(days) if days <= 0 => details.push_str(" \u{00b7} expired"),
-            Some(1) => details.push_str(" \u{00b7} expires tomorrow"),
-            Some(days) => details.push_str(&format!(" \u{00b7} expires in {days} days")),
+            Some(days) if days <= 0 => {
+                details.push_str(&format!(" \u{00b7} {}", t!("settings.soloist.expired")));
+            }
+            Some(1) => {
+                details.push_str(&format!(
+                    " \u{00b7} {}",
+                    t!("settings.soloist.expires_tomorrow")
+                ));
+            }
+            Some(days) => {
+                details.push_str(&format!(
+                    " \u{00b7} {}",
+                    t!("settings.soloist.expires_in", days = days)
+                ));
+            }
             None => {}
         }
 
         let store = self.store.clone();
         let update = ghost_button(
             "settings-update",
-            if busy { "Updating\u{2026}" } else { "Update" },
+            if busy {
+                t!("settings.soloist.updating")
+            } else {
+                t!("settings.soloist.update")
+            },
             !busy,
         )
         .when(!busy, |this| {
@@ -391,30 +455,40 @@ impl SettingsPage {
                         .flex()
                         .gap_2()
                         .child(
-                            ghost_button("settings-key-cancel", "Cancel", true).on_click(
-                                cx.listener(|page, _, window, cx| {
+                            ghost_button("settings-key-cancel", t!("common.cancel"), true)
+                                .on_click(cx.listener(|page, _, window, cx| {
                                     page.close_key_editor(window, cx);
-                                }),
-                            ),
+                                })),
                         )
-                        .child(ghost_button("settings-key-save", "Save", true).on_click(
-                            cx.listener(|page, _, window, cx| page.save_key(window, cx)),
-                        )),
+                        .child(
+                            ghost_button("settings-key-save", t!("settings.save"), true).on_click(
+                                cx.listener(|page, _, window, cx| page.save_key(window, cx)),
+                            ),
+                        ),
                 )
                 .into_any_element()
         } else {
-            ghost_button("settings-key-change", "Change key", true)
-                .on_click(cx.listener(|page, _, _, cx| page.open_key_editor(cx)))
-                .into_any_element()
+            ghost_button(
+                "settings-key-change",
+                t!("settings.soloist.key.change"),
+                true,
+            )
+            .on_click(cx.listener(|page, _, _, cx| page.open_key_editor(cx)))
+            .into_any_element()
         };
 
         Some(section(
-            "Soloist",
+            t!("settings.section.soloist"),
             vec![
-                row("Version", details, install_note(&install), update),
                 row(
-                    "Soloist key",
-                    "Stored in Windows Credential Manager.",
+                    t!("settings.soloist.version"),
+                    details,
+                    install_note(&install),
+                    update,
+                ),
+                row(
+                    t!("settings.soloist.key.title"),
+                    t!("settings.soloist.key.body"),
                     key_error.map(|error| (error, theme::warning())),
                     key_control,
                 ),
@@ -458,7 +532,7 @@ impl SettingsPage {
         };
         let custom = state.core.config.get().data_dir.is_some();
         let store = self.store.clone();
-        let open = ghost_button("storage-open", "Open", true)
+        let open = ghost_button("storage-open", t!("settings.open"), true)
             .on_click(move |_, _, cx| cx.open_with_system(&current));
         let controls = div()
             .flex()
@@ -466,12 +540,12 @@ impl SettingsPage {
             .gap_2()
             .child(open)
             .child(
-                ghost_button("storage-change", "Change", true)
+                ghost_button("storage-change", t!("settings.storage.change"), true)
                     .on_click(cx.listener(|page, _, _, cx| page.choose_data_folder(cx))),
             )
             .when(custom && !demo, |this| {
                 this.child(
-                    ghost_button("storage-default", "Use default", true).on_click(
+                    ghost_button("storage-default", t!("settings.storage.default"), true).on_click(
                         move |_, _, cx| {
                             store.update(cx, |store, cx| store.propose_default_data_move(cx));
                         },
@@ -480,10 +554,10 @@ impl SettingsPage {
             });
 
         section(
-            "Storage",
+            t!("settings.section.storage"),
             vec![row(
-                "Data folder",
-                "History, queue, cover art, cached details and Soloist. Settings stay in %APPDATA%\\Sonear and your login in Windows Credential Manager.",
+                t!("settings.storage.title"),
+                t!("settings.storage.body"),
                 Some((shown.display().to_string(), theme::text_tertiary())),
                 controls,
             )],
@@ -495,8 +569,13 @@ impl SettingsPage {
 
         if state.is_demo() {
             return section(
-                "Spotify account",
-                vec![row("Demo mode", "Nothing is stored.", None, div())],
+                t!("settings.section.account"),
+                vec![row(
+                    t!("settings.account.demo_title"),
+                    t!("settings.account.demo_body"),
+                    None,
+                    div(),
+                )],
             );
         }
 
@@ -510,42 +589,47 @@ impl SettingsPage {
         let delete = self.store.clone();
 
         section(
-            "Spotify account",
+            t!("settings.section.account"),
             vec![
                 row(
-                    "Account",
-                    format!("Signed in as {name}"),
+                    t!("settings.account.title"),
+                    t!("settings.account.signed_in", name = name),
                     None,
                     div()
                         .text_size(px(12.))
                         .text_color(theme::text_tertiary())
-                        .child(format!("Client ID {shown}\u{2026}")),
+                        .child(t!("settings.account.client_id", id = shown)),
                 ),
                 row(
-                    "Log out",
-                    "Removes your login, cached details, cover art, history and queue from this computer.",
+                    t!("common.log_out"),
+                    t!("settings.account.logout_body"),
                     None,
-                    ghost_button("settings-logout", "Log out", true).on_click(move |_, _, cx| {
-                        logout.update(cx, |state, cx| state.ask(Confirm::Logout, cx));
-                    }),
-                ),
-                row(
-                    "Delete all Sonear data",
-                    "Also removes your Soloist key, pairing and settings, and starts setup again.",
-                    None,
-                    danger_button("settings-delete-all", "Delete all data", true).on_click(
+                    ghost_button("settings-logout", t!("common.log_out"), true).on_click(
                         move |_, _, cx| {
-                            delete.update(cx, |state, cx| state.ask(Confirm::DeleteAll, cx));
+                            logout.update(cx, |state, cx| state.ask(Confirm::Logout, cx));
                         },
                     ),
                 ),
                 row(
-                    "Revoke access",
-                    "Spotify keeps its own list of apps that can reach your account.",
+                    t!("settings.account.delete.title"),
+                    t!("settings.account.delete.body"),
+                    None,
+                    danger_button(
+                        "settings-delete-all",
+                        t!("settings.account.delete.button"),
+                        true,
+                    )
+                    .on_click(move |_, _, cx| {
+                        delete.update(cx, |state, cx| state.ask(Confirm::DeleteAll, cx));
+                    }),
+                ),
+                row(
+                    t!("settings.account.revoke.title"),
+                    t!("settings.account.revoke.body"),
                     None,
                     external_link(
                         "settings-revoke",
-                        "Manage apps on Spotify",
+                        t!("settings.account.revoke.link"),
                         SPOTIFY_APPS_URL,
                     ),
                 ),
@@ -557,13 +641,13 @@ impl SettingsPage {
         let store = self.store.clone();
 
         row(
-            "Check for updates",
-            "Asks GitHub for new versions and downloads them. Sonear only installs a version signed by its makers, and only when you restart.",
+            t!("settings.about.updates.title"),
+            t!("settings.about.updates.body"),
             None,
             Switch::new("settings-updates")
                 .checked(self.store.read(cx).check_for_updates)
                 .color(theme::accent())
-                .accessibility_label("Check for updates")
+                .accessibility_label(t!("settings.about.updates.title"))
                 .on_change(move |enabled, _, cx| {
                     store.update(cx, |state, cx| state.set_check_for_updates(*enabled, cx));
                 }),
@@ -572,7 +656,7 @@ impl SettingsPage {
 
     fn version_row(&self, cx: &mut Context<Self>) -> AnyElement {
         let title = format!("Sonear {}", env!("CARGO_PKG_VERSION"));
-        let description = "Sonear is independent and isn't affiliated with or endorsed by Spotify.";
+        let description = t!("settings.about.independent");
         let UpdateState::Ready {
             version, notes_url, ..
         } = self.store.read(cx).update.clone()
@@ -580,23 +664,28 @@ impl SettingsPage {
             return row(title, description, None, div());
         };
         let store = self.store.clone();
-        let controls = div()
-            .flex()
-            .items_center()
-            .gap_4()
-            .children(notes_url.map(|url| external_link("about-whats-new", "What's new", url)))
-            .child(
-                accent_button("about-restart", "Restart to update", None, true).on_click(
-                    move |_, _, cx| {
-                        store.update(cx, |state, cx| state.restart_to_update(cx));
-                    },
-                ),
-            );
+        let controls =
+            div()
+                .flex()
+                .items_center()
+                .gap_4()
+                .children(notes_url.map(|url| {
+                    external_link("about-whats-new", t!("settings.about.whats_new"), url)
+                }))
+                .child(
+                    accent_button("about-restart", t!("sidebar.restart_to_update"), None, true)
+                        .on_click(move |_, _, cx| {
+                            store.update(cx, |state, cx| state.restart_to_update(cx));
+                        }),
+                );
 
         row(
             title,
             description,
-            Some((format!("Sonear {version} is ready."), theme::accent())),
+            Some((
+                t!("settings.about.ready", version = version).into_owned(),
+                theme::accent(),
+            )),
             controls,
         )
     }
@@ -612,12 +701,12 @@ impl SettingsPage {
             .gap_y_2()
             .py_4()
             .child(
-                text_link("about-terms", "End-user agreement").on_click(move |_, _, cx| {
+                text_link("about-terms", LegalDoc::Terms.title()).on_click(move |_, _, cx| {
                     terms.update(cx, |state, cx| state.open_legal(LegalDoc::Terms, cx));
                 }),
             )
             .child(
-                text_link("about-privacy", "Privacy policy").on_click(move |_, _, cx| {
+                text_link("about-privacy", LegalDoc::Privacy.title()).on_click(move |_, _, cx| {
                     privacy.update(cx, |state, cx| state.open_legal(LegalDoc::Privacy, cx));
                 }),
             )
@@ -626,16 +715,20 @@ impl SettingsPage {
                 SUPPORT_EMAIL,
                 SUPPORT_MAILTO,
             ))
-            .child(external_link("about-source", "Source code", SOURCE_URL))
+            .child(external_link(
+                "about-source",
+                t!("settings.about.source"),
+                SOURCE_URL,
+            ))
             .child(external_link(
                 "about-license",
-                "License: Apache-2.0",
+                t!("settings.about.license"),
                 LICENSE_URL,
             ))
             .into_any_element();
 
         section(
-            "About",
+            t!("settings.section.about"),
             vec![self.updates_row(cx), self.version_row(cx), links],
         )
     }
@@ -646,29 +739,32 @@ fn install_note(install: &InstallState) -> Option<(String, Hsla)> {
         InstallState::Idle => None,
         InstallState::Downloading { received, total } => Some((
             match total {
-                Some(total) => format!(
-                    "Downloading {} of {}",
-                    megabytes(*received),
-                    megabytes(*total)
-                ),
-                None => format!("Downloading {}", megabytes(*received)),
+                Some(total) => t!(
+                    "install.downloading_of",
+                    received = megabytes(*received),
+                    total = megabytes(*total)
+                )
+                .into_owned(),
+                None => t!("install.downloading", received = megabytes(*received)).into_owned(),
             },
             theme::text_tertiary(),
         )),
-        InstallState::Verifying => Some((
-            "Checking that the download is signed by Spotify".to_owned(),
+        InstallState::Verifying => {
+            Some((t!("install.verifying").into_owned(), theme::text_tertiary()))
+        }
+        InstallState::Finalizing => Some((
+            t!("install.installing").into_owned(),
             theme::text_tertiary(),
         )),
-        InstallState::Finalizing => Some(("Installing".to_owned(), theme::text_tertiary())),
         InstallState::Failed(reason) => Some((
-            format!("The download was not installed: {reason}"),
+            t!("install.failed", reason = reason).into_owned(),
             theme::warning(),
         )),
     }
 }
 
 /// A heading and its rows, with a hairline between the rows.
-fn section(title: &'static str, rows: Vec<AnyElement>) -> Div {
+fn section(title: impl Into<SharedString>, rows: Vec<AnyElement>) -> Div {
     div()
         .flex()
         .flex_col()
@@ -754,7 +850,7 @@ fn chip(id: impl Into<ElementId>, label: String, selected: bool) -> Stateful<Div
         .child(label)
 }
 
-fn text_link(id: impl Into<ElementId>, text: &'static str) -> Stateful<Div> {
+fn text_link(id: impl Into<ElementId>, text: impl Into<SharedString>) -> Stateful<Div> {
     div()
         .id(id)
         .flex()
@@ -766,12 +862,12 @@ fn text_link(id: impl Into<ElementId>, text: &'static str) -> Stateful<Div> {
         .text_color(theme::accent())
         .hover(|style| style.text_color(theme::accent_hover()))
         .focus_visible(|style| style.text_color(theme::text_primary()))
-        .child(text)
+        .child(text.into())
 }
 
 fn external_link(
     id: impl Into<ElementId>,
-    text: &'static str,
+    text: impl Into<SharedString>,
     url: impl Into<String>,
 ) -> AnyElement {
     let url = url.into();
@@ -783,7 +879,20 @@ fn external_link(
 }
 
 impl Render for SettingsPage {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let language = self.store.read(cx).language_version;
+
+        if language != self.language_seen {
+            self.language_seen = language;
+            self.device_input.update(cx, |input, cx| {
+                input.set_placeholder(t!("settings.device.placeholder"), window, cx);
+            });
+            self.key_input.update(cx, |input, cx| {
+                input.set_placeholder(t!("common.key_placeholder"), window, cx);
+            });
+        }
+
+        let general = self.general_section(cx);
         let playback = self.playback_section(cx);
         let history = self.history_section(cx);
         let keyboard = self.keyboard_section();
@@ -810,8 +919,9 @@ impl Render for SettingsPage {
                             .font_weight(FontWeight::BOLD)
                             .font_family(theme::FONT_DISPLAY)
                             .text_color(theme::text_primary())
-                            .child("Settings"),
+                            .child(t!("route.settings")),
                     )
+                    .child(general)
                     .child(playback)
                     .child(history)
                     .child(keyboard)

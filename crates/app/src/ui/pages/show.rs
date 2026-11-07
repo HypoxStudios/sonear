@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::rc::Rc;
 
 use gpui_kit::component::{VirtualListScrollHandle, v_virtual_list};
@@ -136,7 +137,11 @@ impl ShowPage {
         let play = {
             let mut button = accent_button(
                 "show-play",
-                if playing { "Pause" } else { "Play" },
+                if playing {
+                    t!("common.pause")
+                } else {
+                    t!("common.play")
+                },
                 Some(play_pause_icon(playing, 14., theme::on_accent())),
                 first.is_some(),
             )
@@ -169,7 +174,7 @@ impl ShowPage {
                     .flex_col()
                     .gap_2()
                     .min_w_0()
-                    .child(label_caps("Podcast"))
+                    .child(label_caps(t!("show.podcast")))
                     .child(
                         div()
                             .truncate()
@@ -225,7 +230,7 @@ impl ShowPage {
                 .p_8()
                 .text_size(px(13.))
                 .text_color(theme::text_secondary())
-                .child("No episodes yet.")
+                .child(t!("show.no_episodes"))
                 .into_any_element();
         }
 

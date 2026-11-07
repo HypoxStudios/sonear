@@ -7,11 +7,13 @@ use gpui_kit::{
     IntoElement, ParentElement as _, SharedString, StatefulInteractiveElement as _, Styled as _,
     Window, div, px,
 };
+use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use sonear_core::LibraryError;
 use sonear_core::model::{Album, Artist, Artwork, ItemKind, Page, Playlist, Show, Track};
 
 use crate::format::clock;
+use crate::i18n::plural;
 use crate::store::{AppStore, LibraryTab, Route};
 use crate::theme;
 use crate::ui::widgets::{
@@ -34,7 +36,11 @@ pub struct CardItem {
     pub kind: CardKind,
     pub id: String,
     pub title: String,
+    /// Owner, artists or publisher; empty when the kind has nothing to show.
     pub subtitle: String,
+    /// Tracks in a playlist, when Spotify said.
+    #[serde(default)]
+    pub track_count: Option<u32>,
     pub art: Artwork,
 }
 
@@ -47,17 +53,31 @@ impl CardItem {
             CardKind::Show => Route::Show(self.id.clone()),
         }
     }
+
+    /// The line under the title, resolved when drawn so a language change reaches cached items.
+    pub fn subtitle_text(&self) -> String {
+        match (self.kind, self.track_count) {
+            (CardKind::Artist, _) => t!("route.artist").into_owned(),
+            (CardKind::Playlist, None) => t!("route.playlist").into_owned(),
+            (CardKind::Playlist, Some(count)) => {
+                let count = plural(u64::from(count), "common.tracks_one", "common.tracks_other");
+
+                if self.subtitle.is_empty() {
+                    count
+                } else {
+                    format!("{count} \u{00b7} {}", self.subtitle)
+                }
+            }
+            _ => self.subtitle.clone(),
+        }
+    }
 }
 
 impl From<&Playlist> for CardItem {
     fn from(playlist: &Playlist) -> Self {
-        let count = playlist
-            .track_count
-            .map(|count| format!("{count} tracks"))
-            .unwrap_or_else(|| "Playlist".to_owned());
         let subtitle = match &playlist.owner_name {
-            Some(owner) if playlist.track_count.is_some() => format!("{count} \u{00b7} {owner}"),
-            _ => count,
+            Some(owner) if playlist.track_count.is_some() => owner.clone(),
+            _ => String::new(),
         };
 
         Self {
@@ -65,6 +85,7 @@ impl From<&Playlist> for CardItem {
             id: playlist.id.clone(),
             title: playlist.name.clone(),
             subtitle,
+            track_count: playlist.track_count,
             art: playlist.art.clone(),
         }
     }
@@ -79,6 +100,7 @@ impl From<&Album> for CardItem {
             id: album.id.clone(),
             title: album.name.clone(),
             subtitle: format!("{}{}", year.unwrap_or_default(), album.artist_line()),
+            track_count: None,
             art: album.art.clone(),
         }
     }
@@ -90,7 +112,8 @@ impl From<&Artist> for CardItem {
             kind: CardKind::Artist,
             id: artist.id.clone(),
             title: artist.name.clone(),
-            subtitle: "Artist".to_owned(),
+            subtitle: String::new(),
+            track_count: None,
             art: artist.art.clone(),
         }
     }
@@ -103,6 +126,7 @@ impl From<&Show> for CardItem {
             id: show.id.clone(),
             title: show.name.clone(),
             subtitle: show.publisher.clone(),
+            track_count: None,
             art: show.art.clone(),
         }
     }
@@ -168,7 +192,7 @@ pub fn card(index: usize, item: &CardItem, size: f32, store: &Entity<AppStore>) 
         .focus_visible(|style| style.border_color(theme::accent()))
         .tooltip(text_tooltip(item.title.clone()))
         .child(art(&item.art, &item.id, size - 2., radius))
-        .child(card_text(&item.title, &item.subtitle))
+        .child(card_text(&item.title, &item.subtitle_text()))
         .on_click(move |_, _, cx| store.update(cx, |state, cx| state.navigate(route.clone(), cx)))
         .into_any_element()
 }
@@ -274,13 +298,13 @@ pub fn error_panel(
                 .text_center()
                 .text_size(px(14.))
                 .text_color(theme::text_secondary())
-                .child(error.to_string()),
+                .child(error.user_message()),
         )
         .when(retry, |this| {
             this.child(
                 accent_button(
                     id,
-                    "Retry",
+                    t!("common.retry"),
                     Some(icon(IconName::RefreshCw, 15., theme::on_accent())),
                     true,
                 )
@@ -323,9 +347,9 @@ pub fn with_retry_bar(
                     div()
                         .flex_1()
                         .truncate()
-                        .child(format!("Couldn\u{2019}t load more. {error}")),
+                        .child(t!("common.load_more_failed", error = error.user_message())),
                 )
-                .child(accent_button(id, "Retry", None, true).on_click(on_retry)),
+                .child(accent_button(id, t!("common.retry"), None, true).on_click(on_retry)),
         )
         .into_any_element()
 }
@@ -335,7 +359,9 @@ pub fn breadcrumb(store: &Entity<AppStore>, state: &AppStore, current: &str) -> 
     let back = store.clone();
     let parent = store.clone();
     let can_go_back = state.can_go_back();
-    let label = state.previous_route().map_or("Your Library", Route::label);
+    let label = state
+        .previous_route()
+        .map_or_else(|| t!("route.library").into_owned(), Route::label);
 
     div()
         .flex()
@@ -404,7 +430,7 @@ pub fn open_spotify(id: &'static str, url: Option<String>) -> Option<AnyElement>
             .text_color(theme::text_secondary())
             .hover(|style| style.text_color(theme::accent()))
             .focus_visible(|style| style.text_color(theme::accent()))
-            .child("Open Spotify")
+            .child(t!("common.open_spotify"))
             .child(icon(IconName::ExternalLink, 12., theme::text_secondary()))
             .on_click(move |_, _, cx: &mut App| cx.open_url(&url))
             .into_any_element(),
@@ -450,7 +476,11 @@ pub fn track_row(
         .map(|album| album.name.clone())
         .unwrap_or_default();
     let artist_line = if track.is_local {
-        format!("{} \u{00b7} Local file", track.artist_line())
+        format!(
+            "{} \u{00b7} {}",
+            track.artist_line(),
+            t!("common.local_file")
+        )
     } else {
         track.artist_line()
     };

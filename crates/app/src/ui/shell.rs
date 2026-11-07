@@ -6,6 +6,7 @@ use gpui_kit::{
     Stateful, StatefulInteractiveElement as _, StyleRefinement, Styled as _, Subscription, Window,
     div, px,
 };
+use rust_i18n::t;
 use sonear_core::playback::now_ms;
 use sonear_soloist::Status;
 
@@ -132,9 +133,9 @@ impl Shell {
 
         let store = self.store.clone();
         let text = match days {
-            ..=0 => "This Soloist build has expired.".to_owned(),
-            1 => "This Soloist build expires tomorrow.".to_owned(),
-            days => format!("This Soloist build expires in {days} days."),
+            ..=0 => t!("shell.banner.expired").into_owned(),
+            1 => t!("shell.banner.expires_tomorrow").into_owned(),
+            days => t!("shell.banner.expires_in", days = days).into_owned(),
         };
 
         Some(
@@ -160,7 +161,7 @@ impl Shell {
                         .text_color(theme::accent())
                         .hover(|style| style.text_color(theme::accent_hover()))
                         .focus_visible(|style| style.text_color(theme::text_primary()))
-                        .child("Download update")
+                        .child(t!("common.download_update"))
                         .on_click(move |_, _, cx| {
                             store.update(cx, |state, cx| state.start_install(cx))
                         }),
@@ -172,12 +173,12 @@ impl Shell {
     fn rate_notice(&self, cx: &Context<Self>) -> Option<Div> {
         let rate = self.store.read(cx).rate;
         let text = if rate.quota_exceeded {
-            "Spotify's request quota is used up. It resets later and is shared by your whole developer account."
+            t!("shell.rate.quota")
         } else if rate
             .paused_until
             .is_some_and(|until| until > std::time::Instant::now())
         {
-            "Spotify asked Sonear to slow down"
+            t!("shell.rate.slow")
         } else {
             return None;
         };
@@ -303,7 +304,7 @@ impl Shell {
                                     style.bg(theme::hover()).text_color(theme::text_primary())
                                 })
                                 .focus_visible(|style| style.bg(theme::hover()))
-                                .child("Settings")
+                                .child(t!("common.settings"))
                                 .on_click(move |_, _, cx| {
                                     settings.update(cx, |state, cx| {
                                         state.navigate(Route::Settings, cx)
@@ -326,7 +327,7 @@ impl Shell {
                                     style.bg(theme::hover()).text_color(theme::text_primary())
                                 })
                                 .focus_visible(|style| style.bg(theme::hover()))
-                                .child("Keyboard shortcuts")
+                                .child(t!("common.shortcuts"))
                                 .on_click(move |_, _, cx| {
                                     shortcuts.update(cx, |state, cx| state.open_shortcuts(cx));
                                 }),
@@ -347,7 +348,7 @@ impl Shell {
                                     style.bg(theme::hover()).text_color(theme::text_primary())
                                 })
                                 .focus_visible(|style| style.bg(theme::hover()))
-                                .child("Log out")
+                                .child(t!("common.log_out"))
                                 .on_click(move |_, _, cx| {
                                     logout.update(cx, |state, cx| state.ask(Confirm::Logout, cx));
                                 }),
@@ -358,33 +359,33 @@ impl Shell {
 
     fn confirm_dialog(&self, cx: &Context<Self>) -> Option<Stateful<Div>> {
         let confirm = self.store.read(cx).confirm?;
-        let (title, text, action): (&str, SharedString, &str) = match confirm {
+        let (title, text, action): (SharedString, SharedString, SharedString) = match confirm {
             Confirm::Logout => (
-                "Log out of Spotify?",
-                "This removes your Spotify login, cached data, cover art, listening history and queue from this computer. Your Soloist key, install and pairing stay.".into(),
-                "Log out",
+                t!("shell.confirm.logout.title").into(),
+                t!("shell.confirm.logout.body").into(),
+                t!("shell.confirm.logout.action").into(),
             ),
             Confirm::ClearHistory => (
-                "Clear history?",
-                "This deletes the list of plays Sonear keeps on this computer. Nothing changes in your Spotify account.".into(),
-                "Clear history",
+                t!("shell.confirm.clear_history.title").into(),
+                t!("shell.confirm.clear_history.body").into(),
+                t!("shell.confirm.clear_history.action").into(),
             ),
             Confirm::DeleteAll => (
-                "Delete all Sonear data?",
-                "This removes your Spotify login, Soloist key and pairing, history, queue, cached data, cover art and settings from this computer. The Soloist program stays, so you won't download it again. Setup starts again from the beginning.".into(),
-                "Delete everything",
+                t!("shell.confirm.delete_all.title").into(),
+                t!("shell.confirm.delete_all.body").into(),
+                t!("shell.confirm.delete_all.action").into(),
             ),
             Confirm::MoveData => {
                 let target = self.store.read(cx).pending_data_move.clone()?;
 
                 (
-                    "Move your data?",
-                    format!(
-                        "Sonear will close, move your data to {} and open again. Playback stops while it moves.",
-                        target.display()
+                    t!("shell.confirm.move_data.title").into(),
+                    t!(
+                        "shell.confirm.move_data.body",
+                        path = target.display().to_string()
                     )
                     .into(),
-                    "Move and restart",
+                    t!("shell.confirm.move_data.action").into(),
                 )
             }
         };
@@ -438,11 +439,13 @@ impl Shell {
                                 .justify_end()
                                 .gap_2()
                                 .pt_2()
-                                .child(ghost_button("confirm-cancel", "Cancel", true).on_click(
-                                    move |_, _, cx| {
-                                        cancel.update(cx, |state, cx| state.dismiss_confirm(cx));
-                                    },
-                                ))
+                                .child(
+                                    ghost_button("confirm-cancel", t!("common.cancel"), true)
+                                        .on_click(move |_, _, cx| {
+                                            cancel
+                                                .update(cx, |state, cx| state.dismiss_confirm(cx));
+                                        }),
+                                )
                                 .child(
                                     accent_button("confirm-accept", action, None, true).on_click(
                                         move |_, _, cx| {

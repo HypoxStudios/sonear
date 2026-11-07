@@ -62,6 +62,7 @@ END
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=locales");
 
     for (_, icon) in ICONS {
         println!("cargo:rerun-if-changed={icon}");

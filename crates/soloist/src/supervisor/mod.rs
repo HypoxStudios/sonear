@@ -12,12 +12,14 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_trait::async_trait;
+use rust_i18n::t;
+use thiserror::Error;
 use tokio::sync::{broadcast, mpsc, watch};
 use tokio::task::JoinHandle;
 use tokio::time::{Instant, sleep, timeout};
 use tracing::{debug, info, warn};
 
-use crate::client::{ClientEvent, SoloistClient};
+use crate::client::{ClientError, ClientEvent, SoloistClient};
 use crate::protocol::Event;
 use crate::version::{SoloistVersion, VersionError};
 
@@ -39,6 +41,46 @@ const EXIT_EXPIRED: i32 = 10;
 const CONNECT_ATTEMPTS: u32 = 10;
 const REDACTED: &str = "[redacted]";
 
+/// Why Soloist stopped for good. `Display` stays English for logs.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum FailReason {
+    #[error("could not create {dir}: {detail}")]
+    CreateDir { dir: String, detail: String },
+    #[error("could not start Soloist: {0}")]
+    Start(String),
+    #[error("Soloist did not report its port within {0} seconds")]
+    PortTimeout(u64),
+    #[error("could not connect to Soloist: {0}")]
+    Connect(String),
+    #[error("lost the connection to Soloist")]
+    ConnectionLost,
+    #[error("Soloist exited with code {0}")]
+    Exited(i32),
+    #[error("Soloist was terminated")]
+    Terminated,
+    #[error("could not wait for Soloist: {0}")]
+    Wait(String),
+    #[error("Soloist exited before it was ready.")]
+    NotReady,
+}
+
+impl FailReason {
+    pub fn user_message(&self) -> String {
+        match self {
+            Self::CreateDir { dir, detail } => t!("fail.create_dir", dir = dir, detail = detail),
+            Self::Start(detail) => t!("fail.start", detail = detail),
+            Self::PortTimeout(seconds) => t!("fail.port_timeout", seconds = seconds),
+            Self::Connect(detail) => t!("client.connect", detail = detail),
+            Self::ConnectionLost => t!("fail.connection_lost"),
+            Self::Exited(code) => t!("fail.exited", code = code),
+            Self::Terminated => t!("fail.terminated"),
+            Self::Wait(detail) => t!("fail.wait", detail = detail),
+            Self::NotReady => t!("fail.not_ready"),
+        }
+        .into_owned()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Status {
     NotInstalled,
@@ -52,7 +94,7 @@ pub enum Status {
         device_name: String,
     },
     Failed {
-        reason: String,
+        reason: FailReason,
         recent_log: Vec<String>,
     },
     Stopped,
@@ -240,7 +282,7 @@ impl Shared {
         lock(&self.log).iter().cloned().collect()
     }
 
-    fn fail(&self, reason: String) {
+    fn fail(&self, reason: FailReason) {
         self.set_status(Status::Failed {
             reason,
             recent_log: self.recent_log(),
@@ -385,7 +427,10 @@ impl Supervisor {
 enum Outcome {
     Cancelled,
     Expired,
-    Failed { reason: String, ran_for: Duration },
+    Failed {
+        reason: FailReason,
+        ran_for: Duration,
+    },
 }
 
 async fn run(
@@ -454,7 +499,10 @@ async fn run_once(
 
     for dir in [dirs.data(), dirs.cache()] {
         if let Err(error) = std::fs::create_dir_all(&dir) {
-            return failed(format!("could not create {}: {error}", dir.display()));
+            return failed(FailReason::CreateDir {
+                dir: dir.display().to_string(),
+                detail: error.to_string(),
+            });
         }
     }
 
@@ -464,7 +512,7 @@ async fn run_once(
     let args = build_args(params, key, config);
     let SpawnedProcess { mut handle, output } = match shared.spawner.spawn(&dirs.exe(), &args) {
         Ok(process) => process,
-        Err(error) => return failed(format!("could not start Soloist: {error}")),
+        Err(error) => return failed(FailReason::Start(error.to_string())),
     };
     let started = Instant::now();
     let pump = tokio::spawn(pump_log(shared.clone(), output, key.to_owned()));
@@ -480,7 +528,7 @@ async fn run_once(
     outcome
 }
 
-fn failed(reason: String) -> Outcome {
+fn failed(reason: FailReason) -> Outcome {
     Outcome::Failed {
         reason,
         ran_for: Duration::ZERO,
@@ -534,7 +582,7 @@ async fn supervise(
                 Ok(ClientEvent::Event(_)) | Err(broadcast::error::RecvError::Lagged(_)) => {}
                 Ok(ClientEvent::Disconnected) | Err(broadcast::error::RecvError::Closed) => {
                     return Outcome::Failed {
-                        reason: "lost the connection to Soloist".to_owned(),
+                        reason: FailReason::ConnectionLost,
                         ran_for: started.elapsed(),
                     };
                 }
@@ -555,15 +603,15 @@ fn exited(code: io::Result<Option<i32>>, started: Instant) -> Outcome {
     match code {
         Ok(Some(EXIT_EXPIRED)) => Outcome::Expired,
         Ok(Some(code)) => Outcome::Failed {
-            reason: format!("Soloist exited with code {code}"),
+            reason: FailReason::Exited(code),
             ran_for,
         },
         Ok(None) => Outcome::Failed {
-            reason: "Soloist was terminated".to_owned(),
+            reason: FailReason::Terminated,
             ran_for,
         },
         Err(error) => Outcome::Failed {
-            reason: format!("could not wait for Soloist: {error}"),
+            reason: FailReason::Wait(error.to_string()),
             ran_for,
         },
     }
@@ -571,7 +619,7 @@ fn exited(code: io::Result<Option<i32>>, started: Instant) -> Outcome {
 
 type Connection = (SoloistClient, broadcast::Receiver<ClientEvent>);
 
-async fn establish(shared: &Shared) -> Result<Connection, String> {
+async fn establish(shared: &Shared) -> Result<Connection, FailReason> {
     let dirs = &shared.config.dirs;
     let port_file = dirs.port_file();
     let deadline = Instant::now() + shared.config.port_timeout;
@@ -582,21 +630,21 @@ async fn establish(shared: &Shared) -> Result<Connection, String> {
         }
 
         if Instant::now() >= deadline {
-            return Err(format!(
-                "Soloist did not report its port within {} seconds",
-                shared.config.port_timeout.as_secs()
+            return Err(FailReason::PortTimeout(
+                shared.config.port_timeout.as_secs(),
             ));
         }
 
         sleep(Duration::from_millis(100)).await;
     };
     let addr = format!("127.0.0.1:{port}");
-    let mut last_error = String::new();
+    let mut last_error = FailReason::Connect(String::new());
 
     for _ in 0..CONNECT_ATTEMPTS {
         match SoloistClient::connect(&addr).await {
             Ok(connection) => return Ok(connection),
-            Err(error) => last_error = error.to_string(),
+            Err(ClientError::Connect(detail)) => last_error = FailReason::Connect(detail),
+            Err(ClientError::Closed) => last_error = FailReason::ConnectionLost,
         }
 
         sleep(Duration::from_millis(250)).await;

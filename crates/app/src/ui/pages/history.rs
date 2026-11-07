@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
@@ -14,7 +15,7 @@ use tokio::sync::mpsc;
 use super::empty::empty_state;
 use crate::data::{self, Env, Paged};
 use crate::format::played_at;
-use crate::store::{AppStore, Confirm};
+use crate::store::{AppStore, Confirm, Route};
 use crate::theme;
 use crate::ui::common::{
     ROW_HEIGHT, TrackRowSpec, breadcrumb, skeleton_rows, track_row, with_retry_bar,
@@ -166,8 +167,8 @@ impl HistoryPage {
         if self.rows.items.is_empty() {
             return empty_state(
                 IconName::RefreshCw,
-                "No history yet",
-                "Plays from Spotify show up here after the first sync, and new ones every 15 minutes.",
+                t!("history.empty.title"),
+                t!("history.empty.body"),
             );
         }
 
@@ -265,7 +266,7 @@ impl HistoryPage {
 impl Render for HistoryPage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let state = self.store.read(cx);
-        let crumb = breadcrumb(&self.store, state, "History");
+        let crumb = breadcrumb(&self.store, state, &Route::History.label());
         let store = self.store.clone();
         let has_rows = !self.rows.items.is_empty();
         let body = self.body(cx);
@@ -289,10 +290,10 @@ impl Render for HistoryPage {
                             .font_weight(FontWeight::BOLD)
                             .font_family(theme::FONT_DISPLAY)
                             .text_color(theme::text_primary())
-                            .child("History"),
+                            .child(t!("route.history")),
                     )
                     .child(
-                        ghost_button("history-clear", "Clear history", has_rows).on_click(
+                        ghost_button("history-clear", t!("history.clear"), has_rows).on_click(
                             move |_, _, cx| {
                                 store.update(cx, |state, cx| state.ask(Confirm::ClearHistory, cx));
                             },

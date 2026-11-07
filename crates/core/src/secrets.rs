@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Mutex;
 
+use rust_i18n::t;
 use thiserror::Error;
 
 pub const SERVICE: &str = "sonear";
@@ -34,6 +35,13 @@ impl fmt::Debug for Secret {
 #[derive(Debug, Error)]
 #[error("secret store error: {0}")]
 pub struct SecretError(pub String);
+
+impl SecretError {
+    /// The error in the interface language. `Display` stays English for logs.
+    pub fn user_message(&self) -> String {
+        t!("secret.store", detail = &self.0).into_owned()
+    }
+}
 
 pub trait SecretStore: Send + Sync {
     fn get(&self, name: &str) -> Result<Option<Secret>, SecretError>;

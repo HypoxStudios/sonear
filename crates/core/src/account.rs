@@ -3,6 +3,7 @@
 use std::fs;
 use std::sync::{Arc, Mutex};
 
+use rust_i18n::t;
 use sonear_spotify::auth::{self, LOGIN_TIMEOUT};
 use sonear_spotify::{Auth, Secret as SpotifySecret, SpotifyClient, TokenStore};
 use tokio::runtime::Handle;
@@ -251,7 +252,7 @@ impl Account {
                 }
 
                 self.set_state(AccountState::LoginFailed(
-                    "Spotify didn't return your profile. Try connecting again.".to_owned(),
+                    t!("account.profile_failed").into_owned(),
                 ));
             }
         }
@@ -289,8 +290,7 @@ impl Account {
 
         if !looks_like_client_id(&client_id) {
             self.set_state(AccountState::LoginFailed(
-                "That doesn't look like a Client ID. Copy it from your app's page in the Spotify dashboard."
-                    .to_owned(),
+                t!("account.bad_client_id").into_owned(),
             ));
 
             return;
@@ -315,7 +315,7 @@ impl Account {
         let listener = match auth::bind_redirect_listener().await {
             Ok(listener) => listener,
             Err(error) => {
-                self.set_state(AccountState::LoginFailed(error.to_string()));
+                self.set_state(AccountState::LoginFailed(error.user_message()));
 
                 return;
             }
@@ -335,12 +335,12 @@ impl Account {
         match outcome {
             Ok(code) => match auth.complete_login(&request, &code).await {
                 Ok(()) => self.verify_login(auth).await,
-                Err(error) => self.set_state(AccountState::LoginFailed(error.to_string())),
+                Err(error) => self.set_state(AccountState::LoginFailed(error.user_message())),
             },
             Err(sonear_spotify::error::AuthError::Cancelled) => {
                 self.set_state(AccountState::Disconnected);
             }
-            Err(error) => self.set_state(AccountState::LoginFailed(error.to_string())),
+            Err(error) => self.set_state(AccountState::LoginFailed(error.user_message())),
         }
     }
 
@@ -357,9 +357,9 @@ impl Account {
         let mut problems = Vec::new();
 
         if self.library.is_none() {
-            let _ = self.events.send(AppEvent::Notice(
-                "Disconnecting isn't available in demo mode.".to_owned(),
-            ));
+            let _ = self
+                .events
+                .send(AppEvent::Notice(t!("account.demo_disconnect").into_owned()));
 
             return problems;
         }
@@ -374,7 +374,11 @@ impl Account {
         }
 
         if let Err(error) = self.secrets.delete(SPOTIFY_REFRESH_TOKEN) {
-            problems.push(format!("login token: {error}"));
+            problems.push(format!(
+                "{}: {}",
+                t!("problem.login_token"),
+                error.user_message()
+            ));
         }
 
         problems.extend(self.wipe_account_data().await);
@@ -398,11 +402,15 @@ impl Account {
         self.lyrics.clear();
 
         if let Err(error) = self.history.store().wipe().await {
-            problems.push(format!("history: {error}"));
+            problems.push(format!(
+                "{}: {}",
+                t!("problem.history"),
+                error.user_message()
+            ));
         }
 
         if let Err(error) = self.queue.wipe() {
-            problems.push(format!("queue: {error}"));
+            problems.push(format!("{}: {error}", t!("problem.queue")));
         }
 
         let covers = self.paths.cover_cache_dir();
@@ -410,7 +418,7 @@ impl Account {
         if let Err(error) = fs::remove_dir_all(&covers)
             && error.kind() != std::io::ErrorKind::NotFound
         {
-            problems.push(format!("cover cache: {error}"));
+            problems.push(format!("{}: {error}", t!("problem.cover_cache")));
         }
 
         self.config.update(|config| {

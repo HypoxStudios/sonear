@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use std::time::Duration;
 
 use gpui_kit::assets::IconName;
@@ -180,21 +181,23 @@ pub(super) fn spotify_url(uri: &str) -> Option<String> {
     matches!(kind, "track" | "episode").then(|| format!("https://open.spotify.com/{kind}/{id}"))
 }
 
-fn soloist_label(status: &Status, demo: bool) -> (&'static str, bool) {
+fn soloist_label(status: &Status, demo: bool) -> (String, bool) {
     if demo {
-        return ("Demo", true);
+        return (t!("player.status.demo").into_owned(), true);
     }
 
-    match status {
-        Status::Ready { .. } => ("Soloist", true),
-        Status::Starting => ("Starting", false),
-        Status::NeedsPairing { .. } => ("Pair device", false),
-        Status::NotInstalled => ("Not installed", false),
-        Status::NeedsKey => ("Key needed", false),
-        Status::Expired => ("Update needed", false),
-        Status::Failed { .. } => ("Offline", false),
-        Status::Stopped => ("Stopped", false),
-    }
+    let (label, ready) = match status {
+        Status::Ready { .. } => (t!("player.status.ready"), true),
+        Status::Starting => (t!("player.status.starting"), false),
+        Status::NeedsPairing { .. } => (t!("player.status.pair"), false),
+        Status::NotInstalled => (t!("player.status.not_installed"), false),
+        Status::NeedsKey => (t!("player.status.key_needed"), false),
+        Status::Expired => (t!("player.status.update_needed"), false),
+        Status::Failed { .. } => (t!("player.status.offline"), false),
+        Status::Stopped => (t!("player.status.stopped"), false),
+    };
+
+    (label.into_owned(), ready)
 }
 
 impl Render for PlayerBar {
@@ -259,13 +262,14 @@ impl Render for PlayerBar {
             }
         };
 
-        let title = item
-            .as_ref()
-            .map_or("Nothing playing".to_owned(), |item| item.name().to_owned());
+        let title = item.as_ref().map_or_else(
+            || t!("player.nothing_playing").into_owned(),
+            |item| item.name().to_owned(),
+        );
         let subtitle = match &item {
             Some(item) => item.artist_line(),
             None if demo => String::new(),
-            None => "Choose Sonear in Spotify".to_owned(),
+            None => t!("player.choose_sonear").into_owned(),
         };
 
         let left = div()
@@ -316,7 +320,7 @@ impl Render for PlayerBar {
                     div()
                         .id("player-spotify")
                         .flex_none()
-                        .tooltip(text_tooltip("Open Spotify"))
+                        .tooltip(text_tooltip(t!("common.open_spotify")))
                         .when_some(open_url, |this, url| {
                             this.cursor_pointer()
                                 .on_click(move |_, _, cx| cx.open_url(&url))
@@ -517,7 +521,7 @@ impl Render for PlayerBar {
                     accent_if(mini_open),
                     true,
                 )
-                .tooltip(text_tooltip("Mini player"))
+                .tooltip(text_tooltip(t!("player.mini_player")))
                 .on_click(move |_, _, cx| {
                     mini_store.update(cx, |state, cx| state.toggle_mini_player(cx));
                 }),

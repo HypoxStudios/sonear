@@ -24,13 +24,16 @@ pub mod seen;
 pub mod soloist_backend;
 pub mod update;
 
+rust_i18n::i18n!("locales", fallback = "en");
+
 use std::sync::Arc;
 
+use rust_i18n::t;
 use tokio::runtime::Handle;
 use tokio::sync::broadcast;
 
 pub use account::{Account, AccountState};
-pub use config::{Config, ConfigHandle};
+pub use config::{Config, ConfigHandle, Language};
 pub use data_dir::{MoveError, delete_local_data};
 pub use events::AppEvent;
 pub use history::{History, HistoryRow, HistoryStore};
@@ -83,9 +86,9 @@ impl Core {
         let mut problems = Vec::new();
 
         let Some(soloist) = &self.soloist else {
-            let _ = self.events.send(AppEvent::Notice(
-                "Deleting data isn't available in demo mode.".to_owned(),
-            ));
+            let _ = self
+                .events
+                .send(AppEvent::Notice(t!("account.demo_delete").into_owned()));
 
             return problems;
         };
@@ -95,7 +98,7 @@ impl Core {
 
         for name in secrets::ALL_KEYS {
             if let Err(error) = self.secrets.delete(name) {
-                problems.push(format!("{name}: {error}"));
+                problems.push(format!("{name}: {}", error.user_message()));
             }
         }
 
@@ -104,7 +107,7 @@ impl Core {
         if let Err(error) = std::fs::remove_file(&backup)
             && error.kind() != std::io::ErrorKind::NotFound
         {
-            problems.push(format!("config backup: {error}"));
+            problems.push(format!("{}: {error}", t!("problem.config_backup")));
         }
 
         self.config.update(Config::reset_keeping_data_dir);
@@ -271,3 +274,6 @@ fn default_verifier() -> Arc<dyn sonear_soloist::install::SignatureVerifier> {
 
     Arc::new(Unsupported)
 }
+
+#[cfg(test)]
+mod i18n_tests;
