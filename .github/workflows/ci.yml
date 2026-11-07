@@ -3,7 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore: &docs-only
+      - README.md
+      - docs/*.png
+      - docs/*.webp
   pull_request:
+    paths-ignore: *docs-only
 
 permissions:
   contents: read
