@@ -20,13 +20,15 @@ use windows::Win32::UI::Shell::{
 };
 use windows::core::{HSTRING, Interface, PCWSTR, PWSTR};
 
+/// The ID of the installed app, also for a demo build that drives the setup window.
+pub const INSTALLED_APP_ID: &str = "HypoxStudios.Sonear";
 #[cfg(not(feature = "demo"))]
-pub const APP_ID: &str = "HypoxStudios.Sonear";
+pub const APP_ID: &str = INSTALLED_APP_ID;
 #[cfg(feature = "demo")]
 pub const APP_ID: &str = "HypoxStudios.Sonear.Demo";
 pub const APP_NAME: &str = "Sonear";
 
-const SHORTCUT_NAME: &str = "Sonear.lnk";
+pub const SHORTCUT_NAME: &str = "Sonear.lnk";
 const REGISTRY_ROOT: &str = r"Software\Classes\AppUserModelId";
 const DEMO: bool = cfg!(feature = "demo");
 
@@ -34,18 +36,22 @@ fn registry_key() -> String {
     format!(r"{REGISTRY_ROOT}\{APP_ID}")
 }
 
-fn shortcut_path() -> Result<PathBuf, String> {
+/// A Windows known folder such as the Start Menu programs folder.
+pub fn known_folder(id: &windows::core::GUID) -> Result<PathBuf, String> {
     // SAFETY: the returned string is copied and then freed with `CoTaskMemFree`.
     unsafe {
-        let folder = SHGetKnownFolderPath(&FOLDERID_Programs, KF_FLAG_DEFAULT, None)
-            .map_err(|error| error.to_string())?;
+        let folder =
+            SHGetKnownFolderPath(id, KF_FLAG_DEFAULT, None).map_err(|error| error.to_string())?;
         let path = folder.to_string();
 
         CoTaskMemFree(Some(folder.0.cast()));
 
-        path.map(|folder| PathBuf::from(folder).join(SHORTCUT_NAME))
-            .map_err(|error| error.to_string())
+        path.map(PathBuf::from).map_err(|error| error.to_string())
     }
+}
+
+fn shortcut_path() -> Result<PathBuf, String> {
+    known_folder(&FOLDERID_Programs).map(|folder| folder.join(SHORTCUT_NAME))
 }
 
 /// Whether the shortcut has to be (re)written.

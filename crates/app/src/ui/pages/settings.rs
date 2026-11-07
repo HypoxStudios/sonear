@@ -4,9 +4,13 @@ use gpui_kit::component::switch::Switch;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
     AnyElement, App, AppContext as _, Context, Div, ElementId, Entity, FontWeight, Hsla,
-    InteractiveElement as _, IntoElement, ParentElement as _, Render, SharedString, Stateful,
-    StatefulInteractiveElement as _, Styled as _, Subscription, Window, div, px,
+    InteractiveElement as _, IntoElement, ParentElement as _, PathPromptOptions, Render,
+    SharedString, Stateful, StatefulInteractiveElement as _, Styled as _, Subscription, Window,
+    div, px,
 };
+
+use sonear_core::AppPaths;
+use sonear_core::data_dir::resolve_target;
 
 use crate::format::megabytes;
 use crate::legal::LegalDoc;
@@ -418,6 +422,74 @@ impl SettingsPage {
         ))
     }
 
+    /// Asks for a folder, then asks to move the data into it.
+    fn choose_data_folder(&mut self, cx: &mut Context<Self>) {
+        let picked = cx.prompt_for_paths(PathPromptOptions {
+            files: false,
+            directories: true,
+            multiple: false,
+            prompt: None,
+        });
+        let store = self.store.clone();
+
+        cx.spawn(async move |_, cx| {
+            let Ok(Ok(Some(paths))) = picked.await else {
+                return;
+            };
+            let Some(folder) = paths.into_iter().next() else {
+                return;
+            };
+
+            store.update(cx, |store, cx| {
+                store.propose_data_move(resolve_target(&folder), cx);
+            });
+        })
+        .detach();
+    }
+
+    fn storage_section(&self, cx: &mut Context<Self>) -> Div {
+        let state = self.store.read(cx);
+        let demo = state.is_demo();
+        let current = state.core.paths.local_root();
+        let shown = if demo {
+            AppPaths::default_local_root().unwrap_or_else(|| current.clone())
+        } else {
+            current.clone()
+        };
+        let custom = state.core.config.get().data_dir.is_some();
+        let store = self.store.clone();
+        let open = ghost_button("storage-open", "Open", true)
+            .on_click(move |_, _, cx| cx.open_with_system(&current));
+        let controls = div()
+            .flex()
+            .items_center()
+            .gap_2()
+            .child(open)
+            .child(
+                ghost_button("storage-change", "Change", true)
+                    .on_click(cx.listener(|page, _, _, cx| page.choose_data_folder(cx))),
+            )
+            .when(custom && !demo, |this| {
+                this.child(
+                    ghost_button("storage-default", "Use default", true).on_click(
+                        move |_, _, cx| {
+                            store.update(cx, |store, cx| store.propose_default_data_move(cx));
+                        },
+                    ),
+                )
+            });
+
+        section(
+            "Storage",
+            vec![row(
+                "Data folder",
+                "History, queue, cover art, cached details and Soloist. Settings stay in %APPDATA%\\Sonear and your login in Windows Credential Manager.",
+                Some((shown.display().to_string(), theme::text_tertiary())),
+                controls,
+            )],
+        )
+    }
+
     fn account_section(&self, cx: &Context<Self>) -> Div {
         let state = self.store.read(cx);
 
@@ -670,6 +742,7 @@ impl Render for SettingsPage {
         let history = self.history_section(cx);
         let keyboard = self.keyboard_section();
         let soloist = self.soloist_section(cx);
+        let storage = self.storage_section(cx);
         let account = self.account_section(cx);
         let about = self.about_section();
 
@@ -697,6 +770,7 @@ impl Render for SettingsPage {
                     .child(history)
                     .child(keyboard)
                     .children(soloist)
+                    .child(storage)
                     .child(account)
                     .child(about),
             )

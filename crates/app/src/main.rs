@@ -5,10 +5,13 @@ mod assets;
 mod cover_accent;
 mod cover_cache;
 mod data;
+mod data_mover;
 mod format;
 mod http;
+mod installer;
 mod instance;
 mod keymap;
+mod launch;
 mod legal;
 mod media_controls;
 mod platform_window;
@@ -26,6 +29,7 @@ use gpui_kit::{
     WindowOptions, px, size,
 };
 use instance::Handoff;
+use launch::Launch;
 use media_controls::{MediaCommand, MediaControls};
 use sonear_core::{AppPaths, Core, SpotifyLink};
 use store::AppStore;
@@ -72,16 +76,34 @@ fn main() {
         )
         .init();
 
-    let arg = std::env::args().nth(1);
-    let link = arg.as_deref().and_then(SpotifyLink::parse);
+    let exe = std::env::current_exe().unwrap_or_default();
+    let parsed = launch::parse(std::env::args_os().skip(1), &exe);
 
-    if let (Some(arg), None) = (&arg, &link) {
-        let shown: String = arg.chars().take(200).collect();
+    if let Some(pid) = parsed.after_pid
+        && !matches!(parsed.launch, Launch::MoveData(_))
+    {
+        launch::wait_for_exit(pid);
+    }
 
+    match parsed.launch {
+        Launch::Setup => installer::run_setup(),
+        Launch::Uninstall => installer::run_uninstall(),
+        Launch::UninstallFrom(dir) => installer::run_uninstall_from(dir),
+        Launch::MoveData(target) => data_mover::run(target, parsed.after_pid),
+        #[cfg(feature = "demo")]
+        Launch::DataMissing => {
+            data_mover::run_missing(std::path::PathBuf::from(r"D:\Sonear"), None)
+        }
+        Launch::App { link, ignored } => run_app(link, ignored),
+    }
+}
+
+fn run_app(link: Option<SpotifyLink>, ignored: Option<String>) {
+    if let Some(shown) = ignored {
         info!(argument = %shown, "ignored a launch argument that isn't a Spotify link");
     }
 
-    let Some(_instance) = instance::acquire(DEMO) else {
+    let Some(guard) = instance::acquire(DEMO) else {
         info!("Sonear is already running");
         instance::forward(DEMO, &link.map_or(Handoff::Show, Handoff::Open));
 
@@ -91,6 +113,14 @@ fn main() {
         error!("could not locate the user profile directories");
         return;
     };
+
+    if !DEMO && data_folder_missing(&paths) {
+        warn!(folder = %paths.local_root().display(), "the configured data folder is missing");
+        data_mover::run_missing(paths.local_root(), Some(guard));
+
+        return;
+    }
+
     let runtime = match tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .enable_all()
@@ -159,6 +189,7 @@ fn main() {
             };
 
             store.update(cx, |store, _| store.set_main_window(window));
+            platform_window::focus(window, cx);
 
             let close_store = store.clone();
             let _ = window.update(cx, |_, window, cx| {
@@ -177,8 +208,16 @@ fn main() {
             if let Some(mut inbox) = handoffs {
                 cx.spawn(async move |cx| {
                     while let Some(handoff) = inbox.recv().await {
-                        if let Handoff::Open(link) = handoff {
-                            store.update(cx, |store, cx| store.open_link(link, cx));
+                        match handoff {
+                            Handoff::Quit => {
+                                cx.update(|cx| cx.quit());
+
+                                break;
+                            }
+                            Handoff::Open(link) => {
+                                store.update(cx, |store, cx| store.open_link(link, cx));
+                            }
+                            Handoff::Show => {}
                         }
 
                         store.update(cx, |store, cx| store.show_main_window(cx));
@@ -191,6 +230,14 @@ fn main() {
         });
 
     drop(runtime);
+}
+
+/// Whether the data folder was moved off the default and is no longer there.
+fn data_folder_missing(paths: &AppPaths) -> bool {
+    let moved = AppPaths::default_local_root()
+        .is_some_and(|default| !sonear_core::data_dir::same_path(&default, &paths.local_root()));
+
+    moved && !paths.local_root().exists()
 }
 
 /// Adds the tray icon and applies its menu choices. A tray that fails to start

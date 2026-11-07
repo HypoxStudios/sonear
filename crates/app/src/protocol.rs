@@ -7,9 +7,9 @@ use std::path::Path;
 use thiserror::Error;
 use windows::Win32::Foundation::{ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_SUCCESS};
 use windows::Win32::System::Registry::{
-    HKEY, HKEY_CURRENT_USER, KEY_READ, KEY_WRITE, REG_OPTION_NON_VOLATILE, REG_SZ, RegCloseKey,
-    RegCreateKeyExW, RegDeleteKeyValueW, RegDeleteTreeW, RegOpenKeyExW, RegQueryValueExW,
-    RegSetValueExW,
+    HKEY, HKEY_CURRENT_USER, KEY_READ, KEY_WRITE, REG_DWORD, REG_OPTION_NON_VOLATILE, REG_SZ,
+    RegCloseKey, RegCreateKeyExW, RegDeleteKeyValueW, RegDeleteTreeW, RegOpenKeyExW,
+    RegQueryValueExW, RegSetValueExW,
 };
 use windows::core::{HSTRING, PCWSTR};
 
@@ -165,6 +165,20 @@ pub(crate) fn write_string(
     name: Option<&str>,
     data: &str,
 ) -> Result<(), ProtocolError> {
+    write_raw(key_path, name, REG_SZ, &utf16_bytes(data))
+}
+
+/// Writes one `REG_DWORD` value under `HKEY_CURRENT_USER`, creating the key.
+pub(crate) fn write_dword(key_path: &str, name: &str, data: u32) -> Result<(), ProtocolError> {
+    write_raw(key_path, Some(name), REG_DWORD, &data.to_le_bytes())
+}
+
+fn write_raw(
+    key_path: &str,
+    name: Option<&str>,
+    kind: windows::Win32::System::Registry::REG_VALUE_TYPE,
+    bytes: &[u8],
+) -> Result<(), ProtocolError> {
     let mut key = HKEY::default();
 
     // SAFETY: `key` is a valid out pointer and is closed below.
@@ -190,7 +204,7 @@ pub(crate) fn write_string(
         .map_or(PCWSTR::null(), |name| PCWSTR(name.as_ptr()));
 
     // SAFETY: `key` was opened above; the data outlives the call.
-    let code = unsafe { RegSetValueExW(key, name, None, REG_SZ, Some(&utf16_bytes(data))) };
+    let code = unsafe { RegSetValueExW(key, name, None, kind, Some(bytes)) };
 
     // SAFETY: `key` is open and not used again.
     unsafe {
@@ -200,7 +214,21 @@ pub(crate) fn write_string(
     check("write to", code.0, false)
 }
 
+/// Reads a string value from `HKEY_CURRENT_USER`. `None` if it is missing.
+#[cfg_attr(feature = "demo", allow(dead_code))]
+pub(crate) fn read_string(key_path: &str, name: &str) -> Option<String> {
+    read_value(key_path, Some(name))
+}
+
 fn read_default(key_path: &str) -> Option<String> {
+    read_value(key_path, None)
+}
+
+fn read_value(key_path: &str, name: Option<&str>) -> Option<String> {
+    let name = name.map(HSTRING::from);
+    let name = name
+        .as_ref()
+        .map_or(PCWSTR::null(), |name| PCWSTR(name.as_ptr()));
     let mut key = HKEY::default();
 
     // SAFETY: `key` is a valid out pointer and is closed below.
@@ -221,13 +249,13 @@ fn read_default(key_path: &str) -> Option<String> {
     let mut size = 0u32;
 
     // SAFETY: the first call only asks for the size.
-    let sized = unsafe { RegQueryValueExW(key, PCWSTR::null(), None, None, None, Some(&mut size)) };
+    let sized = unsafe { RegQueryValueExW(key, name, None, None, None, Some(&mut size)) };
     let mut buffer = vec![0u8; size as usize];
     let read = sized == ERROR_SUCCESS
         && unsafe {
             RegQueryValueExW(
                 key,
-                PCWSTR::null(),
+                name,
                 None,
                 None,
                 Some(buffer.as_mut_ptr()),

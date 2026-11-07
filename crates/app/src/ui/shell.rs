@@ -2,8 +2,9 @@ use gpui_kit::assets::IconName;
 use gpui_kit::component::TitleBar;
 use gpui_kit::{
     AnyElement, AnyView, AppContext as _, Context, DismissEvent, Div, Entity, FocusHandle,
-    FontWeight, InteractiveElement as _, IntoElement, ParentElement as _, Render, Stateful,
-    StatefulInteractiveElement as _, StyleRefinement, Styled as _, Subscription, Window, div, px,
+    FontWeight, InteractiveElement as _, IntoElement, ParentElement as _, Render, SharedString,
+    Stateful, StatefulInteractiveElement as _, StyleRefinement, Styled as _, Subscription, Window,
+    div, px,
 };
 use sonear_core::playback::now_ms;
 use sonear_soloist::Status;
@@ -362,22 +363,35 @@ impl Shell {
 
     fn confirm_dialog(&self, cx: &Context<Self>) -> Option<Stateful<Div>> {
         let confirm = self.store.read(cx).confirm?;
-        let (title, text, action) = match confirm {
+        let (title, text, action): (&str, SharedString, &str) = match confirm {
             Confirm::Logout => (
                 "Log out of Spotify?",
-                "This removes your Spotify login, cached data, cover art, listening history and queue from this computer. Your Soloist key, install and pairing stay.",
+                "This removes your Spotify login, cached data, cover art, listening history and queue from this computer. Your Soloist key, install and pairing stay.".into(),
                 "Log out",
             ),
             Confirm::ClearHistory => (
                 "Clear history?",
-                "This deletes the list of plays Sonear keeps on this computer. Nothing changes in your Spotify account.",
+                "This deletes the list of plays Sonear keeps on this computer. Nothing changes in your Spotify account.".into(),
                 "Clear history",
             ),
             Confirm::DeleteAll => (
                 "Delete all Sonear data?",
-                "This removes your Spotify login, Soloist key and pairing, history, queue, cached data, cover art and settings from this computer. The Soloist program stays, so you won't download it again. Setup starts again from the beginning.",
+                "This removes your Spotify login, Soloist key and pairing, history, queue, cached data, cover art and settings from this computer. The Soloist program stays, so you won't download it again. Setup starts again from the beginning.".into(),
                 "Delete everything",
             ),
+            Confirm::MoveData => {
+                let target = self.store.read(cx).pending_data_move.clone()?;
+
+                (
+                    "Move your data?",
+                    format!(
+                        "Sonear will close, move your data to {} and open again. Playback stops while it moves.",
+                        target.display()
+                    )
+                    .into(),
+                    "Move and restart",
+                )
+            }
         };
         let cancel = self.store.clone();
         let accept = self.store.clone();

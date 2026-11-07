@@ -75,6 +75,21 @@ pub const ACCENT_LIGHTNESS: (f32, f32) = (0.70, 0.82);
 const ACCENT_HOVER_LIFT: f32 = 0.06;
 const HERO_TINT_ALPHA: f32 = 0.10;
 
+/// The setup, uninstall and data-moving windows.
+pub const WIZARD_WIDTH: f32 = 760.;
+pub const WIZARD_HEIGHT: f32 = 480.;
+pub const WIZARD_RAIL_WIDTH: Pixels = px(220.);
+pub const WIZARD_TITLEBAR_HEIGHT: Pixels = px(36.);
+pub const WIZARD_CLOSE_WIDTH: Pixels = px(46.);
+pub const WIZARD_PADDING: f32 = 32.;
+pub const WIZARD_TITLE_SIZE: f32 = 24.;
+pub const WIZARD_LOGO: f32 = 56.;
+pub const WIZARD_STATUS_ICON: f32 = 44.;
+/// The circle beside each step and the check inside it.
+pub const STEP_DOT: f32 = 18.;
+pub const STEP_CHECK: f32 = 11.;
+pub const PROGRESS_HEIGHT: Pixels = px(4.);
+
 /// Window width below which the sidebar collapses to a rail.
 pub const COLLAPSE_BELOW: f32 = 1100.;
 /// Main plus right panel width below which the right panel hides.

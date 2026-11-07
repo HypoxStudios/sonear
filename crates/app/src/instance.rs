@@ -7,9 +7,11 @@ use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 use tokio::runtime::Handle;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
-use windows::Win32::Foundation::{ERROR_ALREADY_EXISTS, GetLastError, HANDLE};
+use windows::Win32::Foundation::{CloseHandle, ERROR_ALREADY_EXISTS, GetLastError, HANDLE};
 use windows::Win32::System::RemoteDesktop::ProcessIdToSessionId;
-use windows::Win32::System::Threading::{CreateMutexW, GetCurrentProcessId};
+use windows::Win32::System::Threading::{
+    CreateMutexW, GetCurrentProcessId, OpenMutexW, SYNCHRONIZATION_SYNCHRONIZE,
+};
 use windows::core::{PCWSTR, w};
 
 /// Longest message the pipe accepts.
@@ -20,30 +22,48 @@ const RETRY_EVERY: Duration = Duration::from_millis(50);
 const ERROR_FILE_NOT_FOUND: i32 = 2;
 const ERROR_PIPE_BUSY: i32 = 231;
 
-/// Holds the named mutex for the life of the process.
-pub struct InstanceGuard(#[allow(dead_code)] HANDLE);
+/// Holds the named mutex until it is dropped or the process exits.
+pub struct InstanceGuard(HANDLE);
+
+// SAFETY: the handle is only ever closed, which any thread may do.
+unsafe impl Send for InstanceGuard {}
+
+impl Drop for InstanceGuard {
+    fn drop(&mut self) {
+        // SAFETY: the handle is owned by this guard and not used again.
+        unsafe {
+            let _ = CloseHandle(self.0);
+        }
+    }
+}
 
 /// What a second launch asks the running Sonear to do.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Handoff {
     Open(SpotifyLink),
     Show,
+    /// Close, so an installer or a data move can take over.
+    Quit,
+}
+
+fn mutex_name(demo: bool) -> PCWSTR {
+    if demo {
+        w!(r"Local\SonearSingleInstanceDemo")
+    } else {
+        w!(r"Local\SonearSingleInstance")
+    }
 }
 
 /// Returns `None` if another Sonear already holds the mutex. The demo uses its
 /// own name so it can run next to a real install.
 pub fn acquire(demo: bool) -> Option<InstanceGuard> {
-    let name: PCWSTR = if demo {
-        w!(r"Local\SonearSingleInstanceDemo")
-    } else {
-        w!(r"Local\SonearSingleInstance")
-    };
-
-    // SAFETY: plain Win32 calls; the handle lives until the process exits.
+    // SAFETY: plain Win32 calls; the handle is closed when the guard drops.
     unsafe {
-        let handle = CreateMutexW(None, true, name).ok()?;
+        let handle = CreateMutexW(None, true, mutex_name(demo)).ok()?;
 
         if GetLastError() == ERROR_ALREADY_EXISTS {
+            let _ = CloseHandle(handle);
+
             return None;
         }
 
@@ -51,10 +71,31 @@ pub fn acquire(demo: bool) -> Option<InstanceGuard> {
     }
 }
 
+/// Whether a Sonear is running, without taking the mutex.
+pub fn is_running(demo: bool) -> bool {
+    // SAFETY: plain Win32 calls; an opened handle is closed right away.
+    unsafe {
+        match OpenMutexW(SYNCHRONIZATION_SYNCHRONIZE, false, mutex_name(demo)) {
+            Ok(handle) => {
+                let _ = CloseHandle(handle);
+
+                true
+            }
+            Err(_) => false,
+        }
+    }
+}
+
+/// Asks the running Sonear to quit. Does not wait for it.
+pub fn request_quit(demo: bool) {
+    forward(demo, &Handoff::Quit);
+}
+
 pub fn encode(handoff: &Handoff) -> String {
     match handoff {
         Handoff::Open(link) => format!("open {}\n", link.uri()),
         Handoff::Show => "show\n".to_owned(),
+        Handoff::Quit => "quit\n".to_owned(),
     }
 }
 
@@ -69,8 +110,10 @@ pub fn decode(bytes: &[u8]) -> Option<Handoff> {
         .ok()?
         .trim_end_matches(['\r', '\n']);
 
-    if line == "show" {
-        return Some(Handoff::Show);
+    match line {
+        "show" => return Some(Handoff::Show),
+        "quit" => return Some(Handoff::Quit),
+        _ => {}
     }
 
     let uri = line.strip_prefix("open ")?;
@@ -218,7 +261,7 @@ mod tests {
 
     #[test]
     fn messages_round_trip() {
-        for handoff in [Handoff::Open(link()), Handoff::Show] {
+        for handoff in [Handoff::Open(link()), Handoff::Show, Handoff::Quit] {
             assert_eq!(decode(encode(&handoff).as_bytes()), Some(handoff));
         }
     }
@@ -228,7 +271,8 @@ mod tests {
         let long = format!("open spotify:album:{ID}{}", " ".repeat(MAX_MESSAGE));
 
         assert_eq!(decode(b""), None);
-        assert_eq!(decode(b"quit\n"), None);
+        assert_eq!(decode(b"quit now\n"), None);
+        assert_eq!(decode(b"Quit\n"), None);
         assert_eq!(decode(b"show now\n"), None);
         assert_eq!(decode(b"open \n"), None);
         assert_eq!(decode(b"open spotify:track:../me\n"), None);

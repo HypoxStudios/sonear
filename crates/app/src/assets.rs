@@ -40,7 +40,10 @@ icon_assets!(
         Clock,
         Settings,
         PictureInPicture2,
-        Maximize2
+        Maximize2,
+        Check,
+        Folder,
+        FolderOpen
     ]
 );
 

@@ -1,15 +1,19 @@
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
 use gpui_kit::{AnyWindowHandle, AppContext as _, Context, Entity, SharedString, Task, Window};
 use sonear_core::config::LEGAL_VERSION;
+use sonear_core::data_dir::check_target;
 use sonear_core::model::ItemKind;
 use sonear_core::model::{PlayOffset, PlaybackRequest, Playlist, Profile, Track};
 use sonear_core::queue::QueueSource;
-use sonear_core::{AccountState, AppEvent, Core, PlaybackModel, QueueSnapshot, SpotifyLink};
+use sonear_core::{
+    AccountState, AppEvent, AppPaths, Core, PlaybackModel, QueueSnapshot, SpotifyLink,
+};
 use sonear_soloist::Status;
 use sonear_soloist::install::InstallProgress;
 use sonear_spotify::RateLimit;
@@ -109,6 +113,8 @@ pub enum Confirm {
     Logout,
     ClearHistory,
     DeleteAll,
+    /// Moves the data folder to `AppStore::pending_data_move`.
+    MoveData,
 }
 
 #[derive(Debug, Clone)]
@@ -188,6 +194,8 @@ pub struct AppStore {
     pub pending_play: bool,
     pub avatar_menu_open: bool,
     pub confirm: Option<Confirm>,
+    /// Where the data folder moves to once the user confirms.
+    pub pending_data_move: Option<PathBuf>,
     pub shortcuts_open: bool,
     pub legal_open: Option<LegalDoc>,
     /// A query the Search page should fill in and run, taken when it reads it.
@@ -251,6 +259,7 @@ impl AppStore {
             pending_play: false,
             avatar_menu_open: false,
             confirm: None,
+            pending_data_move: None,
             shortcuts_open: false,
             legal_open: None,
             pending_search: None,
@@ -1146,8 +1155,35 @@ impl AppStore {
         cx.notify();
     }
 
+    /// Checks that the data can move to `target` and asks the user to confirm.
+    pub fn propose_data_move(&mut self, target: PathBuf, cx: &mut Context<Self>) {
+        if !self.is_demo()
+            && let Err(error) = check_target(&self.core.paths.local_root(), &target)
+        {
+            self.show_toast(error.to_string(), cx);
+
+            return;
+        }
+
+        self.ask_move_data(target, cx);
+    }
+
+    /// Like `propose_data_move`, to the folder Sonear uses unless told otherwise.
+    pub fn propose_default_data_move(&mut self, cx: &mut Context<Self>) {
+        match AppPaths::default_local_root() {
+            Some(target) => self.propose_data_move(target, cx),
+            None => self.show_toast("Could not find the default folder.", cx),
+        }
+    }
+
+    pub fn ask_move_data(&mut self, target: PathBuf, cx: &mut Context<Self>) {
+        self.pending_data_move = Some(target);
+        self.ask(Confirm::MoveData, cx);
+    }
+
     pub fn dismiss_confirm(&mut self, cx: &mut Context<Self>) {
         self.confirm = None;
+        self.pending_data_move = None;
         cx.notify();
     }
 
@@ -1166,9 +1202,41 @@ impl AppStore {
                 });
             }
             Confirm::DeleteAll => self.delete_all_data(cx),
+            Confirm::MoveData => self.move_data(cx),
         }
 
         cx.notify();
+    }
+
+    /// Starts a copy of this program that moves the data while no Sonear runs,
+    /// then quits so it can.
+    fn move_data(&mut self, cx: &mut Context<Self>) {
+        let Some(target) = self.pending_data_move.take() else {
+            return;
+        };
+
+        if self.is_demo() {
+            self.show_toast("Moving data isn't available in demo mode.", cx);
+
+            return;
+        }
+
+        let started = std::env::current_exe().and_then(|exe| {
+            std::process::Command::new(exe)
+                .arg("--after")
+                .arg(std::process::id().to_string())
+                .arg("--move-data")
+                .arg(&target)
+                .spawn()
+        });
+
+        match started {
+            Ok(child) => platform_window::quit_after_handing_focus_to(child.id(), cx),
+            Err(error) => {
+                warn!(%error, "could not start the data move");
+                self.show_toast(format!("Could not start moving your data: {error}"), cx);
+            }
+        }
     }
 
     fn disconnect(&mut self, cx: &mut Context<Self>) {
