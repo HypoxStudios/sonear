@@ -9,6 +9,7 @@ use gpui_kit::{
 
 use crate::format::megabytes;
 use crate::legal::LegalDoc;
+use crate::protocol::{self, Registration};
 use crate::store::{AppStore, Confirm, DEVICE_NAME_MAX, InstallState};
 use crate::theme;
 use crate::ui::widgets::{danger_button, ghost_button, icon, label_caps};
@@ -26,6 +27,8 @@ pub struct SettingsPage {
     device_input: Entity<InputState>,
     key_input: Entity<InputState>,
     key_open: bool,
+    /// Read once and after each change: the page redraws on every playback event.
+    links: Registration,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -61,6 +64,7 @@ impl SettingsPage {
             device_input,
             key_input,
             key_open: false,
+            links: protocol::status(),
             _subscriptions: subscriptions,
         }
     }
@@ -125,13 +129,72 @@ impl SettingsPage {
         self.close_key_editor(window, cx);
     }
 
+    fn register_links(&mut self, open_default_apps: bool, cx: &mut Context<Self>) {
+        match protocol::register() {
+            Ok(()) if open_default_apps => protocol::open_default_apps(cx),
+            Ok(()) => {}
+            Err(error) => self.report(error, cx),
+        }
+
+        self.links = protocol::status();
+        cx.notify();
+    }
+
+    fn remove_links(&mut self, cx: &mut Context<Self>) {
+        if let Err(error) = protocol::unregister() {
+            self.report(error, cx);
+        }
+
+        self.links = protocol::status();
+        cx.notify();
+    }
+
+    fn report(&self, error: protocol::ProtocolError, cx: &mut Context<Self>) {
+        self.store.update(cx, |store, cx| {
+            store.show_toast(
+                format!("Could not change spotify: link handling: {error}"),
+                cx,
+            );
+        });
+    }
+
+    fn links_row(&self, cx: &mut Context<Self>) -> AnyElement {
+        let controls = div().flex().items_center().gap_2();
+        let controls = match self.links {
+            Registration::NotRegistered => controls.child(
+                ghost_button("links-setup", "Set up", true)
+                    .on_click(cx.listener(|page, _, _, cx| page.register_links(true, cx))),
+            ),
+            Registration::Registered => controls
+                .child(
+                    ghost_button("links-choose", "Choose in Windows", true)
+                        .on_click(cx.listener(|_, _, _, cx| protocol::open_default_apps(cx))),
+                )
+                .child(
+                    ghost_button("links-remove", "Remove", true)
+                        .on_click(cx.listener(|page, _, _, cx| page.remove_links(cx))),
+                ),
+            Registration::Outdated => controls.child(
+                ghost_button("links-update", "Update", true)
+                    .on_click(cx.listener(|page, _, _, cx| page.register_links(false, cx))),
+            ),
+        };
+
+        row(
+            "Spotify links",
+            "Open spotify: links from your browser and other apps in Sonear. Windows asks you to pick Sonear under Default apps.",
+            None,
+            controls,
+        )
+    }
+
     fn playback_section(&self, cx: &mut Context<Self>) -> Div {
         let can_save = self.can_save_device_name(cx);
         let save = ghost_button("device-save", "Save", can_save).when(can_save, |this| {
             this.on_click(cx.listener(|page, _, _, cx| page.save_device_name(cx)))
         });
 
-        let rows = vec![
+        let mut rows = vec![
             row(
                 "Device name",
                 "The name Spotify apps show for this computer.",
@@ -154,6 +217,10 @@ impl SettingsPage {
                 div(),
             ),
         ];
+
+        if !self.store.read(cx).is_demo() {
+            rows.push(self.links_row(cx));
+        }
 
         section("Playback", rows)
     }

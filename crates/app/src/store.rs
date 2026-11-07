@@ -892,12 +892,18 @@ impl AppStore {
         });
 
         cx.spawn(async move |this, cx| {
-            let Some(problems) = inbox.recv().await else {
+            let Some(mut problems) = inbox.recv().await else {
                 return;
             };
 
             let _ = this.update(cx, |store, cx| {
                 let config = store.core.config.get();
+
+                if !store.is_demo()
+                    && let Err(error) = crate::protocol::unregister()
+                {
+                    problems.push(format!("Spotify link registration: {error}"));
+                }
 
                 store.sidebar_collapsed = config.sidebar_collapsed;
                 store.right_panel_open = config.right_panel.open;
