@@ -209,7 +209,7 @@ impl SetupView {
                     .child(text)
             }))
             .child(note(
-                "Spotify Premium is required. Your login is stored in Windows Credential Manager.",
+                "Spotify Premium is required. The developer app is yours, for your own personal use. Your login is stored in Windows Credential Manager.",
             ))
             .into_any_element()
     }
