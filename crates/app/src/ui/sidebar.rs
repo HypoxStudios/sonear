@@ -6,7 +6,7 @@ use gpui_kit::{
     px,
 };
 
-use super::widgets::{art, icon, icon_button, logo_mark};
+use super::widgets::{art, icon, icon_button, logo_mark, text_tooltip};
 use crate::store::{AppStore, LibraryTab, Route};
 use crate::theme;
 
@@ -223,11 +223,37 @@ pub fn sidebar(store: &Entity<AppStore>, state: &AppStore, collapsed: bool) -> A
 
     column
         .child(list)
+        .children(
+            state
+                .update
+                .ready_version()
+                .map(|version| update_row(store, version, collapsed)),
+        )
         .child(avatar(store, state, collapsed))
         .when(collapsed, |this| {
             this.child(toggle_button(store, collapsed))
         })
         .into_any_element()
+}
+
+fn update_row(store: &Entity<AppStore>, version: &str, collapsed: bool) -> Stateful<Div> {
+    let store = store.clone();
+
+    row(
+        "nav-update",
+        icon(
+            IconName::RefreshCw,
+            if collapsed { 18. } else { 17. },
+            theme::accent(),
+        )
+        .into_any_element(),
+        "Restart to update",
+        false,
+        collapsed,
+    )
+    .text_color(theme::accent())
+    .tooltip(text_tooltip(format!("Sonear {version} is ready")))
+    .on_click(move |_, _, cx| store.update(cx, |state, cx| state.restart_to_update(cx)))
 }
 
 fn toggle_button(store: &Entity<AppStore>, collapsed: bool) -> Stateful<Div> {

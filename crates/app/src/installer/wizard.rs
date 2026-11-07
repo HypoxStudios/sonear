@@ -14,6 +14,7 @@ use gpui_kit::{
 };
 use sonear_core::AppPaths;
 use sonear_core::data_dir::resolve_target;
+use sonear_core::update::compare_versions;
 
 use super::job::{Job, Reporter, Snapshot, watch};
 use super::ops::{self, InstallOptions, Installed, Target};
@@ -73,7 +74,7 @@ struct Welcome {
 fn welcome_text(installed: &str, new: &str) -> Welcome {
     let known = !installed.is_empty();
 
-    match ops::compare_versions(installed, new) {
+    match compare_versions(installed, new) {
         Ordering::Less => Welcome {
             title: format!("Update Sonear to {new}"),
             detail: known.then(|| format!("You have {installed}.")),

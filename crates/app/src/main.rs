@@ -80,7 +80,7 @@ fn main() {
     let parsed = launch::parse(std::env::args_os().skip(1), &exe);
 
     if let Some(pid) = parsed.after_pid
-        && !matches!(parsed.launch, Launch::MoveData(_))
+        && !matches!(parsed.launch, Launch::MoveData(_) | Launch::ApplyUpdate(_))
     {
         launch::wait_for_exit(pid);
     }
@@ -90,6 +90,7 @@ fn main() {
         Launch::Uninstall => installer::run_uninstall(),
         Launch::UninstallFrom(dir) => installer::run_uninstall_from(dir),
         Launch::MoveData(target) => data_mover::run(target, parsed.after_pid),
+        Launch::ApplyUpdate(dir) => installer::apply::run(dir, parsed.after_pid),
         #[cfg(feature = "demo")]
         Launch::DataMissing => {
             data_mover::run_missing(std::path::PathBuf::from(r"D:\Sonear"), None)

@@ -2,6 +2,7 @@
 //! itself: it copies itself into the install folder. See `launch` for how the
 //! one binary decides what to be.
 
+pub mod apply;
 pub mod chrome;
 mod job;
 mod ops;

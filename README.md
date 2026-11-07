@@ -89,7 +89,7 @@ Spotify only gives wide API access to large companies, so you create your own ap
 <details>
 <summary><strong>What does it send, and where?</strong></summary>
 
-Nothing goes to us. Sonear talks to Spotify, and to LRCLIB while the lyrics panel is open. **Settings → Delete all Sonear data** wipes everything. More in the [privacy policy](docs/legal/privacy.md).
+Nothing goes to us. Sonear talks to Spotify, to LRCLIB while the lyrics panel is open, and to GitHub to check for updates, which you can turn off. **Settings → Delete all Sonear data** wipes everything. More in the [privacy policy](docs/legal/privacy.md).
 
 </details>
 

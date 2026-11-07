@@ -26,6 +26,8 @@ pub enum Launch {
     Uninstall,
     UninstallFrom(PathBuf),
     MoveData(PathBuf),
+    /// Swaps this downloaded update into the given install folder.
+    ApplyUpdate(PathBuf),
     #[cfg(feature = "demo")]
     DataMissing,
 }
@@ -60,6 +62,10 @@ pub fn parse(mut args: impl Iterator<Item = OsString>, exe: &Path) -> Parsed {
         Some("--move-data") => args.next().map_or_else(
             || app(first.as_deref()),
             |dir| Launch::MoveData(PathBuf::from(dir)),
+        ),
+        Some("--apply-update") => args.next().map_or_else(
+            || app(first.as_deref()),
+            |dir| Launch::ApplyUpdate(PathBuf::from(dir)),
         ),
         #[cfg(feature = "demo")]
         Some("--data-missing") => Launch::DataMissing,
@@ -152,12 +158,37 @@ mod tests {
             launch(&["--move-data", r"D:\Data\Sonear"]),
             Launch::MoveData(PathBuf::from(r"D:\Data\Sonear"))
         );
+        assert_eq!(
+            launch(&["--apply-update", r"C:\Apps\Sonear"]),
+            Launch::ApplyUpdate(PathBuf::from(r"C:\Apps\Sonear"))
+        );
+    }
+
+    #[test]
+    fn an_update_is_applied_after_the_old_sonear_exits() {
+        let parsed = parse_args(
+            &["--after", "4242", "--apply-update", r"C:\Apps\Sonear"],
+            r"C:\Users\me\AppData\Local\Sonear\updates\sonear-0.2.0-update.exe",
+        );
+
+        assert_eq!(parsed.after_pid, Some(4242));
+        assert_eq!(
+            parsed.launch,
+            Launch::ApplyUpdate(PathBuf::from(r"C:\Apps\Sonear"))
+        );
     }
 
     #[test]
     fn a_flag_without_its_folder_is_an_ignored_argument() {
         assert!(matches!(
             launch(&["--move-data"]),
+            Launch::App {
+                link: None,
+                ignored: Some(_)
+            }
+        ));
+        assert!(matches!(
+            launch(&["--apply-update"]),
             Launch::App {
                 link: None,
                 ignored: Some(_)

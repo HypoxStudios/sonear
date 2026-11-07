@@ -2,12 +2,11 @@
 //! machine goes through a `Target`, so tests can point it at temp folders and
 //! a throwaway registry key.
 
-use std::cmp::Ordering;
 use std::fs::{self, File};
 use std::io::{self, Read as _, Write as _};
 use std::path::{Path, PathBuf};
 
-use sonear_core::data_dir::{is_within, probe_writable, retry_busy, same_path};
+use sonear_core::data_dir::{is_within, probe_writable, retry_busy, same_place};
 use sonear_core::{AppPaths, KeyringStore, delete_local_data};
 use thiserror::Error;
 use tracing::{info, warn};
@@ -309,12 +308,9 @@ pub fn uninstall(target: &Target, progress: Progress) -> Vec<String> {
     problems
 }
 
-/// Whether a shortcut opens `exe`. Compares real paths, because Windows may spell
-/// the same folder with its short name (`RUNNER~1`), so `exe` must still exist.
+/// Whether a shortcut opens `exe`, which must still exist for real paths to compare.
 fn points_at(link: &Path, exe: &Path) -> bool {
-    let real = |path: &Path| fs::canonicalize(path).unwrap_or_else(|_| path.to_owned());
-
-    app_identity::shortcut_target(link).is_some_and(|target| same_path(&real(&target), &real(exe)))
+    app_identity::shortcut_target(link).is_some_and(|target| same_place(&target, exe))
 }
 
 fn remove_file(path: &Path, problems: &mut Vec<String>) {
@@ -372,23 +368,6 @@ pub fn installed_at(key: &str) -> Option<Installed> {
         dir,
         version: protocol::read_string(key, "DisplayVersion").unwrap_or_default(),
     })
-}
-
-/// Compares dotted versions as numbers, so `0.10.0` is newer than `0.9.0`.
-pub fn compare_versions(a: &str, b: &str) -> Ordering {
-    let numbers = |version: &str| -> Vec<u64> {
-        version
-            .split('.')
-            .map(|part| part.trim().parse().unwrap_or(0))
-            .collect()
-    };
-    let (mut a, mut b) = (numbers(a), numbers(b));
-    let length = a.len().max(b.len());
-
-    a.resize(length, 0);
-    b.resize(length, 0);
-
-    a.cmp(&b)
 }
 
 fn explain_probe_error(error: &io::Error) -> String {
@@ -641,14 +620,6 @@ mod tests {
         desktop_shortcut: false,
         is_update: false,
     };
-
-    #[test]
-    fn versions_compare_as_numbers() {
-        assert_eq!(compare_versions("0.9.0", "0.10.0"), Ordering::Less);
-        assert_eq!(compare_versions("0.2.0", "0.1.0"), Ordering::Greater);
-        assert_eq!(compare_versions("1.0", "1.0.0"), Ordering::Equal);
-        assert_eq!(compare_versions("", "0.1.0"), Ordering::Less);
-    }
 
     #[test]
     fn install_folders_are_checked() {

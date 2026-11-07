@@ -15,9 +15,9 @@ use sonear_core::data_dir::resolve_target;
 use crate::format::megabytes;
 use crate::legal::LegalDoc;
 use crate::protocol::{self, Registration};
-use crate::store::{AppStore, Confirm, DEVICE_NAME_MAX, InstallState};
+use crate::store::{AppStore, Confirm, DEVICE_NAME_MAX, InstallState, UpdateState};
 use crate::theme;
-use crate::ui::widgets::{danger_button, ghost_button, icon, label_caps};
+use crate::ui::widgets::{accent_button, danger_button, ghost_button, icon, label_caps};
 
 const RETENTION_CHOICES: [u32; 5] = [1, 3, 6, 12, 24];
 const SPOTIFY_APPS_URL: &str = "https://www.spotify.com/account/apps/";
@@ -553,7 +553,55 @@ impl SettingsPage {
         )
     }
 
-    fn about_section(&self) -> Div {
+    fn updates_row(&self, cx: &Context<Self>) -> AnyElement {
+        let store = self.store.clone();
+
+        row(
+            "Check for updates",
+            "Asks GitHub for new versions and downloads them. Sonear only installs a version signed by its makers, and only when you restart.",
+            None,
+            Switch::new("settings-updates")
+                .checked(self.store.read(cx).check_for_updates)
+                .color(theme::accent())
+                .accessibility_label("Check for updates")
+                .on_change(move |enabled, _, cx| {
+                    store.update(cx, |state, cx| state.set_check_for_updates(*enabled, cx));
+                }),
+        )
+    }
+
+    fn version_row(&self, cx: &mut Context<Self>) -> AnyElement {
+        let title = format!("Sonear {}", env!("CARGO_PKG_VERSION"));
+        let description = "Sonear is independent and isn't affiliated with or endorsed by Spotify.";
+        let UpdateState::Ready {
+            version, notes_url, ..
+        } = self.store.read(cx).update.clone()
+        else {
+            return row(title, description, None, div());
+        };
+        let store = self.store.clone();
+        let controls = div()
+            .flex()
+            .items_center()
+            .gap_4()
+            .children(notes_url.map(|url| external_link("about-whats-new", "What's new", url)))
+            .child(
+                accent_button("about-restart", "Restart to update", None, true).on_click(
+                    move |_, _, cx| {
+                        store.update(cx, |state, cx| state.restart_to_update(cx));
+                    },
+                ),
+            );
+
+        row(
+            title,
+            description,
+            Some((format!("Sonear {version} is ready."), theme::accent())),
+            controls,
+        )
+    }
+
+    fn about_section(&self, cx: &mut Context<Self>) -> Div {
         let terms = self.store.clone();
         let privacy = self.store.clone();
         let links = div()
@@ -588,15 +636,7 @@ impl SettingsPage {
 
         section(
             "About",
-            vec![
-                row(
-                    format!("Sonear {}", env!("CARGO_PKG_VERSION")),
-                    "Sonear is independent and isn't affiliated with or endorsed by Spotify.",
-                    None,
-                    div(),
-                ),
-                links,
-            ],
+            vec![self.updates_row(cx), self.version_row(cx), links],
         )
     }
 }
@@ -729,10 +769,16 @@ fn text_link(id: impl Into<ElementId>, text: &'static str) -> Stateful<Div> {
         .child(text)
 }
 
-fn external_link(id: impl Into<ElementId>, text: &'static str, url: &'static str) -> AnyElement {
+fn external_link(
+    id: impl Into<ElementId>,
+    text: &'static str,
+    url: impl Into<String>,
+) -> AnyElement {
+    let url = url.into();
+
     text_link(id, text)
         .child(icon(IconName::ExternalLink, 12., theme::accent()))
-        .on_click(move |_, _, cx: &mut App| cx.open_url(url))
+        .on_click(move |_, _, cx: &mut App| cx.open_url(&url))
         .into_any_element()
 }
 
@@ -744,7 +790,7 @@ impl Render for SettingsPage {
         let soloist = self.soloist_section(cx);
         let storage = self.storage_section(cx);
         let account = self.account_section(cx);
-        let about = self.about_section();
+        let about = self.about_section(cx);
 
         div()
             .id("settings")

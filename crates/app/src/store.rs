@@ -29,6 +29,11 @@ use crate::theme;
 use crate::ui::mini_player;
 use crate::{platform_window, tray};
 
+mod updates;
+
+pub use updates::UpdateState;
+use updates::UpdateTask;
+
 const TOAST_FOR: Duration = Duration::from_secs(6);
 const PENDING_PLAY_FOR: Duration = Duration::from_secs(10);
 const SIDEBAR_PLAYLISTS: usize = 8;
@@ -170,6 +175,11 @@ pub struct AppStore {
     pub route: Route,
     back_stack: Vec<Route>,
     pub install: InstallState,
+    pub update: UpdateState,
+    pub check_for_updates: bool,
+    updates: Option<UpdateTask>,
+    /// Set once the user has started the restart, so a second click does nothing.
+    update_restarting: bool,
     pub key_error: Option<String>,
     pub editing_key: bool,
     pub sidebar_collapsed: bool,
@@ -238,6 +248,10 @@ impl AppStore {
             route: initial_route(),
             back_stack: Vec::new(),
             install: InstallState::Idle,
+            update: UpdateState::Idle,
+            check_for_updates: config.check_for_updates,
+            updates: None,
+            update_restarting: false,
             key_error: None,
             editing_key: false,
             sidebar_collapsed: config.sidebar_collapsed,
@@ -294,6 +308,7 @@ impl AppStore {
 
         store.sync_accent(cx);
         store.sync_tray();
+        store.start_updates(cx);
 
         if store.account == AccountState::Connected {
             store.load_session(cx);
