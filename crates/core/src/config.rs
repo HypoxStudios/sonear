@@ -18,12 +18,14 @@ pub enum ConfigError {
 
 /// Version of the end-user agreement and privacy policy. Bump it when either
 /// changes, so everyone is asked to accept again.
-pub const LEGAL_VERSION: u32 = 1;
+pub const LEGAL_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
     pub device_name: String,
+    /// Where the data folder lives, when the user moved it from the default.
+    pub data_dir: Option<PathBuf>,
     pub last_volume: u8,
     pub sidebar_collapsed: bool,
     pub spotify_client_id: String,
@@ -69,6 +71,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             device_name: "Sonear".to_owned(),
+            data_dir: None,
             last_volume: 40,
             sidebar_collapsed: false,
             spotify_client_id: String::new(),
@@ -103,6 +106,14 @@ impl Config {
             self.device_name = Self::default().device_name;
         }
 
+        if self
+            .data_dir
+            .as_deref()
+            .is_some_and(|dir| !dir.is_absolute())
+        {
+            self.data_dir = None;
+        }
+
         self.last_volume = self.last_volume.min(100);
         self.history_retention_months = self.history_retention_months.clamp(1, 120);
         self.spotify_client_id = self.spotify_client_id.trim().to_owned();
@@ -115,6 +126,15 @@ impl Config {
         }
 
         self
+    }
+
+    /// Defaults for everything except where the data folder is, because the
+    /// Soloist program stays there.
+    pub fn reset_keeping_data_dir(&mut self) {
+        let data_dir = self.data_dir.take();
+
+        *self = Self::default();
+        self.data_dir = data_dir;
     }
 
     /// Reads the file, falling back to defaults. A file that cannot be parsed
@@ -247,6 +267,40 @@ mod tests {
         assert!(!config.tray_hint_shown);
         assert_eq!(config.mini_player_position, None);
         assert!(!config.right_panel.lyrics);
+    }
+
+    #[test]
+    fn a_relative_data_dir_is_dropped() {
+        let relative = Config {
+            data_dir: Some(PathBuf::from("data")),
+            ..Config::default()
+        };
+        let absolute = Config {
+            data_dir: Some(PathBuf::from(r"D:\Sonear")),
+            ..Config::default()
+        };
+
+        assert_eq!(relative.sanitised().data_dir, None);
+        assert_eq!(
+            absolute.sanitised().data_dir,
+            Some(PathBuf::from(r"D:\Sonear"))
+        );
+    }
+
+    #[test]
+    fn resetting_keeps_the_data_dir() {
+        let mut config = Config {
+            data_dir: Some(PathBuf::from(r"D:\Sonear")),
+            last_volume: 80,
+            legal_accepted: 2,
+            ..Config::default()
+        };
+
+        config.reset_keeping_data_dir();
+
+        assert_eq!(config.data_dir, Some(PathBuf::from(r"D:\Sonear")));
+        assert_eq!(config.last_volume, 40);
+        assert_eq!(config.legal_accepted, 0);
     }
 
     #[test]

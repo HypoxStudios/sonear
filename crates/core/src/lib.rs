@@ -3,6 +3,7 @@
 pub mod account;
 pub mod config;
 pub mod convert;
+pub mod data_dir;
 #[cfg(feature = "demo")]
 pub mod demo;
 pub mod events;
@@ -29,6 +30,7 @@ use tokio::sync::broadcast;
 
 pub use account::{Account, AccountState};
 pub use config::{Config, ConfigHandle};
+pub use data_dir::{MoveError, delete_local_data};
 pub use events::AppEvent;
 pub use history::{History, HistoryRow, HistoryStore};
 pub use library::{LibraryBackend, LibraryError, SpotifyLibrary};
@@ -49,6 +51,7 @@ const EVENT_BUFFER: usize = 256;
 /// Everything the UI holds on to: the player, config, the music library
 /// and, outside demo mode, the Soloist manager.
 pub struct Core {
+    pub paths: AppPaths,
     pub player: Player,
     pub config: ConfigHandle,
     pub soloist: Option<Arc<SoloistManager>>,
@@ -103,7 +106,7 @@ impl Core {
             problems.push(format!("config backup: {error}"));
         }
 
-        self.config.update(|config| *config = Config::default());
+        self.config.update(Config::reset_keeping_data_dir);
         soloist.start().await;
 
         problems
@@ -162,6 +165,7 @@ impl Core {
         account.start();
 
         Self {
+            paths: paths.clone(),
             player,
             config,
             soloist: Some(manager),
@@ -227,6 +231,7 @@ impl Core {
         });
 
         Self {
+            paths: AppPaths::new("demo", "demo"),
             player,
             config,
             soloist: None,

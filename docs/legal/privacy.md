@@ -25,13 +25,13 @@ Everything stays on your computer:
 |---|---|---|
 | Spotify login token, Soloist key | Windows Credential Manager | Until you log out or delete your data |
 | Settings, including your Client ID | `%APPDATA%\Sonear\config.toml` | Until you delete your data |
-| Listening history (time played, track and context links only) | `%LOCALAPPDATA%\Sonear\history.db` | 12 months by default, adjustable in Settings |
-| Your Sonear queue (track links only) | `%LOCALAPPDATA%\Sonear\queue.json` | Until you log out |
-| Track, album and playlist details | `%LOCALAPPDATA%\Sonear\cache` | Up to 7 days |
-| Cover art | `%LOCALAPPDATA%\Sonear\cache\covers` | Up to 30 days, at most 200 MB |
-| Soloist's own data, including its pairing | `%LOCALAPPDATA%\Sonear\soloist` | Until you delete your data |
+| Listening history (time played, track and context links only) | `%LOCALAPPDATA%\Sonear\history.db` by default | 12 months by default, adjustable in Settings |
+| Your Sonear queue (track links only) | `%LOCALAPPDATA%\Sonear\queue.json` by default | Until you log out |
+| Track, album and playlist details | `%LOCALAPPDATA%\Sonear\cache` by default | Up to 7 days |
+| Cover art | `%LOCALAPPDATA%\Sonear\cache\covers` by default | Up to 30 days, at most 200 MB |
+| Soloist's own data, including its pairing | `%LOCALAPPDATA%\Sonear\soloist` by default | Until you delete your data |
 
-Sonear builds no listening statistics or profile of you. The history is a plain list of plays.
+You can move the data folder in Settings; the table shows the default location. Sonear builds no listening statistics or profile of you. The history is a plain list of plays.
 
 ## What Sonear sends, and to whom
 
@@ -53,7 +53,7 @@ This version of Sonear has no AI features. If later versions add them, they will
 ## Your choices
 
 - **Log out** (Settings or the account menu) removes your Spotify login, cached details, cover art, history and queue from this computer at once. Your Soloist key and pairing stay.
-- **Delete all Sonear data** (Settings) also removes your Soloist key, Soloist's pairing and data, and your settings. Only the Soloist program itself stays, and you can delete the `%LOCALAPPDATA%\Sonear` folder to remove it.
+- **Delete all Sonear data** (Settings) also removes your Soloist key, Soloist's pairing and data, and your settings. Only the Soloist program itself stays, and you can delete the data folder to remove it. Uninstalling Sonear offers to delete all of it, including your login.
 - **Revoke access** at any time on your Spotify account's [Manage apps](https://www.spotify.com/account/apps/) page, or delete your developer app in the [Spotify dashboard](https://developer.spotify.com/dashboard).
 
 Because Sonear stores nothing outside your computer, we hold no data about you to access, correct or delete.

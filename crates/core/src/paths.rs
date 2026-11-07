@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use serde::Deserialize;
+
 /// Where Sonear keeps its files.
 #[derive(Debug, Clone)]
 pub struct AppPaths {
@@ -15,12 +17,20 @@ impl AppPaths {
         }
     }
 
-    /// `%APPDATA%\Sonear` for config and `%LOCALAPPDATA%\Sonear` for everything else.
+    /// `%APPDATA%\Sonear` for config, and for everything else the folder the
+    /// config's `data_dir` names or `%LOCALAPPDATA%\Sonear`. Only reads the
+    /// config file: loading it later is what backs up a corrupt one.
     pub fn discover() -> Option<Self> {
         let config = dirs::config_dir()?.join("Sonear");
-        let local = dirs::data_local_dir()?.join("Sonear");
+        let local = peek_data_dir(&config.join("config.toml"))
+            .map_or_else(Self::default_local_root, Some)?;
 
         Some(Self::new(config, local))
+    }
+
+    /// `%LOCALAPPDATA%\Sonear`, where the data lives unless it was moved.
+    pub fn default_local_root() -> Option<PathBuf> {
+        Some(dirs::data_local_dir()?.join("Sonear"))
     }
 
     pub fn config_dir(&self) -> &Path {
@@ -57,5 +67,63 @@ impl AppPaths {
 
     pub fn queue_file(&self) -> PathBuf {
         self.local_root.join("queue.json")
+    }
+}
+
+#[derive(Deserialize, Default)]
+struct DataDirOnly {
+    data_dir: Option<PathBuf>,
+}
+
+/// The `data_dir` in a config file, if it can be read and is absolute.
+fn peek_data_dir(path: &Path) -> Option<PathBuf> {
+    let text = std::fs::read_to_string(path).ok()?;
+    let peek: DataDirOnly = toml::from_str(&text).ok()?;
+
+    peek.data_dir.filter(|dir| dir.is_absolute())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write(text: &str) -> (tempfile::TempDir, PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+
+        std::fs::write(&path, text).unwrap();
+
+        (dir, path)
+    }
+
+    #[test]
+    fn the_configured_folder_is_used() {
+        let (_dir, path) = write("data_dir = 'D:/Data/Sonear'\nlast_volume = 3\n");
+
+        assert_eq!(peek_data_dir(&path), Some(PathBuf::from(r"D:\Data\Sonear")));
+    }
+
+    #[test]
+    fn a_missing_relative_or_broken_setting_means_the_default() {
+        let (_dir, relative) = write("data_dir = 'data'\n");
+        let (_dir2, broken) = write("data_dir = [[[\n");
+        let (_dir3, wrong_type) = write("data_dir = 4\n");
+        let (_dir4, none) = write("last_volume = 3\n");
+
+        assert_eq!(peek_data_dir(&relative), None);
+        assert_eq!(peek_data_dir(&broken), None);
+        assert_eq!(peek_data_dir(&wrong_type), None);
+        assert_eq!(peek_data_dir(&none), None);
+        assert_eq!(peek_data_dir(Path::new("missing.toml")), None);
+    }
+
+    #[test]
+    fn peeking_leaves_a_corrupt_file_alone() {
+        let (dir, path) = write("data_dir = [[[\n");
+
+        let _ = peek_data_dir(&path);
+
+        assert!(path.exists());
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
     }
 }
