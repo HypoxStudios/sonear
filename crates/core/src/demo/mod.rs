@@ -10,8 +10,8 @@ use std::time::Duration;
 
 use sonear_soloist::client::ClientEvent;
 use sonear_soloist::protocol::{
-    ActionInfo, Creator, Decorations, Entity, Event, Identity, Options, Parent, PlayStatus,
-    PlaybackInfo, PlaybackSnapshot, Position, QueueEntry, RepeatMode,
+    ActionInfo, Cover, Creator, Decorations, Entity, Event, Identity, Options, Parent, PlayStatus,
+    PlaybackInfo, PlaybackSnapshot, Position, QueueEntry, RepeatMode, VisualIdentity,
 };
 use tokio::runtime::Handle;
 use tokio::sync::{broadcast, mpsc};
@@ -20,25 +20,40 @@ use tokio::time::{Instant, sleep_until};
 use crate::model::{PlayOffset, WebPlayRequest};
 use crate::playback::now_ms;
 use crate::player::{PlayerBackend, PlayerError};
-use catalog::{DemoTrack, PLAYLIST_URI, catalog};
+use catalog::{DemoTrack, PLAYLIST_URI, catalog, cover_path};
 
 pub use library::DemoLibrary;
 pub use lyrics::DemoLyrics;
 
 pub const DEVICE_NAME: &str = "Sonear (demo)";
 
-fn named(uri: &str, kind: &str, name: &str) -> Entity {
+fn covers(slot: usize) -> VisualIdentity {
+    VisualIdentity {
+        cover: ["small", "default", "large"]
+            .into_iter()
+            .map(|size| Cover {
+                url: cover_path(slot),
+                size: size.into(),
+            })
+            .collect(),
+    }
+}
+
+fn named(uri: &str, kind: &str, name: &str, slot: Option<usize>) -> Entity {
     Entity {
         uri: uri.into(),
         entity_type: kind.into(),
         decorations: Decorations {
             identity: Identity { name: name.into() },
+            visual_identity: slot.map(covers).unwrap_or_default(),
             ..Decorations::default()
         },
     }
 }
 
 fn track_entity(track: &DemoTrack) -> Entity {
+    let slot = catalog::album_slot(track.album_index);
+
     Entity {
         uri: track.uri.clone(),
         entity_type: "track".into(),
@@ -46,25 +61,43 @@ fn track_entity(track: &DemoTrack) -> Entity {
             identity: Identity {
                 name: track.title.clone(),
             },
+            visual_identity: covers(slot),
             creators: vec![Creator {
-                entity: Some(named(&track.artist_uri(), "artist", track.artist)),
+                entity: Some(named(
+                    &track.artist_uri(),
+                    "artist",
+                    track.artist,
+                    Some(catalog::artist_slot(track.artist_index)),
+                )),
             }],
             parent: Some(Parent {
                 entity: Some(Box::new(named(
                     &track.album_uri(),
                     "album",
                     &catalog().album_model(track.album_index).name,
+                    Some(slot),
                 ))),
             }),
             playback: Some(PlaybackInfo {
                 duration_ms: Some(track.duration_ms),
             }),
-            ..Decorations::default()
         },
     }
 }
 
 fn context_entity(uri: &str) -> Entity {
+    let slot = crate::model::split_uri(uri).and_then(|(kind, id)| match kind {
+        "playlist" => catalog().playlist(id).map(catalog::DemoPlaylist::slot),
+        "album" => id
+            .strip_prefix("demo-album-")
+            .and_then(|index| index.parse().ok())
+            .map(catalog::album_slot),
+        "artist" => id
+            .strip_prefix("demo-artist-")
+            .and_then(|index| index.parse().ok())
+            .map(catalog::artist_slot),
+        _ => None,
+    });
     let name = crate::model::split_uri(uri)
         .filter(|_| !crate::model::is_liked_context(uri))
         .and_then(|(kind, id)| match kind {
@@ -89,7 +122,12 @@ fn context_entity(uri: &str) -> Entity {
             }
         });
 
-    named(uri, uri.split(':').nth(1).unwrap_or("playlist"), &name)
+    named(
+        uri,
+        uri.split(':').nth(1).unwrap_or("playlist"),
+        &name,
+        slot,
+    )
 }
 
 #[derive(Debug)]
@@ -718,7 +756,7 @@ mod tests {
             ..WebPlayRequest::default()
         }));
 
-        assert_eq!(sim.current().index, 23);
+        assert_eq!(sim.current().index, catalog().album_indices(2)[3]);
         assert_eq!(sim.context.as_ref().unwrap().uri, album);
         assert_eq!(sim.status, PlayStatus::Playing);
 

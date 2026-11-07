@@ -3,7 +3,7 @@
 use std::sync::OnceLock;
 
 use crate::model::{
-    Album, AlbumRef, Artist, ArtistRef, Artwork, Episode, ItemKind, Playlist, Show, Track,
+    Album, AlbumRef, ArtImage, Artist, ArtistRef, Artwork, Episode, ItemKind, Playlist, Show, Track,
 };
 
 pub const PLAYLIST_URI: &str = "spotify:playlist:demo-night-drive";
@@ -80,9 +80,43 @@ const ALBUM_NAMES: [&str; 12] = [
     "Signal Fade",
 ];
 
+pub const COVER_COUNT: usize = 16;
+const COVER_WIDTHS: [u32; 3] = [64, 300, 640];
+
+pub fn cover_path(slot: usize) -> String {
+    format!("demo/cover-{:02}.jpg", slot % COVER_COUNT)
+}
+
+pub fn artwork(slot: usize) -> Artwork {
+    Artwork(
+        COVER_WIDTHS
+            .iter()
+            .map(|width| ArtImage {
+                url: cover_path(slot),
+                width: Some(*width),
+            })
+            .collect(),
+    )
+}
+
+pub fn album_slot(album: usize) -> usize {
+    album % COVER_COUNT
+}
+
+pub fn artist_slot(artist: usize) -> usize {
+    (12 + artist) % COVER_COUNT
+}
+
+pub fn playlist_slot(index: usize) -> usize {
+    (index * 5 + 2) % COVER_COUNT
+}
+
+pub fn show_slot(index: usize) -> usize {
+    (index * 9 + 14) % COVER_COUNT
+}
+
 pub const POOL_SIZE: usize = 120;
 pub const NIGHT_DRIVE_TRACKS: usize = 32;
-const TRACKS_PER_ALBUM: usize = 10;
 
 #[derive(Debug, Clone)]
 pub struct DemoTrack {
@@ -118,7 +152,7 @@ impl DemoTrack {
                 uri: self.album_uri(),
                 name: ALBUM_NAMES[self.album_index].to_owned(),
             }),
-            art: Artwork::default(),
+            art: artwork(album_slot(self.album_index)),
             duration_ms: self.duration_ms,
             is_local: false,
             playable: true,
@@ -162,6 +196,12 @@ impl DemoPlaylist {
         format!("spotify:playlist:{}", self.id)
     }
 
+    pub fn slot(&self) -> usize {
+        let index = catalog().playlists.iter().position(|p| p.id == self.id);
+
+        playlist_slot(index.unwrap_or(0))
+    }
+
     pub fn owned(&self) -> bool {
         self.id != NOT_OWNED_ID
     }
@@ -176,7 +216,7 @@ impl DemoPlaylist {
             uri: self.uri(),
             name: self.name.to_owned(),
             description: self.description.to_owned(),
-            art: Artwork::default(),
+            art: artwork(self.slot()),
             owner_id: Some(if self.owned() {
                 DEMO_USER.to_owned()
             } else {
@@ -233,7 +273,7 @@ fn build() -> Catalog {
             title,
             artist,
             artist_index: ARTISTS.iter().position(|name| *name == artist).unwrap_or(0),
-            album_index: index / TRACKS_PER_ALBUM,
+            album_index: index % ALBUM_NAMES.len(),
             duration_ms: seconds * 1000,
         })
         .collect();
@@ -311,7 +351,7 @@ impl Catalog {
     }
 
     pub fn album_count(&self) -> usize {
-        self.tracks.len().div_ceil(TRACKS_PER_ALBUM)
+        ALBUM_NAMES.len()
     }
 
     pub fn album_indices(&self, album: usize) -> Vec<usize> {
@@ -346,7 +386,7 @@ impl Catalog {
                     }]
                 })
                 .unwrap_or_default(),
-            art: Artwork::default(),
+            art: artwork(album_slot(album)),
             release_date: Some(format!("{}-03-14", 2019 + album)),
             total_tracks: tracks.len() as u32,
             album_type: "album".to_owned(),
@@ -362,7 +402,7 @@ impl Catalog {
             id: artist_id(artist),
             uri: artist_uri(artist),
             name: ARTISTS[artist].to_owned(),
-            art: Artwork::default(),
+            art: artwork(artist_slot(artist)),
             open_url: Some(format!(
                 "https://open.spotify.com/artist/{}",
                 artist_id(artist)
@@ -399,7 +439,7 @@ pub fn shows() -> Vec<Show> {
             name: "Late Night Tech".into(),
             publisher: "Echo Station".into(),
             description: "Conversations about the software behind the music.".into(),
-            art: Artwork::default(),
+            art: artwork(show_slot(0)),
             episode_count: Some(6),
             open_url: Some("https://open.spotify.com/show/demo-show-0".into()),
         },
@@ -409,7 +449,7 @@ pub fn shows() -> Vec<Show> {
             name: "Quiet Hours".into(),
             publisher: "Northbound Audio".into(),
             description: "Short essays for the end of the day.".into(),
-            art: Artwork::default(),
+            art: artwork(show_slot(1)),
             episode_count: Some(4),
             open_url: Some("https://open.spotify.com/show/demo-show-1".into()),
         },
@@ -423,7 +463,7 @@ pub fn episodes(show: &Show) -> Vec<Episode> {
             uri: format!("spotify:episode:{}-ep{index}", show.id),
             name: format!("Episode {}: {}", index + 1, ADJECTIVES[index as usize % 12]),
             description: "A short demo episode.".into(),
-            art: Artwork::default(),
+            art: show.art.clone(),
             duration_ms: (1_200 + u64::from(index) * 137) * 1000,
             release_date: Some(format!("2026-10-{:02}", 28 - index)),
             show_name: Some(show.name.clone()),

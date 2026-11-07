@@ -129,24 +129,6 @@ pub fn accent_from_image(bytes: &[u8]) -> Option<Accent> {
     accent_from_pixels(small.pixels().map(|pixel| (pixel[0], pixel[1], pixel[2])))
 }
 
-/// The accent a placeholder cover's first gradient colour gives, for demo mode.
-pub fn accent_from_placeholder(seed: &str) -> Accent {
-    let color = theme::art_gradient(seed).0;
-    let rgba = gpui_kit::Rgba::from(color);
-    let byte = |value: f32| (value.clamp(0., 1.) * 255.).round() as u8;
-
-    accent_from_pixels(std::iter::once((byte(rgba.r), byte(rgba.g), byte(rgba.b)))).unwrap_or_else(
-        || {
-            Accent {
-                hue: color.h * 360.,
-                saturation: color.s,
-                lightness: color.l,
-            }
-            .clamped()
-        },
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,5 +225,33 @@ mod tests {
                 assert!(contrast(accent, theme::on_accent()) >= 4.5, "hue {degrees}");
             }
         }
+    }
+
+    #[cfg(feature = "demo")]
+    #[test]
+    fn demo_covers_give_varied_accents() {
+        let mut hues = Vec::new();
+
+        for (path, bytes) in crate::assets::DEMO_COVERS {
+            let accent = accent_from_image(bytes).unwrap_or_else(|| panic!("no accent for {path}"));
+
+            hues.push(accent.hue);
+        }
+
+        let mut distinct: Vec<f32> = Vec::new();
+
+        for hue in hues {
+            let apart = |other: &f32| {
+                let gap = (hue - other).abs();
+
+                gap.min(360. - gap) >= 25.
+            };
+
+            if distinct.iter().all(apart) {
+                distinct.push(hue);
+            }
+        }
+
+        assert!(distinct.len() >= 6, "{distinct:?}");
     }
 }

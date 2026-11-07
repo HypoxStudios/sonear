@@ -63,12 +63,32 @@ const OWN_ASSETS: [(&str, &[u8]); 7] = [
     (HEART_FILLED, include_bytes!("../assets/heart.svg")),
 ];
 
+#[cfg(feature = "demo")]
+macro_rules! demo_covers {
+    ($($n:literal),*) => {
+        [$((
+            concat!("demo/cover-", $n, ".jpg"),
+            include_bytes!(concat!("../assets/demo/cover-", $n, ".jpg")).as_slice(),
+        )),*]
+    };
+}
+
+#[cfg(feature = "demo")]
+pub const DEMO_COVERS: [(&str, &[u8]); 16] = demo_covers!(
+    "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15"
+);
+
 /// The default component icons plus the extra Lucide icons and artwork Sonear draws.
 pub struct AppAssets;
 
 impl AssetSource for AppAssets {
     fn load(&self, path: &str) -> gpui_kit::Result<Option<std::borrow::Cow<'static, [u8]>>> {
         if let Some((_, bytes)) = OWN_ASSETS.iter().find(|(own, _)| *own == path) {
+            return Ok(Some(std::borrow::Cow::Borrowed(*bytes)));
+        }
+
+        #[cfg(feature = "demo")]
+        if let Some((_, bytes)) = DEMO_COVERS.iter().find(|(own, _)| *own == path) {
             return Ok(Some(std::borrow::Cow::Borrowed(*bytes)));
         }
 

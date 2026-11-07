@@ -858,11 +858,7 @@ impl AppStore {
             return;
         };
         let Some(url) = item.cover_url("small").map(str::to_owned) else {
-            let accent = self
-                .is_demo()
-                .then(|| cover_accent::accent_from_placeholder(&item.uri));
-
-            self.apply_accent(accent, cx);
+            self.apply_accent(None, cx);
 
             return;
         };
@@ -879,7 +875,7 @@ impl AppStore {
             let url = url.clone();
 
             async move {
-                let bytes = crate::http::fetch_cover(&url).await?;
+                let bytes = cover_bytes(&url).await?;
 
                 tokio::task::spawn_blocking(move || cover_accent::accent_from_image(&bytes))
                     .await
@@ -1445,6 +1441,15 @@ impl AppStore {
 
 pub fn new_entity(core: Arc<Core>, runtime: Handle, cx: &mut gpui_kit::App) -> Entity<AppStore> {
     cx.new(|cx| AppStore::new(core, runtime, cx))
+}
+
+async fn cover_bytes(url: &str) -> Option<Vec<u8>> {
+    #[cfg(feature = "demo")]
+    if let Ok(Some(bytes)) = gpui_kit::AssetSource::load(&crate::assets::AppAssets, url) {
+        return Some(bytes.into_owned());
+    }
+
+    crate::http::fetch_cover(url).await
 }
 
 #[cfg(test)]
