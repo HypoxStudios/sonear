@@ -281,6 +281,7 @@ fn roll_back(target: &Target, options: InstallOptions, made: &Made) {
 pub fn uninstall(target: &Target, progress: Progress) -> Vec<String> {
     let _com = Com::init();
     let mut problems = Vec::new();
+    let owns_desktop_link = points_at(&target.desktop_link(), &target.exe());
 
     progress(0.1, "Removing the program");
 
@@ -293,10 +294,8 @@ pub fn uninstall(target: &Target, progress: Progress) -> Vec<String> {
     progress(0.5, "Removing shortcuts");
     remove_file(&target.start_menu_link(), &mut problems);
 
-    let desktop = target.desktop_link();
-
-    if app_identity::shortcut_target(&desktop).is_some_and(|link| same_path(&link, &target.exe())) {
-        remove_file(&desktop, &mut problems);
+    if owns_desktop_link {
+        remove_file(&target.desktop_link(), &mut problems);
     }
 
     progress(0.8, "Removing it from installed apps");
@@ -308,6 +307,14 @@ pub fn uninstall(target: &Target, progress: Progress) -> Vec<String> {
     progress(1., "Done");
 
     problems
+}
+
+/// Whether a shortcut opens `exe`. Compares real paths, because Windows may spell
+/// the same folder with its short name (`RUNNER~1`), so `exe` must still exist.
+fn points_at(link: &Path, exe: &Path) -> bool {
+    let real = |path: &Path| fs::canonicalize(path).unwrap_or_else(|_| path.to_owned());
+
+    app_identity::shortcut_target(link).is_some_and(|target| same_path(&real(&target), &real(exe)))
 }
 
 fn remove_file(path: &Path, problems: &mut Vec<String>) {
@@ -485,15 +492,13 @@ mod tests {
         .unwrap();
 
         let exe = target.exe();
+        let _com = Com::init();
 
         assert_eq!(fs::read(&exe).unwrap().len(), 700_000);
         assert!(!target.staging().exists());
         assert!(!fs::read(target.dir.join(LICENSE_NAME)).unwrap().is_empty());
         assert!(!fs::read(target.dir.join(NOTICE_NAME)).unwrap().is_empty());
-        assert_eq!(
-            app_identity::shortcut_target(&target.start_menu_link()),
-            Some(exe.clone())
-        );
+        assert!(points_at(&target.start_menu_link(), &exe));
         assert_eq!(
             app_identity::shortcut_id(&target.start_menu_link()).as_deref(),
             Some(INSTALLED_APP_ID)
