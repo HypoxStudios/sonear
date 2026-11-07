@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>{{title}} - Sonear</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%23C9B2F5' d='M410.94 23.06L410.94 63.29C410.94 91.53 391.18 116.94 362.94 123.29L239.41 154.35C175.18 169.18 134.24 197.41 134.24 231.29C134.24 246.82 142 262.35 156.12 275.06C163.18 282.12 145.53 289.18 134.94 277.18C113.76 256 98.94 231.29 98.94 200.94C98.94 146.59 145.53 104.24 203.41 86.59ZM101.06 488.94L101.06 448.71C101.06 420.47 120.82 395.06 149.06 388.71L272.59 357.65C336.82 342.82 377.76 314.59 377.76 280.71C377.76 265.18 370 249.65 355.88 236.94C348.82 229.88 366.47 222.82 377.06 234.82C398.24 256 413.06 280.71 413.06 311.06C413.06 365.41 366.47 407.76 308.59 425.41ZM191.06 237.65a15.53 15.53 0 0 1 31.06 0V274.35a15.53 15.53 0 0 1 -31.06 0ZM240.47 198.82a15.53 15.53 0 0 1 31.06 0V313.18a15.53 15.53 0 0 1 -31.06 0ZM289.88 237.65a15.53 15.53 0 0 1 31.06 0V274.35a15.53 15.53 0 0 1 -31.06 0Z'/%3E%3C/svg%3E">
+<!-- The listener closes as soon as this page is sent, so everything stays inline.
+     Colours mirror crates/app/src/theme.rs, which this crate can't depend on. -->
+<style>
+:root {
+  --window: #0A090D;
+  --panel: #17161C;
+  --accent: #C9B2F5;
+  --muted-mark: #6E6B77;
+  --text: #F5F3F7;
+  --text-secondary: #9D9AA6;
+  --hairline: rgba(255, 255, 255, .07);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 16px;
+  background: var(--window);
+  color: var(--text);
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+}
+
+main {
+  width: 100%;
+  max-width: 440px;
+  padding: 36px;
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+svg {
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 20px;
+  fill: var(--accent);
+}
+
+.off svg {
+  fill: var(--muted-mark);
+}
+
+h1 {
+  font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+p {
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .on rect {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: settle 1s cubic-bezier(.3, 0, .2, 1) backwards;
+  }
+
+  .on rect:nth-of-type(2) { animation-delay: 70ms; }
+  .on rect:nth-of-type(3) { animation-delay: 140ms; }
+  .on rect:nth-of-type(4) { animation-delay: 210ms; }
+  .on rect:nth-of-type(5) { animation-delay: 280ms; }
+}
+
+@keyframes settle {
+  0% { transform: scaleY(.2); }
+  40% { transform: scaleY(1.12); }
+  70% { transform: scaleY(.82); }
+  100% { transform: scaleY(1); }
+}
+</style>
+</head>
+<body class="{{state}}">
+<main>
+<svg viewBox="0 0 512 512" aria-hidden="true">
+<path d="M410.94 23.06L410.94 63.29C410.94 91.53 391.18 116.94 362.94 123.29L239.41 154.35C175.18 169.18 134.24 197.41 134.24 231.29C134.24 265.18 170.24 296.24 207.65 308.94C145.53 292 98.94 253.88 98.94 200.94C98.94 146.59 145.53 104.24 203.41 86.59ZM101.06 488.94L101.06 448.71C101.06 420.47 120.82 395.06 149.06 388.71L272.59 357.65C336.82 342.82 377.76 314.59 377.76 280.71C377.76 246.82 341.76 215.76 304.35 203.06C366.47 220 413.06 258.12 413.06 311.06C413.06 365.41 366.47 407.76 308.59 425.41Z"/>
+<rect x="170.59" y="239.06" width="18.35" height="33.88" rx="9.18"/>
+<rect x="208.71" y="217.88" width="18.35" height="76.24" rx="9.18"/>
+<rect x="246.82" y="183.29" width="18.35" height="145.42" rx="9.18"/>
+<rect x="284.94" y="217.88" width="18.35" height="76.24" rx="9.18"/>
+<rect x="323.06" y="239.06" width="18.35" height="33.88" rx="9.18"/>
+</svg>
+<h1>{{title}}</h1>
+<p>{{message}}</p>
+<footer>You can close this tab.</footer>
+</main>
+</body>
+</html>

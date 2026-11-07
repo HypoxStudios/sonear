@@ -112,7 +112,7 @@ async fn hit(port: u16, target: &str) -> String {
 }
 
 #[tokio::test]
-async fn callback_returns_the_code_and_shows_a_plain_page() {
+async fn callback_returns_the_code_and_shows_the_approved_page() {
     let listener = bind_listener("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let waiting = tokio::spawn(wait_for_callback(
@@ -124,7 +124,11 @@ async fn callback_returns_the_code_and_shows_a_plain_page() {
     let answer = hit(port, "/callback?code=abc&state=s1").await;
 
     assert!(answer.starts_with("HTTP/1.1 200"));
+    assert!(answer.contains("Content-Type: text/html"));
+    assert!(answer.contains("<body class=\"on\">"));
+    assert!(answer.contains("<h1>All done here</h1>"));
     assert!(answer.contains("close this tab"));
+    assert!(!answer.contains("{{"));
     assert_eq!(waiting.await.unwrap().unwrap(), "abc");
 }
 
@@ -139,11 +143,11 @@ async fn wrong_state_and_wrong_path_are_ignored_until_a_valid_request() {
         std::future::pending(),
     ));
 
-    assert!(
-        hit(port, "/callback?code=evil&state=bad")
-            .await
-            .starts_with("HTTP/1.1 400")
-    );
+    let rejected = hit(port, "/callback?code=evil&state=bad").await;
+
+    assert!(rejected.starts_with("HTTP/1.1 400"));
+    assert!(rejected.contains("<body class=\"off\">"));
+    assert!(!rejected.contains("evil"));
     assert!(
         hit(port, "/other?code=x&state=good")
             .await
@@ -167,8 +171,10 @@ async fn denied_login_reports_the_reason() {
         std::future::pending(),
     ));
 
-    hit(port, "/callback?error=access_denied&state=s").await;
+    let answer = hit(port, "/callback?error=access_denied&state=s").await;
 
+    assert!(answer.contains("<h1>Not connected</h1>"));
+    assert!(!answer.contains("access_denied"));
     assert_eq!(
         waiting.await.unwrap(),
         Err(AuthError::Denied("access_denied".into()))

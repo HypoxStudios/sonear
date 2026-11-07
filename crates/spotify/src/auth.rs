@@ -27,7 +27,12 @@ pub const LOGIN_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 const VERIFIER_LEN: usize = 64;
 const UNRESERVED: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
 const CALLBACK_PATH: &str = "/callback";
-const CALLBACK_PAGE: &str = "Sonear is connected to Spotify. You can close this tab.";
+const PAGE_TEMPLATE: &str = include_str!("auth/callback.html");
+const PAGE_HEADERS: &str = "Content-Type: text/html; charset=utf-8\r\n\
+    Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src data:\r\n\
+    Cache-Control: no-store";
+const TEXT_HEADERS: &str = "Content-Type: text/plain; charset=utf-8";
+const DRAIN_TIMEOUT: Duration = Duration::from_secs(1);
 
 /// Where the refresh token lives between runs.
 pub trait TokenStore: Send + Sync {
@@ -162,14 +167,39 @@ async fn read_request_line(stream: &mut TcpStream) -> Option<String> {
     text.lines().next().map(str::to_owned)
 }
 
-async fn respond(stream: &mut TcpStream, status: &str, body: &str) {
+async fn respond(stream: &mut TcpStream, status: &str, headers: &str, body: &str) {
     let text = format!(
-        "HTTP/1.1 {status}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        "HTTP/1.1 {status}\r\n{headers}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
         body.len()
     );
 
     let _ = stream.write_all(text.as_bytes()).await;
     let _ = stream.shutdown().await;
+
+    // Closing with request headers still unread resets the connection, and the
+    // browser can lose the page.
+    let mut rest = [0u8; 1024];
+    let _ = tokio::time::timeout(DRAIN_TIMEOUT, async {
+        while matches!(stream.read(&mut rest).await, Ok(read) if read > 0) {}
+    })
+    .await;
+}
+
+/// Answers with the page left in the browser. Only fixed text reaches it, never
+/// values from the request.
+async fn respond_page(
+    stream: &mut TcpStream,
+    status: &str,
+    state: &str,
+    title: &str,
+    message: &str,
+) {
+    let page = PAGE_TEMPLATE
+        .replace("{{state}}", state)
+        .replace("{{title}}", title)
+        .replace("{{message}}", message);
+
+    respond(stream, status, PAGE_HEADERS, &page).await;
 }
 
 /// Waits for the single redirect from Spotify and returns the code. Requests
@@ -193,17 +223,41 @@ pub async fn wait_for_callback(
             let (outcome, status) = parse_callback(&line, expected_state);
 
             match outcome {
-                Callback::Ignore => respond(&mut stream, status, "Not found").await,
+                Callback::Ignore => {
+                    respond(&mut stream, status, TEXT_HEADERS, "Not found").await;
+                }
                 Callback::Rejected => {
-                    respond(&mut stream, status, "This login link is not valid.").await;
+                    respond_page(
+                        &mut stream,
+                        status,
+                        "off",
+                        "This link isn\u{2019}t valid",
+                        "It may be from an earlier attempt. Start again from Sonear.",
+                    )
+                    .await;
                 }
                 Callback::Code(code) => {
-                    respond(&mut stream, status, CALLBACK_PAGE).await;
+                    respond_page(
+                        &mut stream,
+                        status,
+                        "on",
+                        "All done here",
+                        "Spotify approved Sonear. Head back to the app to continue.",
+                    )
+                    .await;
 
                     return Ok(code);
                 }
                 Callback::Denied(reason) => {
-                    respond(&mut stream, status, "Spotify did not allow the login.").await;
+                    respond_page(
+                        &mut stream,
+                        status,
+                        "off",
+                        "Not connected",
+                        "Sonear didn\u{2019}t get access to your Spotify account. You can try \
+                         again from the app.",
+                    )
+                    .await;
 
                     return Err(AuthError::Denied(reason));
                 }
