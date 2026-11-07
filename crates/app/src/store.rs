@@ -318,6 +318,7 @@ impl AppStore {
             AppEvent::Soloist(status) => self.soloist = status,
             AppEvent::SoloistExpiry { days_left } => self.expiry_days = days_left,
             AppEvent::Account(state) => self.apply_account(state, cx),
+            AppEvent::AccountDataWiped => self.drop_account_caches(),
             AppEvent::Likes => {}
             AppEvent::HistoryChanged => self.history_version += 1,
             AppEvent::SeenTracks { playlist_id } => {
@@ -362,6 +363,16 @@ impl AppStore {
                 self.loads.clear();
             }
         }
+    }
+
+    fn drop_account_caches(&mut self) {
+        if let Some(covers) = crate::http::cover_cache() {
+            covers.reset();
+        }
+
+        self.queue_tracks.clear();
+        self.queue_requested.clear();
+        self.history_version += 1;
     }
 
     /// Soloist can send queue entries with only a URI. Looks up the ones on
@@ -737,10 +748,6 @@ impl AppStore {
         self.back_stack.clear();
         self.runtime.spawn(async move {
             let problems = account.disconnect().await;
-
-            if let Some(covers) = crate::http::cover_cache() {
-                covers.reset();
-            }
 
             let _ = done.send(problems);
         });

@@ -16,6 +16,10 @@ pub enum ConfigError {
     Encode(#[from] toml::ser::Error),
 }
 
+/// Version of the end-user agreement and privacy policy. Bump it when either
+/// changes, so everyone is asked to accept again.
+pub const LEGAL_VERSION: u32 = 1;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
@@ -23,6 +27,10 @@ pub struct Config {
     pub last_volume: u8,
     pub sidebar_collapsed: bool,
     pub spotify_client_id: String,
+    /// Version of the agreement and privacy policy the user accepted; 0 if none.
+    pub legal_accepted: u32,
+    /// Spotify user ID of the account whose data is on disk.
+    pub account_user_id: String,
     pub history_retention_months: u32,
     /// Plays up to this time were cleared by the user, so syncs skip them.
     pub history_cleared_at_ms: u64,
@@ -51,6 +59,8 @@ impl Default for Config {
             last_volume: 40,
             sidebar_collapsed: false,
             spotify_client_id: String::new(),
+            legal_accepted: 0,
+            account_user_id: String::new(),
             history_retention_months: 12,
             history_cleared_at_ms: 0,
             right_panel: RightPanelConfig::default(),
@@ -154,6 +164,10 @@ impl ConfigHandle {
         }
     }
 
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
     pub fn get(&self) -> Config {
         self.value
             .lock()
@@ -197,6 +211,27 @@ mod tests {
         assert!(!config.ui.ai_hint_dismissed);
         assert_eq!(config.spotify_client_id, "");
         assert_eq!(config.history_retention_months, 12);
+        assert_eq!(config.legal_accepted, 0);
+        assert_eq!(config.account_user_id, "");
+    }
+
+    #[test]
+    fn legal_and_account_fields_round_trip() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let config = Config {
+            legal_accepted: LEGAL_VERSION,
+            account_user_id: "someone".into(),
+            ..Config::default()
+        };
+
+        config.save(&path).unwrap();
+
+        let loaded = Config::load(&path);
+
+        assert_eq!(loaded, config);
+        assert_eq!(loaded.legal_accepted, LEGAL_VERSION);
+        assert_eq!(loaded.account_user_id, "someone");
     }
 
     #[test]

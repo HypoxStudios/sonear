@@ -24,6 +24,8 @@ pub enum AppEvent {
     SeenTracks {
         playlist_id: String,
     },
+    /// Cached account data was deleted, so UI caches must drop theirs.
+    AccountDataWiped,
     /// A short message for the user, shown as a toast.
     Notice(String),
 }

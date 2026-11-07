@@ -158,3 +158,96 @@ async fn starting_without_a_saved_login_stays_disconnected() {
 
     assert_eq!(fx.account.state(), AccountState::Disconnected);
 }
+
+async fn seed_account_data(fx: &Fixture) {
+    fx.meta.put("playlist:x", &"cached");
+    fs::create_dir_all(fx.paths.cover_cache_dir()).unwrap();
+    fs::write(fx.paths.cover_cache_dir().join("cover.jpg"), b"image").unwrap();
+    fx.history
+        .store()
+        .insert(vec![HistoryRow {
+            played_at_ms: 1,
+            track_uri: "spotify:track:a".into(),
+            context_uri: None,
+        }])
+        .await
+        .unwrap();
+    fx.queue.add("spotify:track:q", crate::QueueSource::User);
+    fs::write(fx.paths.queue_file(), b"{}").unwrap();
+}
+
+#[tokio::test]
+async fn adopting_the_first_user_keeps_existing_data() {
+    let fx = fixture();
+
+    seed_account_data(&fx).await;
+
+    assert!(!fx.account.adopt_user("alice").await);
+    assert_eq!(fx.config.get().account_user_id, "alice");
+    assert!(fx.meta.get::<String>("playlist:x").is_some());
+    assert!(fx.paths.history_db().exists());
+    assert!(fx.paths.cover_cache_dir().exists());
+}
+
+#[tokio::test]
+async fn adopting_the_same_user_keeps_data() {
+    let fx = fixture();
+
+    fx.config
+        .update(|config| config.account_user_id = "alice".into());
+    seed_account_data(&fx).await;
+
+    assert!(!fx.account.adopt_user("alice").await);
+    assert!(fx.meta.get::<String>("playlist:x").is_some());
+    assert!(fx.paths.history_db().exists());
+}
+
+#[tokio::test]
+async fn adopting_a_different_user_wipes_the_previous_data() {
+    let fx = fixture();
+    let mut events = fx.account.events.subscribe();
+
+    fx.config.update(|config| {
+        config.account_user_id = "alice".into();
+        config.history_cleared_at_ms = 9;
+    });
+    seed_account_data(&fx).await;
+
+    assert!(fx.account.adopt_user("bob").await);
+    assert_eq!(fx.config.get().account_user_id, "bob");
+    assert_eq!(fx.config.get().history_cleared_at_ms, 0);
+    assert!(fx.meta.get::<String>("playlist:x").is_none());
+    assert!(!fx.paths.history_db().exists());
+    assert!(!fx.paths.queue_file().exists());
+    assert!(!fx.paths.cover_cache_dir().exists());
+    assert!(fx.queue.snapshot().entries.is_empty());
+
+    let mut wiped = false;
+
+    while let Ok(event) = events.try_recv() {
+        wiped |= matches!(event, AppEvent::AccountDataWiped);
+    }
+
+    assert!(wiped);
+}
+
+#[tokio::test]
+async fn disconnect_clears_the_account_user_and_announces_the_wipe() {
+    let fx = fixture();
+    let mut events = fx.account.events.subscribe();
+
+    fx.config
+        .update(|config| config.account_user_id = "alice".into());
+
+    fx.account.disconnect().await;
+
+    assert_eq!(fx.config.get().account_user_id, "");
+
+    let mut wiped = false;
+
+    while let Ok(event) = events.try_recv() {
+        wiped |= matches!(event, AppEvent::AccountDataWiped);
+    }
+
+    assert!(wiped);
+}

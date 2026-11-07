@@ -8,6 +8,9 @@ pub const SERVICE: &str = "sonear";
 pub const SOLOIST_API_KEY: &str = "soloist-api-key";
 pub const SPOTIFY_REFRESH_TOKEN: &str = "spotify-refresh-token";
 
+/// Every secret Sonear stores.
+pub const ALL_KEYS: &[&str] = &[SOLOIST_API_KEY, SPOTIFY_REFRESH_TOKEN];
+
 /// A secret value. `Debug` never prints it.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Secret(String);

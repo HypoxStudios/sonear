@@ -54,6 +54,7 @@ pub struct Core {
     pub likes: Arc<LikeStore>,
     pub account: Arc<Account>,
     pub queue: Arc<QueueManager>,
+    secrets: Arc<dyn SecretStore>,
     events: broadcast::Sender<AppEvent>,
 }
 
@@ -64,6 +65,43 @@ impl Core {
 
     pub fn is_demo(&self) -> bool {
         self.soloist.is_none()
+    }
+
+    /// Deletes everything Sonear stored: the Spotify login and its cached data,
+    /// the Soloist key, pairing and cache, and the settings. The Soloist
+    /// program stays so it isn't downloaded again. Returns what could not be deleted.
+    pub async fn delete_all_data(&self) -> Vec<String> {
+        let mut problems = Vec::new();
+
+        let Some(soloist) = &self.soloist else {
+            let _ = self.events.send(AppEvent::Notice(
+                "Deleting data isn't available in demo mode.".to_owned(),
+            ));
+
+            return problems;
+        };
+
+        problems.extend(self.account.disconnect().await);
+        problems.extend(soloist.forget().await);
+
+        for name in secrets::ALL_KEYS {
+            if let Err(error) = self.secrets.delete(name) {
+                problems.push(format!("{name}: {error}"));
+            }
+        }
+
+        let backup = self.config.path().with_file_name("config.toml.bak");
+
+        if let Err(error) = std::fs::remove_file(&backup)
+            && error.kind() != std::io::ErrorKind::NotFound
+        {
+            problems.push(format!("config backup: {error}"));
+        }
+
+        self.config.update(|config| *config = Config::default());
+        soloist.start().await;
+
+        problems
     }
 
     /// Starts the real stack: config, key store, supervisor, player and Spotify.
@@ -102,7 +140,7 @@ impl Core {
             runtime.clone(),
             paths.clone(),
             config.clone(),
-            secrets,
+            secrets.clone(),
             Some(spotify),
             meta.clone(),
             history.clone(),
@@ -126,6 +164,7 @@ impl Core {
             likes,
             account,
             queue,
+            secrets,
             events,
         }
     }
@@ -154,11 +193,12 @@ impl Core {
         );
         let likes = LikeStore::new(library.clone(), events.clone());
         let queue = QueueManager::new(player.clone(), events.clone(), None, runtime.clone());
+        let secrets: Arc<dyn SecretStore> = Arc::new(secrets::MemoryStore::default());
         let account = Account::new(
             runtime.clone(),
             AppPaths::new("demo", "demo"),
             config.clone(),
-            Arc::new(secrets::MemoryStore::default()),
+            secrets.clone(),
             None,
             meta.clone(),
             history.clone(),
@@ -186,6 +226,7 @@ impl Core {
             likes,
             account,
             queue,
+            secrets,
             events,
         }
     }

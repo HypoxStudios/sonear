@@ -13,7 +13,7 @@ use tracing::{info, warn};
 use crate::config::ConfigHandle;
 use crate::events::AppEvent;
 use crate::history::History;
-use crate::library::SpotifyLibrary;
+use crate::library::{LibraryBackend, SpotifyLibrary};
 use crate::likes::LikeStore;
 use crate::meta::MetaCache;
 use crate::paths::AppPaths;
@@ -167,8 +167,26 @@ impl Account {
 
         let auth = Arc::new(Auth::new(client_id, self.token_store()));
 
-        if auth.has_refresh_token() {
-            self.connect(auth);
+        if !auth.has_refresh_token() {
+            return;
+        }
+
+        let client = SpotifyClient::new(auth);
+
+        let _ = library.set_client(Some(client.clone()));
+
+        self.finish_connect(&client);
+
+        // Logins from before the user ID was recorded: note who it is now, so
+        // a later login as someone else is caught.
+        if self.config.get().account_user_id.is_empty() {
+            let account = self.clone();
+
+            self.track(self.runtime.spawn(async move {
+                if let Ok(profile) = library.profile().await {
+                    account.adopt_user(&profile.id).await;
+                }
+            }));
         }
     }
 
@@ -194,15 +212,9 @@ impl Account {
         }
     }
 
-    fn connect(self: &Arc<Self>, auth: Arc<Auth>) {
-        let Some(library) = &self.library else {
-            return;
-        };
-        let client = SpotifyClient::new(auth);
+    fn finish_connect(self: &Arc<Self>, client: &SpotifyClient) {
         let mut limit = client.rate_limit();
         let events = self.events.clone();
-
-        let _ = library.set_client(Some(client));
 
         self.set_state(AccountState::Connected);
         self.track(self.history.spawn_sync_loop(&self.runtime));
@@ -211,6 +223,55 @@ impl Account {
                 let _ = events.send(AppEvent::RateLimit(*limit.borrow()));
             }
         }));
+    }
+
+    /// Checks who just logged in before the account counts as connected.
+    async fn verify_login(self: &Arc<Self>, auth: Arc<Auth>) {
+        let Some(library) = &self.library else {
+            return;
+        };
+        let client = SpotifyClient::new(auth);
+
+        let _ = library.set_client(Some(client.clone()));
+
+        match library.profile().await {
+            Ok(profile) => {
+                self.adopt_user(&profile.id).await;
+                self.finish_connect(&client);
+            }
+            Err(error) => {
+                warn!(%error, "could not read the Spotify profile after login");
+
+                if let Some(client) = library.set_client(None) {
+                    client.auth().sign_out().await;
+                }
+
+                self.set_state(AccountState::LoginFailed(
+                    "Spotify didn't return your profile. Try connecting again.".to_owned(),
+                ));
+            }
+        }
+    }
+
+    /// Records which Spotify user the data on disk belongs to, deleting what
+    /// is there if it belonged to someone else: logging in again after an
+    /// expired session can be a different person. Returns whether it wiped.
+    pub async fn adopt_user(&self, user_id: &str) -> bool {
+        let previous = self.config.get().account_user_id;
+        let switched = !previous.is_empty() && previous != user_id;
+
+        if switched {
+            info!("a different Spotify user logged in, deleting the previous account's data");
+
+            for problem in self.wipe_account_data().await {
+                warn!(%problem, "could not delete the previous account's data");
+            }
+        }
+
+        self.config
+            .update(|config| config.account_user_id = user_id.to_owned());
+
+        switched
     }
 
     /// Starts a login: binds the loopback port, then reports the URL to open
@@ -269,7 +330,7 @@ impl Account {
 
         match outcome {
             Ok(code) => match auth.complete_login(&request, &code).await {
-                Ok(()) => self.connect(auth),
+                Ok(()) => self.verify_login(auth).await,
                 Err(error) => self.set_state(AccountState::LoginFailed(error.to_string())),
             },
             Err(sonear_spotify::error::AuthError::Cancelled) => {
@@ -312,6 +373,22 @@ impl Account {
             problems.push(format!("login token: {error}"));
         }
 
+        problems.extend(self.wipe_account_data().await);
+        self.config
+            .update(|config| config.spotify_client_id.clear());
+        self.set_state(if self.library.is_some() {
+            AccountState::Disconnected
+        } else {
+            AccountState::Connected
+        });
+
+        problems
+    }
+
+    /// Deletes everything cached for the account and tells the UI to drop its copies.
+    async fn wipe_account_data(&self) -> Vec<String> {
+        let mut problems = Vec::new();
+
         self.meta.clear();
         self.likes.clear();
 
@@ -332,14 +409,11 @@ impl Account {
         }
 
         self.config.update(|config| {
-            config.spotify_client_id.clear();
             config.history_cleared_at_ms = 0;
+            config.account_user_id.clear();
         });
-        self.set_state(if self.library.is_some() {
-            AccountState::Disconnected
-        } else {
-            AccountState::Connected
-        });
+
+        let _ = self.events.send(AppEvent::AccountDataWiped);
 
         problems
     }
