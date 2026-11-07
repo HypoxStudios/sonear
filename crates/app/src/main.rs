@@ -317,7 +317,7 @@ fn start_media_controls(
 }
 
 fn run_media_command(command: MediaCommand, store: &Entity<AppStore>, cx: &mut AsyncApp) {
-    store.update(cx, |store, _| {
+    store.update(cx, |store, cx| {
         let player = &store.core.player;
 
         match command {
@@ -326,8 +326,8 @@ fn run_media_command(command: MediaCommand, store: &Entity<AppStore>, cx: &mut A
             MediaCommand::Next => store.core.queue.next(),
             MediaCommand::Previous => player.previous(),
             MediaCommand::Seek(position) => {
-                if let Some(duration) = store.playback.duration_ms() {
-                    player.seek(position.min(duration));
+                if store.playback.duration_ms().is_some() {
+                    store.seek(position, cx);
                 }
             }
         }

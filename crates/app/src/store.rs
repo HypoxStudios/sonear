@@ -10,6 +10,7 @@ use sonear_core::config::LEGAL_VERSION;
 use sonear_core::data_dir::check_target;
 use sonear_core::model::ItemKind;
 use sonear_core::model::{PlayOffset, PlaybackRequest, Playlist, Profile, Track};
+use sonear_core::playback::{SeekHold, VolumeHold, now_ms};
 use sonear_core::queue::QueueSource;
 use sonear_core::{
     AccountState, AppEvent, AppPaths, Core, PlaybackModel, QueueSnapshot, SpotifyLink,
@@ -168,6 +169,11 @@ pub struct AppStore {
     pub core: Arc<Core>,
     runtime: Handle,
     pub playback: PlaybackModel,
+    /// Where the user just seeked to, shown until Soloist's position catches up.
+    pending_seek: Option<SeekHold>,
+    /// The volume the user just chose, shown until Soloist's volume catches up.
+    pending_volume: Option<VolumeHold>,
+    hold_timer: Option<Task<()>>,
     /// The user's own queue, which Sonear holds and hands to Soloist one track at a time.
     pub queue: QueueSnapshot,
     pub soloist: Status,
@@ -239,6 +245,9 @@ impl AppStore {
             .map_or(Status::Stopped, |manager| manager.status());
         let mut store = Self {
             playback: core.player.snapshot(),
+            pending_seek: None,
+            pending_volume: None,
+            hold_timer: None,
             queue: core.queue.snapshot(),
             account: core.account.state(),
             core: core.clone(),
@@ -346,6 +355,93 @@ impl AppStore {
     /// Whether views that follow the playing position should repaint on a timer.
     pub fn ticking(&self) -> bool {
         self.playback.is_playing() && !self.main_window_hidden
+    }
+
+    /// Seeks and shows the target at once, instead of the position Soloist still reports.
+    pub fn seek(&mut self, position_ms: u64, cx: &mut Context<Self>) {
+        let position_ms = match self.playback.duration_ms() {
+            Some(duration) => position_ms.min(duration),
+            None => position_ms,
+        };
+
+        self.pending_seek = Some(SeekHold::new(position_ms, &self.playback, now_ms()));
+        self.core.player.seek(position_ms);
+        self.schedule_hold_expiry(cx);
+        cx.notify();
+    }
+
+    /// Changes the volume and shows the target at once, while the player ramps to it.
+    pub fn set_volume(&mut self, volume: u8, cx: &mut Context<Self>) {
+        let volume = volume.min(100);
+
+        self.pending_volume = Some(VolumeHold::new(volume, now_ms()));
+        self.core.player.set_volume(volume);
+        self.schedule_hold_expiry(cx);
+        cx.notify();
+    }
+
+    /// The position to draw: the seek target while a seek is unanswered, else the model's.
+    pub fn shown_position_ms(&self, now_ms: u64) -> u64 {
+        self.pending_seek
+            .as_ref()
+            .and_then(|hold| hold.shown(&self.playback, now_ms))
+            .unwrap_or_else(|| self.playback.position_ms_at(now_ms))
+    }
+
+    /// The volume to draw: the chosen target while the model catches up, else the model's.
+    pub fn shown_volume(&self, now_ms: u64) -> u8 {
+        self.pending_volume
+            .as_ref()
+            .and_then(|hold| hold.shown(&self.playback, now_ms))
+            .unwrap_or(self.playback.volume)
+    }
+
+    fn clear_released_holds(&mut self, now_ms: u64) {
+        if self
+            .pending_seek
+            .as_ref()
+            .is_some_and(|hold| hold.shown(&self.playback, now_ms).is_none())
+        {
+            self.pending_seek = None;
+        }
+
+        if self
+            .pending_volume
+            .as_ref()
+            .is_some_and(|hold| hold.shown(&self.playback, now_ms).is_none())
+        {
+            self.pending_volume = None;
+        }
+    }
+
+    /// Nothing repaints while paused, so a hold that times out needs its own
+    /// one-shot wake-up. Replaces the previous one.
+    fn schedule_hold_expiry(&mut self, cx: &mut Context<Self>) {
+        let deadline = [
+            self.pending_seek.as_ref().map(SeekHold::deadline_ms),
+            self.pending_volume.as_ref().map(VolumeHold::deadline_ms),
+        ]
+        .into_iter()
+        .flatten()
+        .min();
+
+        let Some(deadline) = deadline else {
+            self.hold_timer = None;
+
+            return;
+        };
+        let wait = Duration::from_millis(deadline.saturating_sub(now_ms()));
+
+        self.hold_timer = Some(cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(wait).await;
+
+            let _ = this.update(cx, |store, cx| {
+                store.hold_timer = None;
+                store.clear_released_holds(now_ms());
+                store.schedule_hold_expiry(cx);
+                cx.notify();
+            });
+        }));
     }
 
     /// Views that repaint on a timer stop while the window is hidden and pick
@@ -524,6 +620,7 @@ impl AppStore {
                     != self.playback.item.as_ref().map(|item| &item.uri);
 
                 self.playback = *model;
+                self.clear_released_holds(now_ms());
                 self.resolve_queue(cx);
 
                 if started {

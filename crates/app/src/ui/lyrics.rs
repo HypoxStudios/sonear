@@ -243,7 +243,7 @@ impl LyricsPanel {
     fn synced_list(&self, lines: &[sonear_core::LyricLine], cx: &mut Context<Self>) -> AnyElement {
         let state = self.store.read(cx);
         let can_seek = state.playback.can("seek");
-        let player = state.core.player.clone();
+        let store = self.store.clone();
         let active = self.active;
 
         div()
@@ -273,7 +273,7 @@ impl LyricsPanel {
                     line.text.as_str()
                 };
                 let at_ms = line.at_ms;
-                let player = player.clone();
+                let store = store.clone();
 
                 div()
                     .id(ElementId::from(("lyric-line", index)))
@@ -291,7 +291,9 @@ impl LyricsPanel {
                             .tab_index(0)
                             .hover(|style| style.bg(theme::hover()))
                             .focus_visible(|style| style.bg(theme::hover()))
-                            .on_click(move |_, _, _| player.seek(at_ms))
+                            .on_click(move |_, _, cx| {
+                                store.update(cx, |store, cx| store.seek(at_ms, cx));
+                            })
                     })
             }))
             .into_any_element()

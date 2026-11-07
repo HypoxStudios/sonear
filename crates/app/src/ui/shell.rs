@@ -551,23 +551,31 @@ impl Shell {
         }
     }
 
-    fn seek(&self, delta_ms: i64, cx: &Context<Self>) {
-        self.playback(cx, |state| {
-            let Some(duration) = state.playback.duration_ms() else {
+    fn seek(&self, delta_ms: i64, cx: &mut Context<Self>) {
+        if !self.ready(cx) {
+            return;
+        }
+
+        self.store.update(cx, |store, cx| {
+            let Some(duration) = store.playback.duration_ms() else {
                 return;
             };
-            let position = state.playback.position_ms_at(now_ms()) as i64;
+            let position = store.shown_position_ms(now_ms()) as i64;
             let target = (position + delta_ms).clamp(0, duration as i64);
 
-            state.core.player.seek(target as u64);
+            store.seek(target as u64, cx);
         });
     }
 
-    fn nudge_volume(&self, delta: i16, cx: &Context<Self>) {
-        self.playback(cx, |state| {
-            let volume = (i16::from(state.playback.volume) + delta).clamp(0, 100);
+    fn nudge_volume(&self, delta: i16, cx: &mut Context<Self>) {
+        if !self.ready(cx) {
+            return;
+        }
 
-            state.core.player.set_volume(volume as u8);
+        self.store.update(cx, |store, cx| {
+            let current = i16::from(store.core.player.volume_target());
+
+            store.set_volume((current + delta).clamp(0, 100) as u8, cx);
         });
     }
 

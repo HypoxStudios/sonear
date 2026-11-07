@@ -60,11 +60,9 @@ impl PlayerBar {
             cx.subscribe(&volume, |this, _, event: &SliderEvent, cx| match event {
                 SliderEvent::Change(value) => {
                     this.dragging_volume = true;
-                    this.store
-                        .read(cx)
-                        .core
-                        .player
-                        .set_volume(value.end().round() as u8);
+                    this.store.update(cx, |store, cx| {
+                        store.set_volume(value.end().round() as u8, cx);
+                    });
                 }
                 SliderEvent::Release(_) => this.dragging_volume = false,
             }),
@@ -125,20 +123,27 @@ impl PlayerBar {
     }
 
     fn seek_to(&mut self, step: f32, cx: &mut Context<Self>) {
-        let state = self.store.read(cx);
-        let Some(duration) = state.playback.duration_ms() else {
+        let Some(duration) = self.store.read(cx).playback.duration_ms() else {
             return;
         };
         let target = (f64::from(step) / f64::from(PROGRESS_STEPS) * duration as f64) as u64;
 
-        state.core.player.seek(target.min(duration));
+        self.store
+            .update(cx, |store, cx| store.seek(target.min(duration), cx));
     }
 
-    fn sync_sliders(&mut self, model: &PlaybackModel, window: &mut Window, cx: &mut Context<Self>) {
+    fn sync_sliders(
+        &mut self,
+        model: &PlaybackModel,
+        shown_position: u64,
+        shown_volume: u8,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if !self.dragging_progress {
             let target = match model.duration_ms() {
                 Some(duration) if duration > 0 => {
-                    model.position_ms_at(now_ms()) as f32 / duration as f32 * PROGRESS_STEPS
+                    shown_position as f32 / duration as f32 * PROGRESS_STEPS
                 }
                 _ => 0.,
             };
@@ -147,7 +152,7 @@ impl PlayerBar {
         }
 
         if !self.dragging_volume {
-            set_if_changed(&self.volume, f32::from(model.volume), 0.5, window, cx);
+            set_if_changed(&self.volume, f32::from(shown_volume), 0.5, window, cx);
         }
     }
 }
@@ -209,11 +214,14 @@ impl Render for PlayerBar {
             && (state.queue.locked.is_some() || !state.queue.entries.is_empty());
         let pending_play = state.pending_play;
         let likes = state.core.likes.clone();
+        let now = now_ms();
+        let shown_position = state.shown_position_ms(now);
+        let shown_volume = state.shown_volume(now);
         let store = self.store.clone();
         let lyrics_store = self.store.clone();
         let mini_store = self.store.clone();
 
-        self.sync_sliders(&model, window, cx);
+        self.sync_sliders(&model, shown_position, shown_volume, window, cx);
 
         let item = model.item.clone();
         let playing = model.is_playing();
@@ -229,7 +237,7 @@ impl Render for PlayerBar {
 
             (f64::from(step) / f64::from(PROGRESS_STEPS) * duration.unwrap_or(0) as f64) as u64
         } else {
-            model.position_ms_at(now_ms())
+            shown_position
         };
         let track_uri = item
             .as_ref()
@@ -445,7 +453,7 @@ impl Render for PlayerBar {
             .child(controls)
             .child(progress);
 
-        let volume_icon = match model.volume {
+        let volume_icon = match shown_volume {
             0 => IconName::VolumeX,
             1..=49 => IconName::Volume1,
             _ => IconName::Volume2,

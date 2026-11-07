@@ -212,7 +212,7 @@ impl Render for MiniPlayer {
         };
         let fraction = match model.duration_ms() {
             Some(duration) if duration > 0 => {
-                (model.position_ms_at(now_ms()) as f32 / duration as f32).clamp(0., 1.)
+                (state.shown_position_ms(now_ms()) as f32 / duration as f32).clamp(0., 1.)
             }
             _ => 0.,
         };
