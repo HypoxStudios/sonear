@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -27,6 +28,8 @@ pub struct Config {
     pub history_cleared_at_ms: u64,
     pub right_panel: RightPanelConfig,
     pub ui: UiConfig,
+    /// Keystrokes the user changed, by shortcut id. An empty string means unbound.
+    pub shortcuts: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -52,6 +55,7 @@ impl Default for Config {
             history_cleared_at_ms: 0,
             right_panel: RightPanelConfig::default(),
             ui: UiConfig::default(),
+            shortcuts: BTreeMap::new(),
         }
     }
 }
@@ -261,6 +265,27 @@ mod tests {
         config.save(&path).unwrap();
 
         assert_eq!(Config::load(&path), config);
+    }
+
+    #[test]
+    fn shortcut_overrides_round_trip() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let mut config = Config::default();
+
+        config.shortcuts.insert("play_pause".into(), "p".into());
+        config.shortcuts.insert("like".into(), String::new());
+        config.save(&path).unwrap();
+
+        let loaded = Config::load(&path);
+
+        assert_eq!(loaded, config);
+        assert_eq!(
+            loaded.shortcuts.get("play_pause").map(String::as_str),
+            Some("p")
+        );
+        assert_eq!(loaded.shortcuts.get("like").map(String::as_str), Some(""));
+        assert!(Config::default().shortcuts.is_empty());
     }
 
     #[test]

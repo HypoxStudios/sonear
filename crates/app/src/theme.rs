@@ -18,6 +18,17 @@ pub const PLAYER_HEIGHT: Pixels = px(84.);
 pub const GRID_CARD: f32 = 168.;
 pub const GRID_GAP: f32 = 18.;
 
+/// Width of the command palette and the shortcut list.
+pub const OVERLAY_WIDTH: Pixels = px(640.);
+/// Share of the window height above the command palette.
+pub const PALETTE_TOP: f32 = 0.18;
+pub const PALETTE_MAX_HEIGHT: Pixels = px(440.);
+/// Share of the window height the shortcut list may fill.
+pub const SHORTCUTS_MAX_HEIGHT: f32 = 0.82;
+pub const SHORTCUT_ROW_HEIGHT: Pixels = px(40.);
+pub const PALETTE_COVER: f32 = 32.;
+pub const PALETTE_COVER_RADIUS: Pixels = px(6.);
+
 /// Window width below which the sidebar collapses to a rail.
 pub const COLLAPSE_BELOW: f32 = 1100.;
 /// Main plus right panel width below which the right panel hides.
@@ -91,6 +102,11 @@ pub fn skeleton() -> Hsla {
 /// Dims the window behind a dialog.
 pub fn scrim() -> Hsla {
     hsla(rgba(0x000000B3))
+}
+
+/// Chip behind a key binding that is waiting for new keys.
+pub fn recording() -> Hsla {
+    hsla(rgba(0xC9B2F51F))
 }
 
 pub fn transparent() -> Hsla {

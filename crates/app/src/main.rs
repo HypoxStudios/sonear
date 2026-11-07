@@ -6,6 +6,7 @@ mod data;
 mod format;
 mod http;
 mod instance;
+mod keymap;
 mod store;
 mod theme;
 mod ui;
@@ -66,6 +67,8 @@ fn main() {
             cx.set_http_client(http::ReqwestClient::new(handle.clone(), covers));
             gpui_kit::init(cx);
             theme::apply(cx);
+            keymap::bind_fixed(cx);
+            keymap::apply(cx, &[], &keymap::effective(&core.config.get().shortcuts));
             ui::widgets::set_image_cache(
                 cx.new(|_| cover_cache::LruImageCache::new(IMAGE_CACHE_CAPACITY)),
             );

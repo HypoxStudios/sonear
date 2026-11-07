@@ -88,7 +88,10 @@ impl SearchPage {
         window.focus(&handle, cx);
 
         let subscriptions = vec![
-            cx.observe(&store, |_, _, cx| cx.notify()),
+            cx.observe_in(&store, window, |page, _, window, cx| {
+                page.take_pending(window, cx);
+                cx.notify();
+            }),
             cx.subscribe(&input, |page, input, event: &InputEvent, cx| {
                 if matches!(event, InputEvent::Change) {
                     let text = input.read(cx).value().to_string();
@@ -122,7 +125,22 @@ impl SearchPage {
             page.on_query(query, cx);
         }
 
+        page.take_pending(window, cx);
+
         page
+    }
+
+    fn take_pending(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(query) = self
+            .store
+            .update(cx, |store, _| store.pending_search.take())
+        else {
+            return;
+        };
+
+        self.input
+            .update(cx, |input, cx| input.set_value(query.clone(), window, cx));
+        self.on_query(query, cx);
     }
 
     fn env(&self, cx: &Context<Self>) -> Env {

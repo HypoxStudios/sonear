@@ -165,6 +165,9 @@ pub struct AppStore {
     pub pending_play: bool,
     pub avatar_menu_open: bool,
     pub confirm: Option<Confirm>,
+    pub shortcuts_open: bool,
+    /// A query the Search page should fill in and run, taken when it reads it.
+    pub pending_search: Option<String>,
     /// Bumped whenever the history changes, so history views reload.
     pub history_version: u64,
     /// Width of the main panel, written by the shell and read by grid pages.
@@ -205,6 +208,8 @@ impl AppStore {
             pending_play: false,
             avatar_menu_open: false,
             confirm: None,
+            shortcuts_open: false,
+            pending_search: None,
             history_version: 0,
             main_width: Rc::new(Cell::new(900.)),
             serial: 0,
@@ -644,6 +649,24 @@ impl AppStore {
     pub fn ask(&mut self, confirm: Confirm, cx: &mut Context<Self>) {
         self.avatar_menu_open = false;
         self.confirm = Some(confirm);
+        cx.notify();
+    }
+
+    pub fn open_shortcuts(&mut self, cx: &mut Context<Self>) {
+        self.avatar_menu_open = false;
+        self.shortcuts_open = true;
+        cx.notify();
+    }
+
+    pub fn close_shortcuts(&mut self, cx: &mut Context<Self>) {
+        self.shortcuts_open = false;
+        cx.notify();
+    }
+
+    /// Opens the Search page with `query` filled in, also when it is already open.
+    pub fn search_for(&mut self, query: &str, cx: &mut Context<Self>) {
+        self.pending_search = Some(query.to_owned());
+        self.navigate(Route::Search, cx);
         cx.notify();
     }
 
