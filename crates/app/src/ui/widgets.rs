@@ -173,6 +173,33 @@ pub fn ghost_button(
         .when(!enabled, |this| this.opacity(0.4))
 }
 
+/// Like `ghost_button`, for actions that delete something.
+pub fn danger_button(
+    id: impl Into<ElementId>,
+    label: impl Into<SharedString>,
+    enabled: bool,
+) -> Stateful<Div> {
+    div()
+        .id(id)
+        .flex()
+        .items_center()
+        .h(px(34.))
+        .px_4()
+        .rounded(theme::CONTROL_RADIUS)
+        .border_1()
+        .border_color(theme::danger())
+        .text_size(px(13.))
+        .text_color(theme::danger())
+        .child(label.into())
+        .when(enabled, |this| {
+            this.cursor_pointer()
+                .tab_index(0)
+                .hover(|style| style.bg(theme::hover()))
+                .focus_visible(|style| style.border_color(theme::text_primary()))
+        })
+        .when(!enabled, |this| this.opacity(0.4))
+}
+
 /// The full Spotify logo for the top row of pages that show Spotify content.
 /// Only the sides carry the clear space; callers keep the rows above and below free.
 pub fn spotify_logo() -> Svg {

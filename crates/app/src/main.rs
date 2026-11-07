@@ -7,6 +7,7 @@ mod format;
 mod http;
 mod instance;
 mod keymap;
+mod legal;
 mod store;
 mod theme;
 mod ui;

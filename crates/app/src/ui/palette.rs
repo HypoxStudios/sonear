@@ -82,7 +82,13 @@ const COMMANDS: [(&str, &[Entry]); 4] = [
             named("go_history", "History", IconName::Clock),
         ],
     ),
-    ("Help", &[entry("shortcuts", IconName::KeyRound)]),
+    (
+        "General",
+        &[
+            entry("settings", IconName::Settings),
+            entry("shortcuts", IconName::KeyRound),
+        ],
+    ),
 ];
 
 #[derive(Clone)]

@@ -8,12 +8,14 @@ use gpui_kit::{
 use sonear_core::playback::now_ms;
 use sonear_soloist::Status;
 
+use super::legal::legal_overlay;
 use super::pages::artist::ArtistPage;
 use super::pages::detail::{DetailPage, Kind};
 use super::pages::history::HistoryPage;
 use super::pages::home::HomePage;
 use super::pages::library::LibraryPage;
 use super::pages::search::SearchPage;
+use super::pages::settings::SettingsPage;
 use super::pages::setup::SetupView;
 use super::pages::show::ShowPage;
 use super::palette::PaletteView;
@@ -24,8 +26,9 @@ use super::sidebar::sidebar;
 use super::widgets::{accent_button, ghost_button, icon, panel};
 use crate::keymap::{
     self, ClearQueue, CloseOverlay, CycleRepeat, GoBack, GoHistory, GoHome, GoLibrary, GoLiked,
-    GoSearch, LikeCurrent, NextTrack, OpenPalette, OpenShortcuts, PreviousTrack, SeekBack,
-    SeekForward, TogglePlayPause, ToggleQueue, ToggleShuffle, ToggleSidebar, VolumeDown, VolumeUp,
+    GoSearch, LikeCurrent, NextTrack, OpenPalette, OpenSettings, OpenShortcuts, PreviousTrack,
+    SeekBack, SeekForward, TogglePlayPause, ToggleQueue, ToggleShuffle, ToggleSidebar, VolumeDown,
+    VolumeUp,
 };
 use crate::store::{AppStore, Confirm, LibraryTab, Route};
 use crate::theme;
@@ -37,7 +40,10 @@ const VOLUME_STEP: i16 = 5;
 
 /// Whether the setup screen replaces the pages.
 fn needs_setup(state: &AppStore) -> bool {
-    (!state.is_demo() && (!matches!(state.soloist, Status::Ready { .. }) || !state.connected()))
+    (!state.is_demo()
+        && (!state.legal_accepted()
+            || !matches!(state.soloist, Status::Ready { .. })
+            || !state.connected()))
         || (state.is_demo() && std::env::var("SONEAR_DEMO_SETUP").is_ok())
 }
 
@@ -81,6 +87,7 @@ impl Shell {
             Route::Library(tab) => cx.new(|cx| LibraryPage::new(store, tab, cx)).into(),
             Route::LikedSongs => cx.new(|cx| DetailPage::new(store, Kind::Liked, cx)).into(),
             Route::History => cx.new(|cx| HistoryPage::new(store, cx)).into(),
+            Route::Settings => cx.new(|cx| SettingsPage::new(store, window, cx)).into(),
             Route::Album(id) => cx
                 .new(|cx| DetailPage::new(store, Kind::Album(id), cx))
                 .into(),
@@ -255,12 +262,14 @@ impl Shell {
         let close = self.store.clone();
         let logout = self.store.clone();
         let shortcuts = self.store.clone();
+        let settings = self.store.clone();
 
         Some(
             div()
                 .absolute()
                 .inset_0()
                 .id("avatar-backdrop")
+                .occlude()
                 .on_click(move |_, _, cx| {
                     close.update(cx, |state, cx| state.toggle_avatar_menu(cx));
                 })
@@ -288,6 +297,29 @@ impl Shell {
                                 .child(name),
                         )
                         .child(div().h(px(1.)).mx_2().my_1().bg(theme::hairline()))
+                        .child(
+                            div()
+                                .id("menu-settings")
+                                .flex()
+                                .items_center()
+                                .px_3()
+                                .h(px(34.))
+                                .rounded(theme::CONTROL_RADIUS)
+                                .cursor_pointer()
+                                .tab_index(0)
+                                .text_size(px(13.))
+                                .text_color(theme::text_secondary())
+                                .hover(|style| {
+                                    style.bg(theme::hover()).text_color(theme::text_primary())
+                                })
+                                .focus_visible(|style| style.bg(theme::hover()))
+                                .child("Settings")
+                                .on_click(move |_, _, cx| {
+                                    settings.update(cx, |state, cx| {
+                                        state.navigate(Route::Settings, cx)
+                                    });
+                                }),
+                        )
                         .child(
                             div()
                                 .id("menu-shortcuts")
@@ -346,6 +378,11 @@ impl Shell {
                 "Clear history?",
                 "This deletes the list of plays Sonear keeps on this computer. Nothing changes in your Spotify account.",
                 "Clear history",
+            ),
+            Confirm::DeleteAll => (
+                "Delete all Sonear data?",
+                "This removes your Spotify login, Soloist key and pairing, history, queue, cached data, cover art and settings from this computer. The Soloist program stays, so you won't download it again. Setup starts again from the beginning.",
+                "Delete everything",
             ),
         };
         let cancel = self.store.clone();
@@ -469,8 +506,8 @@ impl Shell {
         window.focus(&self.focus, cx);
     }
 
-    /// Closes the topmost overlay: the palette, the shortcut list, a confirm
-    /// dialog, then the avatar menu.
+    /// Closes the topmost overlay: the palette, the legal viewer, the shortcut
+    /// list, a confirm dialog, then the avatar menu.
     fn close_overlay(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.palette.is_some() {
             self.close_palette(window, cx);
@@ -479,14 +516,17 @@ impl Shell {
         }
 
         let state = self.store.read(cx);
-        let (shortcuts, confirm, menu) = (
+        let (legal, shortcuts, confirm, menu) = (
+            state.legal_open.is_some(),
             state.shortcuts_open,
             state.confirm.is_some(),
             state.avatar_menu_open,
         );
 
         self.store.update(cx, |state, cx| {
-            if shortcuts {
+            if legal {
+                state.close_legal(cx);
+            } else if shortcuts {
                 state.close_shortcuts(cx);
             } else if confirm {
                 state.dismiss_confirm(cx);
@@ -553,6 +593,11 @@ impl Shell {
         }))
         .on_action(cx.listener(|shell, _: &OpenShortcuts, window, cx| {
             shell.toggle_shortcuts(window, cx);
+        }))
+        .on_action(cx.listener(|shell, _: &OpenSettings, _, cx| {
+            if shell.ready(cx) {
+                shell.go(Route::Settings, cx);
+            }
         }))
         .on_action(cx.listener(|shell, _: &CloseOverlay, window, cx| {
             shell.close_overlay(window, cx);
@@ -676,6 +721,11 @@ impl Render for Shell {
             .shortcuts
             .as_ref()
             .map(|shortcuts| shortcuts.clone().cached(overlay()));
+        let legal = self
+            .store
+            .read(cx)
+            .legal_open
+            .map(|doc| legal_overlay(&self.store, doc));
 
         self.bind_actions(div(), cx)
             .key_context(keymap::CONTEXT)
@@ -734,6 +784,7 @@ impl Render for Shell {
             .children(menu)
             .children(dialog)
             .children(shortcuts)
+            .children(legal)
             .children(palette)
     }
 }

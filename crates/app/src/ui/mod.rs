@@ -1,4 +1,5 @@
 pub mod common;
+pub mod legal;
 pub mod pages;
 pub mod palette;
 pub mod player_bar;

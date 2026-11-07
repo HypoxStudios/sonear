@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui_kit::{AppContext as _, Context, Entity, SharedString, Task};
+use sonear_core::config::LEGAL_VERSION;
 use sonear_core::model::ItemKind;
 use sonear_core::model::{PlayOffset, PlaybackRequest, Playlist, Profile, Track};
 use sonear_core::queue::QueueSource;
@@ -16,10 +17,14 @@ use tokio::runtime::Handle;
 use tokio::sync::mpsc;
 
 use crate::data::{self, Env, Load, Slot};
+use crate::keymap;
+use crate::legal::LegalDoc;
 
 const TOAST_FOR: Duration = Duration::from_secs(6);
 const PENDING_PLAY_FOR: Duration = Duration::from_secs(10);
 const SIDEBAR_PLAYLISTS: usize = 8;
+/// Longest device name the settings page accepts.
+pub const DEVICE_NAME_MAX: usize = 64;
 const BACK_STACK_LIMIT: usize = 64;
 /// Rows the Up next panel shows.
 pub const UP_NEXT_ROWS: usize = 30;
@@ -39,6 +44,7 @@ pub enum Route {
     Library(LibraryTab),
     LikedSongs,
     History,
+    Settings,
     Album(String),
     Artist(String),
     Playlist(String),
@@ -54,6 +60,7 @@ impl Route {
             Self::Library(_) => "Your Library",
             Self::LikedSongs => "Liked Songs",
             Self::History => "History",
+            Self::Settings => "Settings",
             Self::Album(_) => "Album",
             Self::Artist(_) => "Artist",
             Self::Playlist(_) => "Playlist",
@@ -95,6 +102,7 @@ impl InstallState {
 pub enum Confirm {
     Logout,
     ClearHistory,
+    DeleteAll,
 }
 
 #[derive(Debug, Clone)]
@@ -119,6 +127,7 @@ fn initial_route() -> Route {
         }),
         "liked" => Route::LikedSongs,
         "history" => Route::History,
+        "settings" => Route::Settings,
         "album" => Route::Album(id.to_owned()),
         "artist" => Route::Artist(id.to_owned()),
         "playlist" => Route::Playlist(id.to_owned()),
@@ -166,6 +175,7 @@ pub struct AppStore {
     pub avatar_menu_open: bool,
     pub confirm: Option<Confirm>,
     pub shortcuts_open: bool,
+    pub legal_open: Option<LegalDoc>,
     /// A query the Search page should fill in and run, taken when it reads it.
     pub pending_search: Option<String>,
     /// Bumped whenever the history changes, so history views reload.
@@ -213,6 +223,7 @@ impl AppStore {
             avatar_menu_open: false,
             confirm: None,
             shortcuts_open: false,
+            legal_open: None,
             pending_search: None,
             history_version: 0,
             seen_version: 0,
@@ -709,6 +720,27 @@ impl AppStore {
         cx.notify();
     }
 
+    pub fn open_legal(&mut self, doc: LegalDoc, cx: &mut Context<Self>) {
+        self.legal_open = Some(doc);
+        cx.notify();
+    }
+
+    pub fn close_legal(&mut self, cx: &mut Context<Self>) {
+        self.legal_open = None;
+        cx.notify();
+    }
+
+    pub fn legal_accepted(&self) -> bool {
+        self.core.config.get().legal_accepted >= LEGAL_VERSION
+    }
+
+    pub fn accept_legal(&mut self, cx: &mut Context<Self>) {
+        self.core
+            .config
+            .update(|config| config.legal_accepted = LEGAL_VERSION);
+        cx.notify();
+    }
+
     /// Opens the Search page with `query` filled in, also when it is already open.
     pub fn search_for(&mut self, query: &str, cx: &mut Context<Self>) {
         self.pending_search = Some(query.to_owned());
@@ -735,6 +767,7 @@ impl AppStore {
                     let _ = history.clear().await;
                 });
             }
+            Confirm::DeleteAll => self.delete_all_data(cx),
         }
 
         cx.notify();
@@ -763,6 +796,109 @@ impl AppStore {
                     };
 
                     store.show_toast(text, cx);
+                });
+            }
+        })
+        .detach();
+    }
+
+    fn delete_all_data(&mut self, cx: &mut Context<Self>) {
+        let core = self.core.clone();
+        let previous = keymap::effective(&core.config.get().shortcuts);
+        let (done, mut inbox) = mpsc::unbounded_channel();
+
+        self.route = Route::Home;
+        self.back_stack.clear();
+        self.runtime.spawn(async move {
+            let problems = core.delete_all_data().await;
+
+            let _ = done.send(problems);
+        });
+
+        cx.spawn(async move |this, cx| {
+            let Some(problems) = inbox.recv().await else {
+                return;
+            };
+
+            let _ = this.update(cx, |store, cx| {
+                let config = store.core.config.get();
+
+                store.sidebar_collapsed = config.sidebar_collapsed;
+                store.right_panel_open = config.right_panel.open;
+                store.ai_hint_dismissed = config.ui.ai_hint_dismissed;
+                store.editing_key = false;
+                store.key_error = None;
+                keymap::apply(cx, &previous, &keymap::effective(&config.shortcuts));
+
+                let text = if problems.is_empty() {
+                    "Everything Sonear stored was deleted.".to_owned()
+                } else {
+                    format!(
+                        "Deleted, but some data could not be removed: {}",
+                        problems.join("; ")
+                    )
+                };
+
+                store.show_toast(text, cx);
+            });
+        })
+        .detach();
+    }
+
+    /// Stores the retention, drops plays older than it, then reloads the history views.
+    pub fn set_history_retention(&mut self, months: u32, cx: &mut Context<Self>) {
+        self.core
+            .config
+            .update(|config| config.history_retention_months = months);
+
+        let history = self.core.history.clone();
+        let (done, mut inbox) = mpsc::unbounded_channel();
+
+        self.runtime.spawn(async move {
+            let _ = history.prune_old().await;
+            let _ = done.send(());
+        });
+        cx.spawn(async move |this, cx| {
+            if inbox.recv().await.is_some() {
+                let _ = this.update(cx, |store, cx| {
+                    store.history_version += 1;
+                    cx.notify();
+                });
+            }
+        })
+        .detach();
+        cx.notify();
+    }
+
+    /// Saves the name Spotify apps show for this computer and, outside demo
+    /// mode, restarts Soloist so it takes effect.
+    pub fn save_device_name(&mut self, name: &str, cx: &mut Context<Self>) {
+        let name: String = name.trim().chars().take(DEVICE_NAME_MAX).collect();
+
+        if name.is_empty() {
+            return;
+        }
+
+        self.core
+            .config
+            .update(|config| config.device_name.clone_from(&name));
+
+        let Some(manager) = self.core.soloist.clone() else {
+            self.show_toast("Device name saved.", cx);
+
+            return;
+        };
+        let (done, mut inbox) = mpsc::unbounded_channel();
+
+        self.runtime.spawn(async move {
+            manager.restart().await;
+
+            let _ = done.send(());
+        });
+        cx.spawn(async move |this, cx| {
+            if inbox.recv().await.is_some() {
+                let _ = this.update(cx, |store, cx| {
+                    store.show_toast(format!("Soloist restarted as \u{201c}{name}\u{201d}."), cx);
                 });
             }
         })

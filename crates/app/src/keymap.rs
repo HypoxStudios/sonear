@@ -15,6 +15,7 @@ actions!(
     [
         OpenPalette,
         OpenShortcuts,
+        OpenSettings,
         TogglePlayPause,
         NextTrack,
         PreviousTrack,
@@ -105,7 +106,7 @@ macro_rules! shortcut {
     };
 }
 
-pub static SHORTCUTS: [Shortcut; 21] = [
+pub static SHORTCUTS: [Shortcut; 22] = [
     shortcut!(
         "palette",
         "Command palette",
@@ -119,6 +120,13 @@ pub static SHORTCUTS: [Shortcut; 21] = [
         General,
         Some("ctrl-/"),
         OpenShortcuts
+    ),
+    shortcut!(
+        "settings",
+        "Settings",
+        General,
+        Some("ctrl-,"),
+        OpenSettings
     ),
     shortcut!(
         "play_pause",

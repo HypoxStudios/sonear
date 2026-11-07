@@ -4,7 +4,7 @@ use gpui_kit::component::spinner::Spinner;
 use gpui_kit::component::{Icon, Sizable as _};
 use gpui_kit::{
     AnyElement, App, AppContext as _, ClipboardItem, Context, Div, ElementId, Entity, FontWeight,
-    InteractiveElement as _, IntoElement, ParentElement as _, Render, SharedString,
+    InteractiveElement as _, IntoElement, ParentElement as _, Render, SharedString, Stateful,
     StatefulInteractiveElement as _, Styled as _, Subscription, Window, div, px, relative,
 };
 use sonear_core::AccountState;
@@ -12,6 +12,7 @@ use sonear_soloist::Status;
 use sonear_spotify::REDIRECT_URI;
 
 use crate::format::megabytes;
+use crate::legal::LegalDoc;
 use crate::store::{AppStore, InstallState};
 use crate::theme;
 use crate::ui::widgets::{accent_button, ghost_button, icon, logo_mark};
@@ -77,6 +78,44 @@ impl SetupView {
             });
         })
         .detach();
+    }
+
+    fn legal_step(&self) -> AnyElement {
+        let agreement = self.store.clone();
+        let policy = self.store.clone();
+        let accept = self.store.clone();
+
+        card()
+            .child(logo_mark(56.))
+            .child(title("Before you start"))
+            .child(point(
+                "Sonear is independent. It isn't made or endorsed by Spotify.",
+            ))
+            .child(point(
+                "Everything stays on this computer. Sonear sends nothing to its makers.",
+            ))
+            .child(point(
+                "You need Spotify Premium, your own Spotify developer app and a Soloist key.",
+            ))
+            .child(
+                text_link("read-terms", "Read the end-user agreement").on_click(move |_, _, cx| {
+                    agreement.update(cx, |state, cx| state.open_legal(LegalDoc::Terms, cx));
+                }),
+            )
+            .child(
+                text_link("read-privacy", "Read the privacy policy").on_click(move |_, _, cx| {
+                    policy.update(cx, |state, cx| state.open_legal(LegalDoc::Privacy, cx));
+                }),
+            )
+            .child(
+                accent_button("accept-legal", "Agree and continue", None::<Icon>, true).on_click(
+                    move |_, _, cx| {
+                        accept.update(cx, |state, cx| state.accept_legal(cx));
+                    },
+                ),
+            )
+            .child(note("By continuing you accept both documents."))
+            .into_any_element()
     }
 
     fn connect_step(&self, account: &AccountState, cx: &mut Context<Self>) -> AnyElement {
@@ -214,6 +253,37 @@ impl SetupView {
     }
 }
 
+fn point(text: &'static str) -> Div {
+    div()
+        .flex()
+        .items_start()
+        .gap_3()
+        .w_full()
+        .text_size(px(14.))
+        .text_color(theme::text_secondary())
+        .child(
+            div()
+                .flex_none()
+                .mt(px(7.))
+                .size(px(5.))
+                .rounded_full()
+                .bg(theme::accent()),
+        )
+        .child(div().flex_1().child(text))
+}
+
+fn text_link(id: impl Into<ElementId>, text: &'static str) -> Stateful<Div> {
+    div()
+        .id(id)
+        .cursor_pointer()
+        .tab_index(0)
+        .text_size(px(13.))
+        .text_color(theme::accent())
+        .hover(|style| style.text_color(theme::accent_hover()))
+        .focus_visible(|style| style.text_color(theme::text_primary()))
+        .child(text)
+}
+
 fn link(id: impl Into<ElementId>, text: &'static str, url: &'static str) -> impl IntoElement {
     div()
         .id(id)
@@ -335,9 +405,11 @@ impl Render for SetupView {
         let editing_key = state.editing_key;
         let account = state.account.clone();
         let connected = state.connected();
+        let legal_accepted = state.legal_accepted();
         let store = self.store.clone();
 
         let content: AnyElement = match status {
+            _ if !legal_accepted => self.legal_step(),
             _ if !connected || preview_connect() => self.connect_step(&account, cx),
             _ if editing_key => self.key_step(key_error, cx),
             Status::NeedsKey => self.key_step(key_error, cx),

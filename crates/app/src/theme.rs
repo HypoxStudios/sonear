@@ -21,6 +21,11 @@ pub const SPOTIFY_ICON_ASPECT: f32 = 236.05 / 225.25;
 /// Space kept free beside the Spotify logo: half the icon's height.
 pub const SPOTIFY_CLEAR_SPACE: f32 = SPOTIFY_ICON_SIZE / 2.;
 
+pub const SETTINGS_WIDTH: Pixels = px(720.);
+pub const SETTINGS_CONTROL_WIDTH: Pixels = px(260.);
+pub const LEGAL_WIDTH: Pixels = px(640.);
+pub const LEGAL_HEIGHT: f32 = 0.8;
+
 pub const SIDEBAR_WIDTH: Pixels = px(216.);
 pub const RAIL_WIDTH: Pixels = px(64.);
 pub const RIGHT_PANEL_WIDTH: Pixels = px(240.);
@@ -103,6 +108,11 @@ pub fn warning() -> Hsla {
     hsla(rgb(0xE8C27A))
 }
 
+/// Destructive actions, readable on the dark panels.
+pub fn danger() -> Hsla {
+    hsla(rgb(0xE5837F))
+}
+
 /// The Spotify logo and icon. Spotify's guidelines allow only the plain white
 /// versions on dark backgrounds, never tinted.
 pub fn spotify_mark() -> Hsla {
@@ -171,6 +181,7 @@ pub fn apply(cx: &mut App) {
         theme.colors.popover_foreground = text_primary();
         theme.colors.title_bar = window();
         theme.colors.title_bar_border = transparent();
+        theme.colors.link = accent();
         theme.colors.slider_bar = accent();
         theme.colors.slider_thumb = text_primary();
         theme.colors.scrollbar = transparent();

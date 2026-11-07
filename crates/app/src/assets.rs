@@ -37,7 +37,8 @@ icon_assets!(
         LoaderCircle,
         RefreshCw,
         CircleCheck,
-        Clock
+        Clock,
+        Settings
     ]
 );
 
