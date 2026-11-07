@@ -1,0 +1,35 @@
+# Build output
+/target
+/dist
+*.exe
+*.pdb
+
+# Secrets and local settings
+.env
+.env.*
+.token.json
+*.token.json
+*.pem
+*.key
+
+# Local data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.log
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Leftovers
+*.bak
+*.orig
+*.rej
+*.tmp
