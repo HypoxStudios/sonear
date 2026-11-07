@@ -123,6 +123,14 @@ pub fn unregister() -> Result<(), ProtocolError> {
     check("remove", code.0, true)
 }
 
+/// Deletes a key and everything under it. A missing key is fine.
+pub(crate) fn delete_tree(key_path: &str) -> Result<(), ProtocolError> {
+    // SAFETY: the key path outlives the call.
+    let code = unsafe { RegDeleteTreeW(HKEY_CURRENT_USER, &HSTRING::from(key_path)) };
+
+    check("remove", code.0, true)
+}
+
 /// Opens Windows' Default apps page, where the user picks Sonear for `spotify:` links.
 pub fn open_default_apps(cx: &mut gpui_kit::App) {
     cx.open_url(DEFAULT_APPS_URL);
@@ -148,13 +156,22 @@ fn utf16_bytes(text: &str) -> Vec<u8> {
 }
 
 fn write(value: &Value) -> Result<(), ProtocolError> {
+    write_string(value.key, value.name, &value.data)
+}
+
+/// Writes one string value under `HKEY_CURRENT_USER`, creating the key.
+pub(crate) fn write_string(
+    key_path: &str,
+    name: Option<&str>,
+    data: &str,
+) -> Result<(), ProtocolError> {
     let mut key = HKEY::default();
 
     // SAFETY: `key` is a valid out pointer and is closed below.
     let code = unsafe {
         RegCreateKeyExW(
             HKEY_CURRENT_USER,
-            &HSTRING::from(value.key),
+            &HSTRING::from(key_path),
             None,
             PCWSTR::null(),
             REG_OPTION_NON_VOLATILE,
@@ -167,13 +184,13 @@ fn write(value: &Value) -> Result<(), ProtocolError> {
 
     check("create a key in", code.0, false)?;
 
-    let name = value.name.map(HSTRING::from);
+    let name = name.map(HSTRING::from);
     let name = name
         .as_ref()
         .map_or(PCWSTR::null(), |name| PCWSTR(name.as_ptr()));
 
     // SAFETY: `key` was opened above; the data outlives the call.
-    let code = unsafe { RegSetValueExW(key, name, None, REG_SZ, Some(&utf16_bytes(&value.data))) };
+    let code = unsafe { RegSetValueExW(key, name, None, REG_SZ, Some(&utf16_bytes(data))) };
 
     // SAFETY: `key` is open and not used again.
     unsafe {

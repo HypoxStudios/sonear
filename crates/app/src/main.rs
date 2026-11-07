@@ -1,5 +1,6 @@
 #![cfg_attr(not(test), windows_subsystem = "windows")]
 
+mod app_identity;
 mod assets;
 mod cover_accent;
 mod cover_cache;
@@ -9,6 +10,7 @@ mod http;
 mod instance;
 mod keymap;
 mod legal;
+mod media_controls;
 mod platform_window;
 mod protocol;
 mod store;
@@ -24,6 +26,7 @@ use gpui_kit::{
     WindowOptions, px, size,
 };
 use instance::Handoff;
+use media_controls::{MediaCommand, MediaControls};
 use sonear_core::{AppPaths, Core, SpotifyLink};
 use store::AppStore;
 use tokio::sync::mpsc;
@@ -114,6 +117,8 @@ fn main() {
     gpui_kit::application()
         .with_assets(assets::AppAssets)
         .run(move |cx| {
+            cx.set_app_identity(app_identity::APP_ID, app_identity::APP_NAME);
+            app_identity::install();
             cx.set_http_client(http::ReqwestClient::new(handle.clone(), covers));
             gpui_kit::init(cx);
             theme::apply(cx);
@@ -163,6 +168,7 @@ fn main() {
             });
 
             start_tray(&store, cx);
+            start_media_controls(&store, window, cx);
 
             if let Some(link) = link.clone() {
                 store.update(cx, |store, cx| store.open_link(link, cx));
@@ -218,6 +224,65 @@ fn run_tray_command(command: TrayCommand, store: &Entity<AppStore>, cx: &mut Asy
         TrayCommand::TogglePlayPause => store.core.player.toggle_play_pause(),
         TrayCommand::Next => store.core.queue.next(),
         TrayCommand::Previous => store.core.player.previous(),
+    });
+}
+
+/// Hooks the system media controls up to the main window and the store.
+fn start_media_controls(
+    store: &Entity<AppStore>,
+    window: gpui_kit::AnyWindowHandle,
+    cx: &mut gpui_kit::App,
+) {
+    let Some(hwnd) = window
+        .update(cx, |_, window, _| platform_window::hwnd(window))
+        .ok()
+        .flatten()
+    else {
+        warn!("could not find the main window for the media controls");
+
+        return;
+    };
+    let (commands, mut inbox) = mpsc::unbounded_channel();
+    let mut media = match MediaControls::new(hwnd, commands) {
+        Ok(media) => media,
+        Err(error) => {
+            warn!(%error, "could not start the media controls");
+
+            return;
+        }
+    };
+
+    media.update(&store.read(cx).playback);
+    cx.observe(store, move |store, cx| {
+        media.update(&store.read(cx).playback)
+    })
+    .detach();
+
+    let store = store.clone();
+
+    cx.spawn(async move |cx| {
+        while let Some(command) = inbox.recv().await {
+            run_media_command(command, &store, cx);
+        }
+    })
+    .detach();
+}
+
+fn run_media_command(command: MediaCommand, store: &Entity<AppStore>, cx: &mut AsyncApp) {
+    store.update(cx, |store, _| {
+        let player = &store.core.player;
+
+        match command {
+            MediaCommand::Play => player.play(None),
+            MediaCommand::Pause | MediaCommand::Stop => player.pause(),
+            MediaCommand::Next => store.core.queue.next(),
+            MediaCommand::Previous => player.previous(),
+            MediaCommand::Seek(position) => {
+                if let Some(duration) = store.playback.duration_ms() {
+                    player.seek(position.min(duration));
+                }
+            }
+        }
     });
 }
 

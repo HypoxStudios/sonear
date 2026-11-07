@@ -1231,6 +1231,12 @@ impl AppStore {
                     problems.push(format!("Spotify link registration: {error}"));
                 }
 
+                if !store.is_demo()
+                    && let Err(error) = crate::app_identity::remove()
+                {
+                    problems.push(format!("Start Menu shortcut: {error}"));
+                }
+
                 store.sidebar_collapsed = config.sidebar_collapsed;
                 store.right_panel_open = config.right_panel.open;
                 store.right_panel_lyrics = config.right_panel.lyrics;
