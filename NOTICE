@@ -1,0 +1,26 @@
+Sonear
+Copyright 2026 Hypox Studios
+
+This product includes software developed by Hypox Studios, licensed under the
+Apache License, Version 2.0. See the LICENSE file.
+
+Sonear is independent. It is not made, sponsored or endorsed by Spotify.
+
+Spotify marks
+-------------
+The files crates/app/assets/spotify-logo.svg and
+crates/app/assets/spotify-icon.svg are Spotify's logo and icon, from Spotify's
+Design & Branding Guidelines. They are trademarks of Spotify AB and are not
+covered by the Apache License. They are included only to attribute Spotify
+content as Spotify's guidelines require, and their use is subject to those
+guidelines: https://developer.spotify.com/documentation/design
+
+Spotify Soloist
+---------------
+Sonear does not include Spotify Soloist. Each user downloads it from Spotify
+and uses it under Spotify's terms.
+
+Third-party libraries
+---------------------
+Sonear depends on third-party Rust crates, each under its own license. Cargo.lock
+lists them, and `cargo tree` shows how they are used.
