@@ -57,15 +57,19 @@
 
 ## Install
 
-Sonear requires **Spotify Premium** and Windows 11. Build it with [Rust](https://rustup.rs) 1.92+, the Visual Studio C++ build tools and CMake:
+Sonear requires **Spotify Premium** and Windows 11.
+
+Download the installer from the [latest release](https://github.com/HypoxStudios/sonear/releases/latest) and run it. It isn't signed yet, so Windows may warn you: choose **More info**, then **Run anyway**.
+
+The first launch walks you through connecting your own [Spotify developer app](https://developer.spotify.com/dashboard) and installing [Soloist](https://developer.spotify.com/documentation/soloist), Spotify's official player.
+
+To build from source, you need [Rust](https://rustup.rs) 1.92+, the Visual Studio C++ build tools and CMake:
 
 ```
 git clone https://github.com/HypoxStudios/sonear
 cd sonear
 cargo run -p sonear --release
 ```
-
-The first launch walks you through connecting your own [Spotify developer app](https://developer.spotify.com/dashboard) and installing [Soloist](https://developer.spotify.com/documentation/soloist), Spotify's official player.
 
 Just want a look? Demo mode needs no account:
 
