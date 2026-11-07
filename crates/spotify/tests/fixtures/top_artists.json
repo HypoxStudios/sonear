@@ -1,0 +1,67 @@
+{
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/5D3DglAQV1Ep1Rpfz3X8aV"
+        },
+        "href": "https://api.spotify.com/v1/artists/5D3DglAQV1Ep1Rpfz3X8aV",
+        "id": "5D3DglAQV1Ep1Rpfz3X8aV",
+        "images": [
+          {
+            "height": 640,
+            "url": "https://i.scdn.co/image/fixturedc7b7f2dbcf3",
+            "width": 640
+          },
+          {
+            "height": 320,
+            "url": "https://i.scdn.co/image/fixture43d8dcf71368",
+            "width": 320
+          },
+          {
+            "height": 160,
+            "url": "https://i.scdn.co/image/fixturec742df56be29",
+            "width": 160
+          }
+        ],
+        "name": "Fixture name a58006",
+        "type": "artist",
+        "uri": "spotify:artist:5D3DglAQV1Ep1Rpfz3X8aV"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/H9d6ke8eziJR9awpb9u1Hu"
+        },
+        "href": "https://api.spotify.com/v1/artists/H9d6ke8eziJR9awpb9u1Hu",
+        "id": "H9d6ke8eziJR9awpb9u1Hu",
+        "images": [
+          {
+            "height": 640,
+            "url": "https://i.scdn.co/image/fixture6780d8c9fdd6",
+            "width": 640
+          },
+          {
+            "height": 320,
+            "url": "https://i.scdn.co/image/fixture883eb8071cce",
+            "width": 320
+          },
+          {
+            "height": 160,
+            "url": "https://i.scdn.co/image/fixture237ada1b5ac8",
+            "width": 160
+          }
+        ],
+        "name": "Fixture name 157df3",
+        "type": "artist",
+        "uri": "spotify:artist:H9d6ke8eziJR9awpb9u1Hu"
+      }
+    ],
+    "total": 63,
+    "limit": 2,
+    "offset": 0,
+    "href": "https://api.spotify.com/v1/me/top/artists?limit=2&time_range=short_term&locale=*",
+    "next": "https://api.spotify.com/v1/me/top/artists?offset=2&limit=2&time_range=short_term&locale=*",
+    "previous": null
+  }
+}

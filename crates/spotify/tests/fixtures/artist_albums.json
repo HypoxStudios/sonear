@@ -1,0 +1,99 @@
+{
+  "status": 200,
+  "body": {
+    "href": "https://api.spotify.com/v1/artists/4tZwfgrHOc3mvqYlEYSvVi/albums?offset=0&limit=2&locale=*&include_groups=album,single,compilation,appears_on",
+    "limit": 2,
+    "next": "https://api.spotify.com/v1/artists/4tZwfgrHOc3mvqYlEYSvVi/albums?offset=2&limit=2&locale=*&include_groups=album,single,compilation,appears_on",
+    "offset": 0,
+    "previous": null,
+    "total": 63,
+    "items": [
+      {
+        "album_type": "album",
+        "total_tracks": 13,
+        "external_urls": {
+          "spotify": "https://open.spotify.com/album/5AFf68gtvNgGLZarsyEEL8"
+        },
+        "href": "https://api.spotify.com/v1/albums/5AFf68gtvNgGLZarsyEEL8",
+        "id": "5AFf68gtvNgGLZarsyEEL8",
+        "images": [
+          {
+            "url": "https://i.scdn.co/image/ab67616d0000b273d1ec82bc061a90006584aa9b",
+            "height": 640,
+            "width": 640
+          },
+          {
+            "url": "https://i.scdn.co/image/ab67616d00001e02d1ec82bc061a90006584aa9b",
+            "height": 300,
+            "width": 300
+          },
+          {
+            "url": "https://i.scdn.co/image/ab67616d00004851d1ec82bc061a90006584aa9b",
+            "height": 64,
+            "width": 64
+          }
+        ],
+        "name": "Random Access Memories (Drumless Edition)",
+        "release_date": "2023-11-17",
+        "release_date_precision": "day",
+        "type": "album",
+        "uri": "spotify:album:5AFf68gtvNgGLZarsyEEL8",
+        "artists": [
+          {
+            "external_urls": {
+              "spotify": "https://open.spotify.com/artist/4tZwfgrHOc3mvqYlEYSvVi"
+            },
+            "href": "https://api.spotify.com/v1/artists/4tZwfgrHOc3mvqYlEYSvVi",
+            "id": "4tZwfgrHOc3mvqYlEYSvVi",
+            "name": "Daft Punk",
+            "type": "artist",
+            "uri": "spotify:artist:4tZwfgrHOc3mvqYlEYSvVi"
+          }
+        ]
+      },
+      {
+        "album_type": "album",
+        "total_tracks": 22,
+        "external_urls": {
+          "spotify": "https://open.spotify.com/album/4mAhdh996uW5SnnFKXUmC0"
+        },
+        "href": "https://api.spotify.com/v1/albums/4mAhdh996uW5SnnFKXUmC0",
+        "id": "4mAhdh996uW5SnnFKXUmC0",
+        "images": [
+          {
+            "url": "https://i.scdn.co/image/ab67616d0000b2737a311579a8814f7683f25a17",
+            "height": 640,
+            "width": 640
+          },
+          {
+            "url": "https://i.scdn.co/image/ab67616d00001e027a311579a8814f7683f25a17",
+            "height": 300,
+            "width": 300
+          },
+          {
+            "url": "https://i.scdn.co/image/ab67616d000048517a311579a8814f7683f25a17",
+            "height": 64,
+            "width": 64
+          }
+        ],
+        "name": "Random Access Memories (10th Anniversary Edition)",
+        "release_date": "2023-05-12",
+        "release_date_precision": "day",
+        "type": "album",
+        "uri": "spotify:album:4mAhdh996uW5SnnFKXUmC0",
+        "artists": [
+          {
+            "external_urls": {
+              "spotify": "https://open.spotify.com/artist/4tZwfgrHOc3mvqYlEYSvVi"
+            },
+            "href": "https://api.spotify.com/v1/artists/4tZwfgrHOc3mvqYlEYSvVi",
+            "id": "4tZwfgrHOc3mvqYlEYSvVi",
+            "name": "Daft Punk",
+            "type": "artist",
+            "uri": "spotify:artist:4tZwfgrHOc3mvqYlEYSvVi"
+          }
+        ]
+      }
+    ]
+  }
+}

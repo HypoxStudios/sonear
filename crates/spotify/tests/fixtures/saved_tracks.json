@@ -1,0 +1,165 @@
+{
+  "status": 200,
+  "body": {
+    "href": "https://api.spotify.com/v1/me/tracks?offset=0&limit=2&locale=*",
+    "items": [
+      {
+        "added_at": "2026-11-06T11:52:33Z",
+        "track": {
+          "album": {
+            "album_type": "single",
+            "artists": [
+              {
+                "external_urls": {
+                  "spotify": "https://open.spotify.com/artist/0GG5lTdlWOo3I6HfaSKqmt"
+                },
+                "href": "https://api.spotify.com/v1/artists/0GG5lTdlWOo3I6HfaSKqmt",
+                "id": "0GG5lTdlWOo3I6HfaSKqmt",
+                "name": "Fixture name a58089",
+                "type": "artist",
+                "uri": "spotify:artist:0GG5lTdlWOo3I6HfaSKqmt"
+              }
+            ],
+            "external_urls": {
+              "spotify": "https://open.spotify.com/album/e563Ujo25QaCdST4slgSRl"
+            },
+            "href": "https://api.spotify.com/v1/albums/e563Ujo25QaCdST4slgSRl",
+            "id": "e563Ujo25QaCdST4slgSRl",
+            "images": [
+              {
+                "height": 640,
+                "width": 640,
+                "url": "https://i.scdn.co/image/fixture66b4001529d4"
+              },
+              {
+                "height": 300,
+                "width": 300,
+                "url": "https://i.scdn.co/image/fixturee699d3c31144"
+              },
+              {
+                "height": 64,
+                "width": 64,
+                "url": "https://i.scdn.co/image/fixture50ca5b4d48e1"
+              }
+            ],
+            "is_playable": true,
+            "name": "Fixture name cab6a8",
+            "release_date": "2020-04-17",
+            "release_date_precision": "day",
+            "total_tracks": 1,
+            "type": "album",
+            "uri": "spotify:album:e563Ujo25QaCdST4slgSRl"
+          },
+          "artists": [
+            {
+              "external_urls": {
+                "spotify": "https://open.spotify.com/artist/0GG5lTdlWOo3I6HfaSKqmt"
+              },
+              "href": "https://api.spotify.com/v1/artists/0GG5lTdlWOo3I6HfaSKqmt",
+              "id": "0GG5lTdlWOo3I6HfaSKqmt",
+              "name": "Fixture name a58089",
+              "type": "artist",
+              "uri": "spotify:artist:0GG5lTdlWOo3I6HfaSKqmt"
+            }
+          ],
+          "disc_number": 1,
+          "duration_ms": 200672,
+          "explicit": true,
+          "external_ids": {},
+          "external_urls": {
+            "spotify": "https://open.spotify.com/track/tA8dZdNvwxIfbnIxJ09PCl"
+          },
+          "href": "https://api.spotify.com/v1/tracks/tA8dZdNvwxIfbnIxJ09PCl",
+          "id": "tA8dZdNvwxIfbnIxJ09PCl",
+          "is_local": false,
+          "is_playable": true,
+          "name": "Fixture name cab6a8",
+          "track_number": 1,
+          "type": "track",
+          "uri": "spotify:track:tA8dZdNvwxIfbnIxJ09PCl"
+        }
+      },
+      {
+        "added_at": "2026-11-06T11:52:23Z",
+        "track": {
+          "album": {
+            "album_type": "single",
+            "artists": [
+              {
+                "external_urls": {
+                  "spotify": "https://open.spotify.com/artist/rHqU53ODKeNGdyBXhGJRdw"
+                },
+                "href": "https://api.spotify.com/v1/artists/rHqU53ODKeNGdyBXhGJRdw",
+                "id": "rHqU53ODKeNGdyBXhGJRdw",
+                "name": "Fixture name 42960b",
+                "type": "artist",
+                "uri": "spotify:artist:rHqU53ODKeNGdyBXhGJRdw"
+              }
+            ],
+            "external_urls": {
+              "spotify": "https://open.spotify.com/album/8aWrlHVBG6d0Pi5q3RlDoT"
+            },
+            "href": "https://api.spotify.com/v1/albums/8aWrlHVBG6d0Pi5q3RlDoT",
+            "id": "8aWrlHVBG6d0Pi5q3RlDoT",
+            "images": [
+              {
+                "height": 640,
+                "width": 640,
+                "url": "https://i.scdn.co/image/fixturecec57d2da787"
+              },
+              {
+                "height": 300,
+                "width": 300,
+                "url": "https://i.scdn.co/image/fixture90bfcbdd920e"
+              },
+              {
+                "height": 64,
+                "width": 64,
+                "url": "https://i.scdn.co/image/fixturef492efa7a9f3"
+              }
+            ],
+            "is_playable": true,
+            "name": "Fixture name 234dca",
+            "release_date": "2024-12-20",
+            "release_date_precision": "day",
+            "total_tracks": 4,
+            "type": "album",
+            "uri": "spotify:album:8aWrlHVBG6d0Pi5q3RlDoT"
+          },
+          "artists": [
+            {
+              "external_urls": {
+                "spotify": "https://open.spotify.com/artist/rHqU53ODKeNGdyBXhGJRdw"
+              },
+              "href": "https://api.spotify.com/v1/artists/rHqU53ODKeNGdyBXhGJRdw",
+              "id": "rHqU53ODKeNGdyBXhGJRdw",
+              "name": "Fixture name 42960b",
+              "type": "artist",
+              "uri": "spotify:artist:rHqU53ODKeNGdyBXhGJRdw"
+            }
+          ],
+          "disc_number": 1,
+          "duration_ms": 136676,
+          "explicit": true,
+          "external_ids": {},
+          "external_urls": {
+            "spotify": "https://open.spotify.com/track/7qUlbxFWN1eE7Jfjb0BUBW"
+          },
+          "href": "https://api.spotify.com/v1/tracks/7qUlbxFWN1eE7Jfjb0BUBW",
+          "id": "7qUlbxFWN1eE7Jfjb0BUBW",
+          "is_local": false,
+          "is_playable": true,
+          "name": "Fixture name 234dca",
+          "track_number": 1,
+          "type": "track",
+          "uri": "spotify:track:7qUlbxFWN1eE7Jfjb0BUBW"
+        }
+      }
+    ],
+    "limit": 2,
+    "next": "https://api.spotify.com/v1/me/tracks?offset=2&limit=2&locale=*",
+    "offset": 0,
+    "previous": null,
+    "total": 558
+  }
+}

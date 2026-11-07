@@ -1,0 +1,15 @@
+{
+  "status": 200,
+  "body": {
+    "artists": {
+      "href": "https://api.spotify.com/v1/me/following?type=artist&limit=2&locale=*",
+      "limit": 2,
+      "next": null,
+      "cursors": {
+        "after": null
+      },
+      "total": 0,
+      "items": []
+    }
+  }
+}

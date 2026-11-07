@@ -1,0 +1,9 @@
+{
+  "status": 400,
+  "body": {
+    "error": {
+      "status": 400,
+      "message": "Invalid limit"
+    }
+  }
+}

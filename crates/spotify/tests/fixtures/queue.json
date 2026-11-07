@@ -1,0 +1,7 @@
+{
+  "status": 200,
+  "body": {
+    "currently_playing": null,
+    "queue": []
+  }
+}

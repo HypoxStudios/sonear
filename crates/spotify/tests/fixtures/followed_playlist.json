@@ -1,0 +1,39 @@
+{
+  "status": 200,
+  "body": {
+    "collaborative": false,
+    "description": "",
+    "external_urls": {
+      "spotify": "https://open.spotify.com/playlist/nEnJZpzoUj3D5PekFTVxx0"
+    },
+    "followers": {
+      "href": null,
+      "total": 3
+    },
+    "href": "https://api.spotify.com/v1/playlists/nEnJZpzoUj3D5PekFTVxx0?locale=*",
+    "id": "nEnJZpzoUj3D5PekFTVxx0",
+    "images": [
+      {
+        "height": null,
+        "url": "https://i.scdn.co/image/fixture8900ddb4c337",
+        "width": null
+      }
+    ],
+    "name": "Fixture name bc3b3b",
+    "owner": {
+      "display_name": "Fixture display_name 7a1807",
+      "external_urls": {
+        "spotify": "https://open.spotify.com/user/fixture"
+      },
+      "href": "https://api.spotify.com/v1/users/fixture",
+      "id": "user9977f4a079",
+      "type": "user",
+      "uri": "spotify:user:fixture"
+    },
+    "primary_color": null,
+    "public": true,
+    "snapshot_id": "Fixture snapshot_id ef2a07",
+    "type": "playlist",
+    "uri": "spotify:playlist:nEnJZpzoUj3D5PekFTVxx0"
+  }
+}

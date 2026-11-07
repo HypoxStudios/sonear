@@ -1,0 +1,30 @@
+{
+  "status": 200,
+  "body": {
+    "account_id": "fixture-account",
+    "display_name": "Fixture display_name fab01e",
+    "external_urls": {
+      "spotify": "https://open.spotify.com/user/fixture"
+    },
+    "followers": {
+      "href": null,
+      "total": 13
+    },
+    "href": "https://api.spotify.com/v1/users/fixture",
+    "id": "userd4cfee63ce",
+    "images": [
+      {
+        "height": 300,
+        "url": "https://i.scdn.co/image/fixture8721e8bbd129",
+        "width": 300
+      },
+      {
+        "height": 64,
+        "url": "https://i.scdn.co/image/fixture2188f93b1baf",
+        "width": 64
+      }
+    ],
+    "type": "user",
+    "uri": "spotify:user:fixture"
+  }
+}

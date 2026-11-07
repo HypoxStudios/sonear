@@ -1,0 +1,30 @@
+{
+  "status": 200,
+  "body": {
+    "external_urls": {
+      "spotify": "https://open.spotify.com/artist/4tZwfgrHOc3mvqYlEYSvVi"
+    },
+    "href": "https://api.spotify.com/v1/artists/4tZwfgrHOc3mvqYlEYSvVi?locale=*",
+    "id": "4tZwfgrHOc3mvqYlEYSvVi",
+    "images": [
+      {
+        "url": "https://i.scdn.co/image/ab6761610000e5ebd3aa7cc0e419b6c459b08e8e",
+        "height": 640,
+        "width": 640
+      },
+      {
+        "url": "https://i.scdn.co/image/ab67616100005174d3aa7cc0e419b6c459b08e8e",
+        "height": 320,
+        "width": 320
+      },
+      {
+        "url": "https://i.scdn.co/image/ab6761610000f178d3aa7cc0e419b6c459b08e8e",
+        "height": 160,
+        "width": 160
+      }
+    ],
+    "name": "Daft Punk",
+    "type": "artist",
+    "uri": "spotify:artist:4tZwfgrHOc3mvqYlEYSvVi"
+  }
+}

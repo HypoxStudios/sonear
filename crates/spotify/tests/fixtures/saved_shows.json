@@ -1,0 +1,12 @@
+{
+  "status": 200,
+  "body": {
+    "href": "https://api.spotify.com/v1/me/shows?offset=0&limit=2",
+    "items": [],
+    "limit": 2,
+    "next": null,
+    "offset": 0,
+    "previous": null,
+    "total": 0
+  }
+}

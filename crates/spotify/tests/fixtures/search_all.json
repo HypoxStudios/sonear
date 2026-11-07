@@ -1,0 +1,441 @@
+{
+  "status": 200,
+  "body": {
+    "tracks": {
+      "href": "https://api.spotify.com/v1/search?offset=0&limit=2&query=daft%20punk&type=track&locale=*",
+      "limit": 2,
+      "next": "https://api.spotify.com/v1/search?offset=2&limit=2&query=daft%20punk&type=track&locale=*",
+      "offset": 0,
+      "previous": null,
+      "total": 5,
+      "items": [
+        {
+          "album": {
+            "album_type": "album",
+            "artists": [
+              {
+                "external_urls": {
+                  "spotify": "https://open.spotify.com/artist/xo39CoNdciVJxqaNumlrnV"
+                },
+                "href": "https://api.spotify.com/v1/artists/xo39CoNdciVJxqaNumlrnV",
+                "id": "xo39CoNdciVJxqaNumlrnV",
+                "name": "Fixture name c07ba2",
+                "type": "artist",
+                "uri": "spotify:artist:xo39CoNdciVJxqaNumlrnV"
+              }
+            ],
+            "external_urls": {
+              "spotify": "https://open.spotify.com/album/BLcEp511rtyV9O84YkvQa4"
+            },
+            "href": "https://api.spotify.com/v1/albums/BLcEp511rtyV9O84YkvQa4",
+            "id": "BLcEp511rtyV9O84YkvQa4",
+            "images": [
+              {
+                "height": 640,
+                "width": 640,
+                "url": "https://i.scdn.co/image/fixturebb45e8e55ce7"
+              },
+              {
+                "height": 300,
+                "width": 300,
+                "url": "https://i.scdn.co/image/fixture2cdd05cca1fb"
+              },
+              {
+                "height": 64,
+                "width": 64,
+                "url": "https://i.scdn.co/image/fixturee9cd0e3b37e6"
+              }
+            ],
+            "is_playable": true,
+            "name": "Fixture name 65a499",
+            "release_date": "2013-05-20",
+            "release_date_precision": "day",
+            "total_tracks": 13,
+            "type": "album",
+            "uri": "spotify:album:BLcEp511rtyV9O84YkvQa4"
+          },
+          "artists": [
+            {
+              "external_urls": {
+                "spotify": "https://open.spotify.com/artist/xo39CoNdciVJxqaNumlrnV"
+              },
+              "href": "https://api.spotify.com/v1/artists/xo39CoNdciVJxqaNumlrnV",
+              "id": "xo39CoNdciVJxqaNumlrnV",
+              "name": "Fixture name c07ba2",
+              "type": "artist",
+              "uri": "spotify:artist:xo39CoNdciVJxqaNumlrnV"
+            },
+            {
+              "external_urls": {
+                "spotify": "https://open.spotify.com/artist/xx4a0QdjenUn5UBveJnxQO"
+              },
+              "href": "https://api.spotify.com/v1/artists/xx4a0QdjenUn5UBveJnxQO",
+              "id": "xx4a0QdjenUn5UBveJnxQO",
+              "name": "Fixture name 0e6f81",
+              "type": "artist",
+              "uri": "spotify:artist:xx4a0QdjenUn5UBveJnxQO"
+            }
+          ],
+          "disc_number": 1,
+          "duration_ms": 337560,
+          "explicit": false,
+          "external_ids": {},
+          "external_urls": {
+            "spotify": "https://open.spotify.com/track/2nXOUyxTTBIUej1M0i0mAI"
+          },
+          "href": "https://api.spotify.com/v1/tracks/2nXOUyxTTBIUej1M0i0mAI",
+          "id": "2nXOUyxTTBIUej1M0i0mAI",
+          "is_local": false,
+          "is_playable": true,
+          "name": "Fixture name 96d37e",
+          "track_number": 5,
+          "type": "track",
+          "uri": "spotify:track:2nXOUyxTTBIUej1M0i0mAI"
+        },
+        {
+          "album": {
+            "album_type": "album",
+            "artists": [
+              {
+                "external_urls": {
+                  "spotify": "https://open.spotify.com/artist/eU7CK0sy292JTgwYXZqwlC"
+                },
+                "href": "https://api.spotify.com/v1/artists/eU7CK0sy292JTgwYXZqwlC",
+                "id": "eU7CK0sy292JTgwYXZqwlC",
+                "name": "Fixture name 7707a5",
+                "type": "artist",
+                "uri": "spotify:artist:eU7CK0sy292JTgwYXZqwlC"
+              }
+            ],
+            "external_urls": {
+              "spotify": "https://open.spotify.com/album/TlftvYQuV3tGWElEAXebML"
+            },
+            "href": "https://api.spotify.com/v1/albums/TlftvYQuV3tGWElEAXebML",
+            "id": "TlftvYQuV3tGWElEAXebML",
+            "images": [
+              {
+                "height": 640,
+                "width": 640,
+                "url": "https://i.scdn.co/image/fixtured4a820dacc9e"
+              },
+              {
+                "height": 300,
+                "width": 300,
+                "url": "https://i.scdn.co/image/fixture8e8a3faf4d17"
+              },
+              {
+                "height": 64,
+                "width": 64,
+                "url": "https://i.scdn.co/image/fixture8d7b8a23f4cf"
+              }
+            ],
+            "is_playable": true,
+            "name": "Fixture name 220280",
+            "release_date": "2016-11-25",
+            "release_date_precision": "day",
+            "total_tracks": 18,
+            "type": "album",
+            "uri": "spotify:album:TlftvYQuV3tGWElEAXebML"
+          },
+          "artists": [
+            {
+              "external_urls": {
+                "spotify": "https://open.spotify.com/artist/eU7CK0sy292JTgwYXZqwlC"
+              },
+              "href": "https://api.spotify.com/v1/artists/eU7CK0sy292JTgwYXZqwlC",
+              "id": "eU7CK0sy292JTgwYXZqwlC",
+              "name": "Fixture name 7707a5",
+              "type": "artist",
+              "uri": "spotify:artist:eU7CK0sy292JTgwYXZqwlC"
+            },
+            {
+              "external_urls": {
+                "spotify": "https://open.spotify.com/artist/xo39CoNdciVJxqaNumlrnV"
+              },
+              "href": "https://api.spotify.com/v1/artists/xo39CoNdciVJxqaNumlrnV",
+              "id": "xo39CoNdciVJxqaNumlrnV",
+              "name": "Fixture name c07ba2",
+              "type": "artist",
+              "uri": "spotify:artist:xo39CoNdciVJxqaNumlrnV"
+            }
+          ],
+          "disc_number": 1,
+          "duration_ms": 230453,
+          "explicit": true,
+          "external_ids": {},
+          "external_urls": {
+            "spotify": "https://open.spotify.com/track/gZIT0s3n1kkRC3CNa4W7GA"
+          },
+          "href": "https://api.spotify.com/v1/tracks/gZIT0s3n1kkRC3CNa4W7GA",
+          "id": "gZIT0s3n1kkRC3CNa4W7GA",
+          "is_local": false,
+          "is_playable": true,
+          "name": "Fixture name 220280",
+          "track_number": 1,
+          "type": "track",
+          "uri": "spotify:track:gZIT0s3n1kkRC3CNa4W7GA"
+        }
+      ]
+    },
+    "artists": {
+      "href": "https://api.spotify.com/v1/search?offset=0&limit=2&query=daft%20punk&type=artist&locale=*",
+      "limit": 2,
+      "next": "https://api.spotify.com/v1/search?offset=2&limit=2&query=daft%20punk&type=artist&locale=*",
+      "offset": 0,
+      "previous": null,
+      "total": 3,
+      "items": [
+        {
+          "external_urls": {
+            "spotify": "https://open.spotify.com/artist/xo39CoNdciVJxqaNumlrnV"
+          },
+          "href": "https://api.spotify.com/v1/artists/xo39CoNdciVJxqaNumlrnV",
+          "id": "xo39CoNdciVJxqaNumlrnV",
+          "images": [
+            {
+              "url": "https://i.scdn.co/image/fixturea3be7cb2d6cf",
+              "height": 640,
+              "width": 640
+            },
+            {
+              "url": "https://i.scdn.co/image/fixture601764ce0d90",
+              "height": 320,
+              "width": 320
+            },
+            {
+              "url": "https://i.scdn.co/image/fixtureeadfc28653b6",
+              "height": 160,
+              "width": 160
+            }
+          ],
+          "name": "Fixture name c07ba2",
+          "type": "artist",
+          "uri": "spotify:artist:xo39CoNdciVJxqaNumlrnV"
+        },
+        {
+          "external_urls": {
+            "spotify": "https://open.spotify.com/artist/XGRD2SEbyC83KOyxYByrkD"
+          },
+          "href": "https://api.spotify.com/v1/artists/XGRD2SEbyC83KOyxYByrkD",
+          "id": "XGRD2SEbyC83KOyxYByrkD",
+          "images": [],
+          "name": "Fixture name 575896",
+          "type": "artist",
+          "uri": "spotify:artist:XGRD2SEbyC83KOyxYByrkD"
+        }
+      ]
+    },
+    "albums": {
+      "href": "https://api.spotify.com/v1/search?offset=0&limit=2&query=daft%20punk&type=album&locale=*",
+      "limit": 2,
+      "next": "https://api.spotify.com/v1/search?offset=2&limit=2&query=daft%20punk&type=album&locale=*",
+      "offset": 0,
+      "previous": null,
+      "total": 4,
+      "items": [
+        {
+          "album_type": "single",
+          "total_tracks": 1,
+          "external_urls": {
+            "spotify": "https://open.spotify.com/album/fMj7164guZamu75uCG0tT1"
+          },
+          "href": "https://api.spotify.com/v1/albums/fMj7164guZamu75uCG0tT1",
+          "id": "fMj7164guZamu75uCG0tT1",
+          "images": [
+            {
+              "height": 640,
+              "url": "https://i.scdn.co/image/fixture7cb8a076a610",
+              "width": 640
+            },
+            {
+              "height": 300,
+              "url": "https://i.scdn.co/image/fixturef0c6a46c0379",
+              "width": 300
+            },
+            {
+              "height": 64,
+              "url": "https://i.scdn.co/image/fixtured6edc740fc52",
+              "width": 64
+            }
+          ],
+          "name": "Fixture name 59283e",
+          "release_date": "2013-04-19",
+          "release_date_precision": "day",
+          "type": "album",
+          "uri": "spotify:album:fMj7164guZamu75uCG0tT1",
+          "artists": [
+            {
+              "external_urls": {
+                "spotify": "https://open.spotify.com/artist/xo39CoNdciVJxqaNumlrnV"
+              },
+              "href": "https://api.spotify.com/v1/artists/xo39CoNdciVJxqaNumlrnV",
+              "id": "xo39CoNdciVJxqaNumlrnV",
+              "name": "Fixture name c07ba2",
+              "type": "artist",
+              "uri": "spotify:artist:xo39CoNdciVJxqaNumlrnV"
+            },
+            {
+              "external_urls": {
+                "spotify": "https://open.spotify.com/artist/wbpgWiUEDb9vUCxMF66e6E"
+              },
+              "href": "https://api.spotify.com/v1/artists/wbpgWiUEDb9vUCxMF66e6E",
+              "id": "wbpgWiUEDb9vUCxMF66e6E",
+              "name": "Fixture name a7f0b0",
+              "type": "artist",
+              "uri": "spotify:artist:wbpgWiUEDb9vUCxMF66e6E"
+            },
+            {
+              "external_urls": {
+                "spotify": "https://open.spotify.com/artist/gNCOh78LERBeX8Q6qAovVt"
+              },
+              "href": "https://api.spotify.com/v1/artists/gNCOh78LERBeX8Q6qAovVt",
+              "id": "gNCOh78LERBeX8Q6qAovVt",
+              "name": "Fixture name 4de102",
+              "type": "artist",
+              "uri": "spotify:artist:gNCOh78LERBeX8Q6qAovVt"
+            }
+          ]
+        },
+        {
+          "album_type": "album",
+          "total_tracks": 14,
+          "external_urls": {
+            "spotify": "https://open.spotify.com/album/gVi5q8DiJMcsLOUzT6VkeX"
+          },
+          "href": "https://api.spotify.com/v1/albums/gVi5q8DiJMcsLOUzT6VkeX",
+          "id": "gVi5q8DiJMcsLOUzT6VkeX",
+          "images": [
+            {
+              "height": 640,
+              "url": "https://i.scdn.co/image/fixture4a692f72baac",
+              "width": 640
+            },
+            {
+              "height": 300,
+              "url": "https://i.scdn.co/image/fixturec7477456a469",
+              "width": 300
+            },
+            {
+              "height": 64,
+              "url": "https://i.scdn.co/image/fixture80d9744bbe22",
+              "width": 64
+            }
+          ],
+          "name": "Fixture name 80fc40",
+          "release_date": "2001-03-12",
+          "release_date_precision": "day",
+          "type": "album",
+          "uri": "spotify:album:gVi5q8DiJMcsLOUzT6VkeX",
+          "artists": [
+            {
+              "external_urls": {
+                "spotify": "https://open.spotify.com/artist/xo39CoNdciVJxqaNumlrnV"
+              },
+              "href": "https://api.spotify.com/v1/artists/xo39CoNdciVJxqaNumlrnV",
+              "id": "xo39CoNdciVJxqaNumlrnV",
+              "name": "Fixture name c07ba2",
+              "type": "artist",
+              "uri": "spotify:artist:xo39CoNdciVJxqaNumlrnV"
+            }
+          ]
+        }
+      ]
+    },
+    "playlists": {
+      "href": "https://api.spotify.com/v1/search?offset=0&limit=2&query=daft%20punk&type=playlist&locale=*",
+      "limit": 2,
+      "next": "https://api.spotify.com/v1/search?offset=2&limit=2&query=daft%20punk&type=playlist&locale=*",
+      "offset": 0,
+      "previous": null,
+      "total": 3,
+      "items": [
+        null,
+        null
+      ]
+    },
+    "shows": {
+      "href": "https://api.spotify.com/v1/search?offset=0&limit=2&query=daft%20punk&type=show&locale=*",
+      "limit": 2,
+      "next": "https://api.spotify.com/v1/search?offset=2&limit=2&query=daft%20punk&type=show&locale=*",
+      "offset": 0,
+      "previous": null,
+      "total": 5,
+      "items": [
+        {
+          "copyrights": [],
+          "description": "Fixture description 088dee",
+          "html_description": "Hablamos de la banda daft punk",
+          "explicit": false,
+          "external_urls": {
+            "spotify": "https://open.spotify.com/show/mDTE8y1kp7pv7Y6rVnH8K5"
+          },
+          "href": "https://api.spotify.com/v1/shows/mDTE8y1kp7pv7Y6rVnH8K5",
+          "id": "mDTE8y1kp7pv7Y6rVnH8K5",
+          "images": [
+            {
+              "height": 640,
+              "url": "https://i.scdn.co/image/fixture38c49cef88e0",
+              "width": 640
+            },
+            {
+              "height": 300,
+              "url": "https://i.scdn.co/image/fixture3b45caed3152",
+              "width": 300
+            },
+            {
+              "height": 64,
+              "url": "https://i.scdn.co/image/fixturec099afaa542c",
+              "width": 64
+            }
+          ],
+          "is_externally_hosted": false,
+          "languages": [
+            "es"
+          ],
+          "media_type": "audio",
+          "name": "Fixture name c07ba2",
+          "type": "show",
+          "uri": "spotify:show:mDTE8y1kp7pv7Y6rVnH8K5",
+          "total_episodes": 2
+        },
+        {
+          "copyrights": [],
+          "description": "Fixture description af8d6d",
+          "html_description": "This podcast is for school purposes only",
+          "explicit": false,
+          "external_urls": {
+            "spotify": "https://open.spotify.com/show/VKSAAZ1BCFJloekZRPsVyF"
+          },
+          "href": "https://api.spotify.com/v1/shows/VKSAAZ1BCFJloekZRPsVyF",
+          "id": "VKSAAZ1BCFJloekZRPsVyF",
+          "images": [
+            {
+              "height": 640,
+              "url": "https://i.scdn.co/image/fixturea25e26cc9d9d",
+              "width": 640
+            },
+            {
+              "height": 300,
+              "url": "https://i.scdn.co/image/fixture50a82ad1e3dd",
+              "width": 300
+            },
+            {
+              "height": 64,
+              "url": "https://i.scdn.co/image/fixture4e6eb213933f",
+              "width": 64
+            }
+          ],
+          "is_externally_hosted": false,
+          "languages": [
+            "en"
+          ],
+          "media_type": "audio",
+          "name": "Fixture name a9584a",
+          "type": "show",
+          "uri": "spotify:show:VKSAAZ1BCFJloekZRPsVyF",
+          "total_episodes": 1
+        }
+      ]
+    }
+  }
+}

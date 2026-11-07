@@ -1,0 +1,531 @@
+{
+  "status": 200,
+  "body": {
+    "href": "https://api.spotify.com/v1/me/playlists?offset=0&limit=50&locale=*",
+    "limit": 50,
+    "next": null,
+    "offset": 0,
+    "previous": null,
+    "total": 13,
+    "items": [
+      {
+        "collaborative": false,
+        "description": "",
+        "external_urls": {
+          "spotify": "https://open.spotify.com/playlist/nEnJZpzoUj3D5PekFTVxx0"
+        },
+        "href": "https://api.spotify.com/v1/playlists/nEnJZpzoUj3D5PekFTVxx0",
+        "id": "nEnJZpzoUj3D5PekFTVxx0",
+        "images": [
+          {
+            "height": null,
+            "url": "https://i.scdn.co/image/fixture8900ddb4c337",
+            "width": null
+          }
+        ],
+        "name": "Fixture name bc3b3b",
+        "owner": {
+          "display_name": "Fixture display_name 7a1807",
+          "external_urls": {
+            "spotify": "https://open.spotify.com/user/fixture"
+          },
+          "href": "https://api.spotify.com/v1/users/fixture",
+          "id": "user9977f4a079",
+          "type": "user",
+          "uri": "spotify:user:fixture"
+        },
+        "primary_color": null,
+        "public": true,
+        "snapshot_id": "Fixture snapshot_id ef2a07",
+        "items": {
+          "href": "https://api.spotify.com/v1/playlists/nEnJZpzoUj3D5PekFTVxx0/items",
+          "total": 33
+        },
+        "type": "playlist",
+        "uri": "spotify:playlist:nEnJZpzoUj3D5PekFTVxx0"
+      },
+      {
+        "collaborative": false,
+        "description": "Fixture description 6b3c79",
+        "external_urls": {
+          "spotify": "https://open.spotify.com/playlist/YVK66EXgjoFAv6BXp4s6oH"
+        },
+        "href": "https://api.spotify.com/v1/playlists/YVK66EXgjoFAv6BXp4s6oH",
+        "id": "YVK66EXgjoFAv6BXp4s6oH",
+        "images": [
+          {
+            "height": null,
+            "url": "https://i.scdn.co/image/fixture3c7bb399e5b3",
+            "width": null
+          }
+        ],
+        "name": "Fixture name 2d0ef3",
+        "owner": {
+          "display_name": "Fixture display_name fab01e",
+          "external_urls": {
+            "spotify": "https://open.spotify.com/user/fixture"
+          },
+          "href": "https://api.spotify.com/v1/users/fixture",
+          "id": "userd4cfee63ce",
+          "type": "user",
+          "uri": "spotify:user:fixture"
+        },
+        "primary_color": null,
+        "public": true,
+        "snapshot_id": "Fixture snapshot_id f480f3",
+        "items": {
+          "href": "https://api.spotify.com/v1/playlists/YVK66EXgjoFAv6BXp4s6oH/items",
+          "total": 25
+        },
+        "type": "playlist",
+        "uri": "spotify:playlist:YVK66EXgjoFAv6BXp4s6oH"
+      },
+      {
+        "collaborative": false,
+        "description": "Fixture description 5215ef",
+        "external_urls": {
+          "spotify": "https://open.spotify.com/playlist/jwQpuTwBPinG3pFIifYm0u"
+        },
+        "href": "https://api.spotify.com/v1/playlists/jwQpuTwBPinG3pFIifYm0u",
+        "id": "jwQpuTwBPinG3pFIifYm0u",
+        "images": [
+          {
+            "height": null,
+            "url": "https://i.scdn.co/image/fixture6e202164ff98",
+            "width": null
+          }
+        ],
+        "name": "Fixture name 480d93",
+        "owner": {
+          "display_name": "Fixture display_name 9ed1ce",
+          "external_urls": {
+            "spotify": "https://open.spotify.com/user/fixture"
+          },
+          "href": "https://api.spotify.com/v1/users/fixture",
+          "id": "user9ed1ce5b5f",
+          "type": "user",
+          "uri": "spotify:user:fixture"
+        },
+        "primary_color": null,
+        "public": true,
+        "snapshot_id": "Fixture snapshot_id d96730",
+        "items": {
+          "href": "https://api.spotify.com/v1/playlists/jwQpuTwBPinG3pFIifYm0u/items",
+          "total": 101
+        },
+        "type": "playlist",
+        "uri": "spotify:playlist:jwQpuTwBPinG3pFIifYm0u"
+      },
+      {
+        "collaborative": false,
+        "description": "",
+        "external_urls": {
+          "spotify": "https://open.spotify.com/playlist/8WcFuhvHH9VS1pIDw2QI11"
+        },
+        "href": "https://api.spotify.com/v1/playlists/8WcFuhvHH9VS1pIDw2QI11",
+        "id": "8WcFuhvHH9VS1pIDw2QI11",
+        "images": [
+          {
+            "height": null,
+            "url": "https://i.scdn.co/image/fixturebe4a3762a836",
+            "width": null
+          }
+        ],
+        "name": "Fixture name a9fa01",
+        "owner": {
+          "display_name": "Fixture display_name 5a4055",
+          "external_urls": {
+            "spotify": "https://open.spotify.com/user/fixture"
+          },
+          "href": "https://api.spotify.com/v1/users/fixture",
+          "id": "user301f56d08d",
+          "type": "user",
+          "uri": "spotify:user:fixture"
+        },
+        "primary_color": null,
+        "public": true,
+        "snapshot_id": "Fixture snapshot_id a2ec70",
+        "items": {
+          "href": "https://api.spotify.com/v1/playlists/8WcFuhvHH9VS1pIDw2QI11/items",
+          "total": 117
+        },
+        "type": "playlist",
+        "uri": "spotify:playlist:8WcFuhvHH9VS1pIDw2QI11"
+      },
+      {
+        "collaborative": false,
+        "description": "",
+        "external_urls": {
+          "spotify": "https://open.spotify.com/playlist/eV5bDGKfOd89rtMoK5JPL5"
+        },
+        "href": "https://api.spotify.com/v1/playlists/eV5bDGKfOd89rtMoK5JPL5",
+        "id": "eV5bDGKfOd89rtMoK5JPL5",
+        "images": [
+          {
+            "height": 640,
+            "url": "https://i.scdn.co/image/fixture4c074fbfa6e8",
+            "width": 640
+          },
+          {
+            "height": 300,
+            "url": "https://i.scdn.co/image/fixture7f369b287cb3",
+            "width": 300
+          },
+          {
+            "height": 60,
+            "url": "https://i.scdn.co/image/fixture3c0e085a746f",
+            "width": 60
+          }
+        ],
+        "name": "Fixture name c758c7",
+        "owner": {
+          "display_name": "Fixture display_name fab01e",
+          "external_urls": {
+            "spotify": "https://open.spotify.com/user/fixture"
+          },
+          "href": "https://api.spotify.com/v1/users/fixture",
+          "id": "userd4cfee63ce",
+          "type": "user",
+          "uri": "spotify:user:fixture"
+        },
+        "primary_color": null,
+        "public": true,
+        "snapshot_id": "Fixture snapshot_id e50c4a",
+        "items": {
+          "href": "https://api.spotify.com/v1/playlists/eV5bDGKfOd89rtMoK5JPL5/items",
+          "total": 52
+        },
+        "type": "playlist",
+        "uri": "spotify:playlist:eV5bDGKfOd89rtMoK5JPL5"
+      },
+      {
+        "collaborative": false,
+        "description": "",
+        "external_urls": {
+          "spotify": "https://open.spotify.com/playlist/h2XvFJl6YdWBWHE8ATv2ak"
+        },
+        "href": "https://api.spotify.com/v1/playlists/h2XvFJl6YdWBWHE8ATv2ak",
+        "id": "h2XvFJl6YdWBWHE8ATv2ak",
+        "images": [
+          {
+            "height": 640,
+            "url": "https://i.scdn.co/image/fixturee936534579a3",
+            "width": 640
+          },
+          {
+            "height": 300,
+            "url": "https://i.scdn.co/image/fixturef8f15a354c60",
+            "width": 300
+          },
+          {
+            "height": 60,
+            "url": "https://i.scdn.co/image/fixturef128dac28129",
+            "width": 60
+          }
+        ],
+        "name": "Fixture name fcb5f4",
+        "owner": {
+          "display_name": "Fixture display_name fab01e",
+          "external_urls": {
+            "spotify": "https://open.spotify.com/user/fixture"
+          },
+          "href": "https://api.spotify.com/v1/users/fixture",
+          "id": "userd4cfee63ce",
+          "type": "user",
+          "uri": "spotify:user:fixture"
+        },
+        "primary_color": null,
+        "public": true,
+        "snapshot_id": "Fixture snapshot_id 1a22ec",
+        "items": {
+          "href": "https://api.spotify.com/v1/playlists/h2XvFJl6YdWBWHE8ATv2ak/items",
+          "total": 60
+        },
+        "type": "playlist",
+        "uri": "spotify:playlist:h2XvFJl6YdWBWHE8ATv2ak"
+      },
+      {
+        "collaborative": false,
+        "description": "",
+        "external_urls": {
+          "spotify": "https://open.spotify.com/playlist/sVoCN3vzFZRUoKSHt13sKH"
+        },
+        "href": "https://api.spotify.com/v1/playlists/sVoCN3vzFZRUoKSHt13sKH",
+        "id": "sVoCN3vzFZRUoKSHt13sKH",
+        "images": [
+          {
+            "height": 640,
+            "url": "https://i.scdn.co/image/fixture911c3d2685f8",
+            "width": 640
+          },
+          {
+            "height": 300,
+            "url": "https://i.scdn.co/image/fixturead6dcdaea35e",
+            "width": 300
+          },
+          {
+            "height": 60,
+            "url": "https://i.scdn.co/image/fixtured24b284bd6b7",
+            "width": 60
+          }
+        ],
+        "name": "Fixture name f65255",
+        "owner": {
+          "display_name": "Fixture display_name fab01e",
+          "external_urls": {
+            "spotify": "https://open.spotify.com/user/fixture"
+          },
+          "href": "https://api.spotify.com/v1/users/fixture",
+          "id": "userd4cfee63ce",
+          "type": "user",
+          "uri": "spotify:user:fixture"
+        },
+        "primary_color": null,
+        "public": true,
+        "snapshot_id": "Fixture snapshot_id 6a5908",
+        "items": {
+          "href": "https://api.spotify.com/v1/playlists/sVoCN3vzFZRUoKSHt13sKH/items",
+          "total": 79
+        },
+        "type": "playlist",
+        "uri": "spotify:playlist:sVoCN3vzFZRUoKSHt13sKH"
+      },
+      {
+        "collaborative": false,
+        "description": "",
+        "external_urls": {
+          "spotify": "https://open.spotify.com/playlist/P8pYA4EA2Jc0Z3Y9ANBhNJ"
+        },
+        "href": "https://api.spotify.com/v1/playlists/P8pYA4EA2Jc0Z3Y9ANBhNJ",
+        "id": "P8pYA4EA2Jc0Z3Y9ANBhNJ",
+        "images": [
+          {
+            "height": 640,
+            "url": "https://i.scdn.co/image/fixture8501fbebd4f7",
+            "width": 640
+          },
+          {
+            "height": 300,
+            "url": "https://i.scdn.co/image/fixture7fb229a190c7",
+            "width": 300
+          },
+          {
+            "height": 60,
+            "url": "https://i.scdn.co/image/fixture86cd4aa005a9",
+            "width": 60
+          }
+        ],
+        "name": "Fixture name 560d81",
+        "owner": {
+          "display_name": "Fixture display_name fab01e",
+          "external_urls": {
+            "spotify": "https://open.spotify.com/user/fixture"
+          },
+          "href": "https://api.spotify.com/v1/users/fixture",
+          "id": "userd4cfee63ce",
+          "type": "user",
+          "uri": "spotify:user:fixture"
+        },
+        "primary_color": null,
+        "public": true,
+        "snapshot_id": "Fixture snapshot_id d18f98",
+        "items": {
+          "href": "https://api.spotify.com/v1/playlists/P8pYA4EA2Jc0Z3Y9ANBhNJ/items",
+          "total": 61
+        },
+        "type": "playlist",
+        "uri": "spotify:playlist:P8pYA4EA2Jc0Z3Y9ANBhNJ"
+      },
+      {
+        "collaborative": false,
+        "description": "",
+        "external_urls": {
+          "spotify": "https://open.spotify.com/playlist/7U6owSyOuFsZsskRizqGkJ"
+        },
+        "href": "https://api.spotify.com/v1/playlists/7U6owSyOuFsZsskRizqGkJ",
+        "id": "7U6owSyOuFsZsskRizqGkJ",
+        "images": [
+          {
+            "height": null,
+            "url": "https://i.scdn.co/image/fixture04aa67a1981f",
+            "width": null
+          }
+        ],
+        "name": "Fixture name 7ed41c",
+        "owner": {
+          "display_name": "Fixture display_name 780e03",
+          "external_urls": {
+            "spotify": "https://open.spotify.com/user/fixture"
+          },
+          "href": "https://api.spotify.com/v1/users/fixture",
+          "id": "user56b162ac5c",
+          "type": "user",
+          "uri": "spotify:user:fixture"
+        },
+        "primary_color": null,
+        "public": false,
+        "snapshot_id": "Fixture snapshot_id 56cbb2",
+        "items": {
+          "href": "https://api.spotify.com/v1/playlists/7U6owSyOuFsZsskRizqGkJ/items",
+          "total": 71
+        },
+        "type": "playlist",
+        "uri": "spotify:playlist:7U6owSyOuFsZsskRizqGkJ"
+      },
+      {
+        "collaborative": false,
+        "description": "",
+        "external_urls": {
+          "spotify": "https://open.spotify.com/playlist/I8t73agBRxqxnnlVpbvM05"
+        },
+        "href": "https://api.spotify.com/v1/playlists/I8t73agBRxqxnnlVpbvM05",
+        "id": "I8t73agBRxqxnnlVpbvM05",
+        "images": [
+          {
+            "height": null,
+            "url": "https://i.scdn.co/image/fixture20d736d1a345",
+            "width": null
+          }
+        ],
+        "name": "Fixture name 8638c5",
+        "owner": {
+          "display_name": "Fixture display_name fcf9a7",
+          "external_urls": {
+            "spotify": "https://open.spotify.com/user/fixture"
+          },
+          "href": "https://api.spotify.com/v1/users/fixture",
+          "id": "user31a31536c6",
+          "type": "user",
+          "uri": "spotify:user:fixture"
+        },
+        "primary_color": null,
+        "public": true,
+        "snapshot_id": "Fixture snapshot_id 73d220",
+        "items": {
+          "href": "https://api.spotify.com/v1/playlists/I8t73agBRxqxnnlVpbvM05/items",
+          "total": 125
+        },
+        "type": "playlist",
+        "uri": "spotify:playlist:I8t73agBRxqxnnlVpbvM05"
+      },
+      {
+        "collaborative": false,
+        "description": "",
+        "external_urls": {
+          "spotify": "https://open.spotify.com/playlist/Ho7qQ7RUQmP2hr1HRWGubY"
+        },
+        "href": "https://api.spotify.com/v1/playlists/Ho7qQ7RUQmP2hr1HRWGubY",
+        "id": "Ho7qQ7RUQmP2hr1HRWGubY",
+        "images": [
+          {
+            "height": 640,
+            "url": "https://i.scdn.co/image/fixture1367381c30d7",
+            "width": 640
+          },
+          {
+            "height": 300,
+            "url": "https://i.scdn.co/image/fixture368ca78e34fe",
+            "width": 300
+          },
+          {
+            "height": 60,
+            "url": "https://i.scdn.co/image/fixture0384e41ebd9e",
+            "width": 60
+          }
+        ],
+        "name": "Fixture name 2cfc78",
+        "owner": {
+          "display_name": "Fixture display_name e6ce94",
+          "external_urls": {
+            "spotify": "https://open.spotify.com/user/fixture"
+          },
+          "href": "https://api.spotify.com/v1/users/fixture",
+          "id": "usera18a630dee",
+          "type": "user",
+          "uri": "spotify:user:fixture"
+        },
+        "primary_color": null,
+        "public": true,
+        "snapshot_id": "Fixture snapshot_id fd9e32",
+        "items": {
+          "href": "https://api.spotify.com/v1/playlists/Ho7qQ7RUQmP2hr1HRWGubY/items",
+          "total": 103
+        },
+        "type": "playlist",
+        "uri": "spotify:playlist:Ho7qQ7RUQmP2hr1HRWGubY"
+      },
+      {
+        "collaborative": false,
+        "description": "",
+        "external_urls": {
+          "spotify": "https://open.spotify.com/playlist/LaFi5mYCXtfnGrpAl0fpyV"
+        },
+        "href": "https://api.spotify.com/v1/playlists/LaFi5mYCXtfnGrpAl0fpyV",
+        "id": "LaFi5mYCXtfnGrpAl0fpyV",
+        "images": [
+          {
+            "height": null,
+            "url": "https://i.scdn.co/image/fixture98b693f96a4c",
+            "width": null
+          }
+        ],
+        "name": "Fixture name 831e98",
+        "owner": {
+          "display_name": "Fixture display_name fcf9a7",
+          "external_urls": {
+            "spotify": "https://open.spotify.com/user/fixture"
+          },
+          "href": "https://api.spotify.com/v1/users/fixture",
+          "id": "user31a31536c6",
+          "type": "user",
+          "uri": "spotify:user:fixture"
+        },
+        "primary_color": null,
+        "public": true,
+        "snapshot_id": "Fixture snapshot_id ae8e2b",
+        "items": {
+          "href": "https://api.spotify.com/v1/playlists/LaFi5mYCXtfnGrpAl0fpyV/items",
+          "total": 56
+        },
+        "type": "playlist",
+        "uri": "spotify:playlist:LaFi5mYCXtfnGrpAl0fpyV"
+      },
+      {
+        "collaborative": false,
+        "description": "",
+        "external_urls": {
+          "spotify": "https://open.spotify.com/playlist/iTnvhhBJqj31nuvlxExQZn"
+        },
+        "href": "https://api.spotify.com/v1/playlists/iTnvhhBJqj31nuvlxExQZn",
+        "id": "iTnvhhBJqj31nuvlxExQZn",
+        "images": [
+          {
+            "height": null,
+            "url": "https://i.scdn.co/image/fixture37d3460f318f",
+            "width": null
+          }
+        ],
+        "name": "Fixture name cb76aa",
+        "owner": {
+          "display_name": "Fixture display_name fab01e",
+          "external_urls": {
+            "spotify": "https://open.spotify.com/user/fixture"
+          },
+          "href": "https://api.spotify.com/v1/users/fixture",
+          "id": "userd4cfee63ce",
+          "type": "user",
+          "uri": "spotify:user:fixture"
+        },
+        "primary_color": null,
+        "public": true,
+        "snapshot_id": "Fixture snapshot_id ebfe22",
+        "items": {
+          "href": "https://api.spotify.com/v1/playlists/iTnvhhBJqj31nuvlxExQZn/items",
+          "total": 65
+        },
+        "type": "playlist",
+        "uri": "spotify:playlist:iTnvhhBJqj31nuvlxExQZn"
+      }
+    ]
+  }
+}

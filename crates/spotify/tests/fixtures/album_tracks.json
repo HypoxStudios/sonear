@@ -1,0 +1,67 @@
+{
+  "status": 200,
+  "body": {
+    "href": "https://api.spotify.com/v1/albums/4m2880jivSbbyEGAKfITCa/tracks?offset=0&limit=2&locale=*",
+    "items": [
+      {
+        "artists": [
+          {
+            "external_urls": {
+              "spotify": "https://open.spotify.com/artist/4tZwfgrHOc3mvqYlEYSvVi"
+            },
+            "href": "https://api.spotify.com/v1/artists/4tZwfgrHOc3mvqYlEYSvVi",
+            "id": "4tZwfgrHOc3mvqYlEYSvVi",
+            "name": "Daft Punk",
+            "type": "artist",
+            "uri": "spotify:artist:4tZwfgrHOc3mvqYlEYSvVi"
+          }
+        ],
+        "disc_number": 1,
+        "duration_ms": 275386,
+        "explicit": false,
+        "external_urls": {
+          "spotify": "https://open.spotify.com/track/0dEIca2nhcxDUV8C5QkPYb"
+        },
+        "href": "https://api.spotify.com/v1/tracks/0dEIca2nhcxDUV8C5QkPYb",
+        "id": "0dEIca2nhcxDUV8C5QkPYb",
+        "name": "Give Life Back to Music",
+        "track_number": 1,
+        "type": "track",
+        "uri": "spotify:track:0dEIca2nhcxDUV8C5QkPYb",
+        "is_local": false
+      },
+      {
+        "artists": [
+          {
+            "external_urls": {
+              "spotify": "https://open.spotify.com/artist/4tZwfgrHOc3mvqYlEYSvVi"
+            },
+            "href": "https://api.spotify.com/v1/artists/4tZwfgrHOc3mvqYlEYSvVi",
+            "id": "4tZwfgrHOc3mvqYlEYSvVi",
+            "name": "Daft Punk",
+            "type": "artist",
+            "uri": "spotify:artist:4tZwfgrHOc3mvqYlEYSvVi"
+          }
+        ],
+        "disc_number": 1,
+        "duration_ms": 322146,
+        "explicit": false,
+        "external_urls": {
+          "spotify": "https://open.spotify.com/track/3ctALmweZBapfBdFiIVpji"
+        },
+        "href": "https://api.spotify.com/v1/tracks/3ctALmweZBapfBdFiIVpji",
+        "id": "3ctALmweZBapfBdFiIVpji",
+        "name": "The Game of Love",
+        "track_number": 2,
+        "type": "track",
+        "uri": "spotify:track:3ctALmweZBapfBdFiIVpji",
+        "is_local": false
+      }
+    ],
+    "limit": 2,
+    "next": "https://api.spotify.com/v1/albums/4m2880jivSbbyEGAKfITCa/tracks?offset=2&limit=2&locale=*",
+    "offset": 0,
+    "previous": null,
+    "total": 13
+  }
+}
