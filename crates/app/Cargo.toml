@@ -1,0 +1,40 @@
+[package]
+name = "sonear"
+description = "Sonear desktop client"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "sonear"
+path = "src/main.rs"
+
+[features]
+demo = ["sonear-core/demo"]
+
+[dependencies]
+sonear-core.workspace = true
+sonear-soloist.workspace = true
+sonear-spotify.workspace = true
+anyhow.workspace = true
+bytes.workspace = true
+chrono.workspace = true
+futures-util.workspace = true
+serde.workspace = true
+gpui-kit.workspace = true
+reqwest.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+windows = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_System_Threading",
+    "Win32_Security",
+] }
+
+[build-dependencies]
+embed-resource.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
