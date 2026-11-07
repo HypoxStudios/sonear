@@ -18,7 +18,7 @@ pub enum ConfigError {
 
 /// Version of the end-user agreement and privacy policy. Bump it when either
 /// changes, so everyone is asked to accept again.
-pub const LEGAL_VERSION: u32 = 2;
+pub const LEGAL_VERSION: u32 = 3;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -43,6 +43,8 @@ pub struct Config {
     pub cover_accent: bool,
     /// Whether closing the window keeps Sonear running in the tray.
     pub close_to_tray: bool,
+    /// Whether Sonear asks GitHub for new versions and downloads them.
+    pub check_for_updates: bool,
     /// Whether the one-time note about the tray icon was shown.
     pub tray_hint_shown: bool,
     /// Top-left corner of the mini player in logical pixels, once the user has placed it.
@@ -82,6 +84,7 @@ impl Default for Config {
             lyrics_enabled: true,
             cover_accent: true,
             close_to_tray: true,
+            check_for_updates: true,
             tray_hint_shown: false,
             mini_player_position: None,
             right_panel: RightPanelConfig::default(),

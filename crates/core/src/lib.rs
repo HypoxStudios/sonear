@@ -22,6 +22,7 @@ pub mod queue;
 pub mod secrets;
 pub mod seen;
 pub mod soloist_backend;
+pub mod update;
 
 use std::sync::Arc;
 

@@ -1,6 +1,6 @@
 # Sonear privacy policy
 
-Last updated: 6 November 2026
+Last updated: 7 November 2026
 
 Sonear is maintained by Hypox Studios ("we"). This policy explains what Sonear collects, where it keeps it, and what it sends. Collecting and using your data in Sonear is subject to this policy.
 
@@ -30,6 +30,7 @@ Everything stays on your computer:
 | Track, album and playlist details | `%LOCALAPPDATA%\Sonear\cache` by default | Up to 7 days |
 | Cover art | `%LOCALAPPDATA%\Sonear\cache\covers` by default | Up to 30 days, at most 200 MB |
 | Soloist's own data, including its pairing | `%LOCALAPPDATA%\Sonear\soloist` by default | Until you delete your data |
+| A downloaded Sonear update, waiting for you to restart | `%LOCALAPPDATA%\Sonear\updates` by default | Until you restart into it, or a newer one replaces it |
 
 You can move the data folder in Settings; the table shows the default location. Sonear builds no listening statistics or profile of you. The history is a plain list of plays.
 
@@ -37,6 +38,7 @@ You can move the data folder in Settings; the table shows the default location. 
 
 - **Spotify.** Sonear talks to the Spotify Web API, and Soloist talks to Spotify to play music. Spotify's [privacy policy](https://www.spotify.com/legal/privacy-policy/) covers what Spotify does with this.
 - **LRCLIB.** While the lyrics panel is open, Sonear sends the playing track's title, artist, album and length to [lrclib.net](https://lrclib.net) to fetch lyrics. Lyrics are kept in memory only and never saved to disk. You can turn lyrics off in Settings.
+- **GitHub.** Unless you turn it off in Settings, Sonear asks GitHub for the latest release when it starts and every few hours, and downloads new versions from it. GitHub sees your IP address like any website, and [GitHub's privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement) covers it. Nothing about your account or your music is sent.
 - **Spotify's download server.** When you install or update Soloist, Sonear downloads it from Spotify.
 - **Windows.** Sonear shows the playing song's title, artist, album and cover in Windows' media controls, where other apps on your computer can read them.
 

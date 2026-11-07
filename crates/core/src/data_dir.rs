@@ -62,6 +62,14 @@ pub fn same_path(a: &Path, b: &Path) -> bool {
     parts(a) == parts(b)
 }
 
+/// Whether two paths are the same place on disk. Windows may spell a folder with
+/// its short name (`RUNNER~1`), so existing paths are compared as their real ones.
+pub fn same_place(a: &Path, b: &Path) -> bool {
+    let real = |path: &Path| fs::canonicalize(path).unwrap_or_else(|_| path.to_owned());
+
+    same_path(&real(a), &real(b))
+}
+
 /// The folder Sonear's data goes in for a folder the user picked: always
 /// `<picked>\Sonear`, unless that is already the name. The folder is later
 /// removed recursively, so it must never be one of the user's own.
@@ -321,6 +329,22 @@ mod tests {
         assert!(!is_within(Path::new(r"C:\A\Bc"), Path::new(r"C:\A\B")));
         assert!(!is_within(Path::new(r"C:\A"), Path::new(r"C:\A\B")));
         assert!(same_path(Path::new(r"C:\A\B"), Path::new(r"c:\a\b")));
+    }
+
+    #[test]
+    fn the_same_place_can_be_spelled_differently() {
+        let dir = tempfile::tempdir().unwrap();
+        let other = dir.path().join("other");
+
+        fs::create_dir(&other).unwrap();
+
+        assert!(same_place(dir.path(), &other.join("..")));
+        assert!(!same_path(dir.path(), &other.join("..")));
+        assert!(!same_place(dir.path(), &other));
+        assert!(same_place(
+            Path::new(r"C:\Gone\Here"),
+            Path::new(r"c:\gone\here")
+        ));
     }
 
     #[test]

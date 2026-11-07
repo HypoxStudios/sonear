@@ -24,6 +24,8 @@ futures-util = "0.3"
 gpui-kit = "=0.9.0"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 keyring = "4.2"
+minisign = "0.10"
+minisign-verify = "0.3"
 rand = "0.9"
 raw-window-handle = "0.6"
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "stream"] }

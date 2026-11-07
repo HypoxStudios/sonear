@@ -65,6 +65,11 @@ impl AppPaths {
         self.local_root.join("history.db")
     }
 
+    /// Where downloaded updates wait until the user restarts into them.
+    pub fn update_dir(&self) -> PathBuf {
+        self.local_root.join("updates")
+    }
+
     pub fn queue_file(&self) -> PathBuf {
         self.local_root.join("queue.json")
     }
