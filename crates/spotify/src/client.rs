@@ -231,10 +231,18 @@ impl SpotifyClient {
                     waited = true;
                 }
                 status => {
-                    return Err(SpotifyError::Api {
+                    let message = error_message(&bytes);
+
+                    warn!(
                         status,
-                        message: error_message(&bytes),
-                    });
+                        %method,
+                        path = url.path(),
+                        query = url.query().unwrap_or_default(),
+                        %message,
+                        "Spotify request failed"
+                    );
+
+                    return Err(SpotifyError::Api { status, message });
                 }
             }
         }
