@@ -86,8 +86,8 @@ impl PlayerBar {
     }
 
     /// Only this view repaints each tick, and only while playing in a window
-    /// that is on screen, so an idle or hidden app uses no CPU and pages stay
-    /// untouched.
+    /// that is on screen, so an idle or hidden app runs no repaint timer and
+    /// pages stay untouched.
     fn sync_ticker(&mut self, cx: &mut Context<Self>) {
         if !self.store.read(cx).ticking() {
             self.ticker = None;
