@@ -176,6 +176,73 @@ impl PlaybackModel {
     }
 }
 
+/// How close the model's position must get to a seek target to count as confirmed.
+pub const SEEK_CONFIRM_MS: u64 = 1_000;
+/// How long a seek target is shown before the model's position is trusted again.
+pub const SEEK_HOLD_MAX_MS: u64 = 3_000;
+/// How long a volume target is shown before the model's volume is trusted again.
+pub const VOLUME_HOLD_MAX_MS: u64 = 2_000;
+
+/// What the progress bar shows between a seek and Soloist's answer. Display
+/// only: the model is never changed by it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SeekHold {
+    pub target_ms: u64,
+    pub item_uri: Option<String>,
+    pub since_ms: u64,
+}
+
+impl SeekHold {
+    pub fn new(target_ms: u64, model: &PlaybackModel, now_ms: u64) -> Self {
+        Self {
+            target_ms,
+            item_uri: model.item.as_ref().map(|item| item.uri.clone()),
+            since_ms: now_ms,
+        }
+    }
+
+    /// The target while the hold lasts, `None` once Soloist confirmed it, the
+    /// track changed, or the seek had time to fail.
+    pub fn shown(&self, model: &PlaybackModel, now_ms: u64) -> Option<u64> {
+        let expired = now_ms.saturating_sub(self.since_ms) >= SEEK_HOLD_MAX_MS;
+        let changed = model.item.as_ref().map(|item| item.uri.as_str()) != self.item_uri.as_deref();
+        let confirmed = model.position_ms_at(now_ms).abs_diff(self.target_ms) <= SEEK_CONFIRM_MS;
+
+        (!(expired || changed || confirmed)).then_some(self.target_ms)
+    }
+
+    pub fn deadline_ms(&self) -> u64 {
+        self.since_ms + SEEK_HOLD_MAX_MS
+    }
+}
+
+/// What the volume slider shows between a change and Soloist's answer. Display only.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VolumeHold {
+    pub target: u8,
+    pub since_ms: u64,
+}
+
+impl VolumeHold {
+    pub fn new(target: u8, now_ms: u64) -> Self {
+        Self {
+            target,
+            since_ms: now_ms,
+        }
+    }
+
+    /// The target until the model reaches it or the hold times out.
+    pub fn shown(&self, model: &PlaybackModel, now_ms: u64) -> Option<u8> {
+        let expired = now_ms.saturating_sub(self.since_ms) >= VOLUME_HOLD_MAX_MS;
+
+        (!(expired || model.volume == self.target)).then_some(self.target)
+    }
+
+    pub fn deadline_ms(&self) -> u64 {
+        self.since_ms + VOLUME_HOLD_MAX_MS
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -485,5 +552,95 @@ mod tests {
     #[test]
     fn position_without_anchor_is_zero() {
         assert_eq!(PlaybackModel::default().position_ms_at(123), 0);
+    }
+
+    fn position_sync(position_ms: u64, timestamp_ms: u64) -> Event {
+        event(&format!(
+            r#"{{"type":"position_sync","position":{{"position_ms":{position_ms},"timestamp_ms":{timestamp_ms},"speed":1}}}}"#
+        ))
+    }
+
+    #[test]
+    fn seek_hold_survives_a_stale_sync_and_ends_on_the_confirming_one() {
+        let mut model = PlaybackModel::default();
+
+        model.apply_at(&playing_state(), SYNC_TS);
+
+        let hold = SeekHold::new(30_000, &model, SYNC_TS);
+
+        assert_eq!(hold.shown(&model, SYNC_TS + 50), Some(30_000));
+
+        model.apply_at(&position_sync(94_100, SYNC_TS + 100), SYNC_TS + 100);
+
+        assert_eq!(hold.shown(&model, SYNC_TS + 150), Some(30_000));
+
+        model.apply_at(&position_sync(30_200, SYNC_TS + 250), SYNC_TS + 250);
+
+        assert_eq!(hold.shown(&model, SYNC_TS + 300), None);
+    }
+
+    #[test]
+    fn seek_hold_ends_on_track_change_and_after_the_timeout() {
+        let mut model = PlaybackModel::default();
+
+        model.apply_at(&playing_state(), SYNC_TS);
+
+        let hold = SeekHold::new(30_000, &model, SYNC_TS);
+
+        assert_eq!(
+            hold.shown(&model, SYNC_TS + SEEK_HOLD_MAX_MS - 1),
+            Some(30_000)
+        );
+        assert_eq!(hold.shown(&model, SYNC_TS + SEEK_HOLD_MAX_MS), None);
+
+        model.apply_at(
+            &event(include_str!(
+                "../../soloist/tests/fixtures/track_changed.json"
+            )),
+            SYNC_TS + 100,
+        );
+
+        assert_eq!(hold.shown(&model, SYNC_TS + 200), None);
+    }
+
+    #[test]
+    fn seek_hold_on_the_current_position_ends_at_once() {
+        let mut model = PlaybackModel::default();
+
+        model.apply_at(&playing_state(), SYNC_TS);
+
+        let hold = SeekHold::new(94_500, &model, SYNC_TS);
+
+        assert_eq!(hold.shown(&model, SYNC_TS), None);
+    }
+
+    #[test]
+    fn volume_hold_ignores_the_ramp_echoes() {
+        let mut model = PlaybackModel::with_volume(20);
+        let hold = VolumeHold::new(80, 1_000);
+
+        assert_eq!(hold.shown(&model, 1_010), Some(80));
+
+        for volume in [28, 36, 44, 52, 60, 68, 76] {
+            model.apply_at(
+                &event(&format!(r#"{{"type":"volume_changed","volume":{volume}}}"#)),
+                1_100,
+            );
+
+            assert_eq!(hold.shown(&model, 1_100), Some(80));
+        }
+
+        model.apply_at(&event(r#"{"type":"volume_changed","volume":80}"#), 1_400);
+
+        assert_eq!(hold.shown(&model, 1_400), None);
+    }
+
+    #[test]
+    fn volume_hold_times_out() {
+        let model = PlaybackModel::with_volume(20);
+        let hold = VolumeHold::new(80, 1_000);
+
+        assert_eq!(hold.shown(&model, 1_000 + VOLUME_HOLD_MAX_MS - 1), Some(80));
+        assert_eq!(hold.shown(&model, 1_000 + VOLUME_HOLD_MAX_MS), None);
     }
 }

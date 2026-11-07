@@ -15,7 +15,10 @@ use crate::library::{LibraryBackend, LibraryError};
 use crate::model::{MAX_PLAY_URIS, PlayOffset, PlaybackRequest, WebPlayRequest, liked_context_uri};
 use crate::playback::PlaybackModel;
 
-pub const VOLUME_THROTTLE: Duration = Duration::from_millis(100);
+/// Time between the steps of a volume ramp.
+pub const VOLUME_TICK: Duration = Duration::from_millis(40);
+/// Most percentage points one ramp step moves.
+pub const VOLUME_MAX_STEP: u8 = 8;
 /// How long an `activate` gets to make Soloist show up in the device list.
 pub const ACTIVATE_WAIT: Duration = Duration::from_millis(1500);
 
@@ -62,8 +65,8 @@ pub trait PlayerBackend: Send + Sync + 'static {
 
 #[derive(Default)]
 struct VolumeState {
-    latest: Option<u8>,
-    running: bool,
+    /// Where the running ramp is heading; `None` while no ramp runs.
+    target: Option<u8>,
 }
 
 struct Inner {
@@ -273,21 +276,27 @@ impl Player {
         self.run("set_repeat", result);
     }
 
-    /// Sends at most one volume command per 100 ms, always ending on the
-    /// latest value, and remembers it as `last_volume` once the slider settles.
+    /// Ramps the volume to `volume` in steps of at most `VOLUME_MAX_STEP`, and
+    /// remembers it as `last_volume` once the ramp ends. A new call redirects
+    /// a running ramp from where it is.
     pub fn set_volume(&self, volume: u8) {
         let volume = volume.min(100);
         let start = {
             let mut state = lock(&self.inner.volume);
 
-            state.latest = Some(volume);
-
-            !std::mem::replace(&mut state.running, true)
+            state.target.replace(volume).is_none()
         };
 
         if start {
             self.inner.runtime.spawn(volume_task(self.inner.clone()));
         }
+    }
+
+    /// Where the volume is heading: the target of a running ramp, else the model's volume.
+    pub fn volume_target(&self) -> u8 {
+        lock(&self.inner.volume)
+            .target
+            .unwrap_or_else(|| self.snapshot().volume)
     }
 }
 
@@ -515,32 +524,41 @@ async fn route_liked(inner: &Inner, request: PlaybackRequest) {
 }
 
 async fn volume_task(inner: Arc<Inner>) {
-    let mut last_sent = None;
+    let mut current = lock(&inner.state).volume;
 
-    loop {
-        let next = lock(&inner.volume).latest.take();
+    let target = loop {
+        let Some(target) = lock(&inner.volume).target else {
+            return;
+        };
 
-        if let Some(volume) = next {
-            if let Err(error) = inner.backend.set_volume(volume) {
+        if current != target {
+            let step = target.abs_diff(current).min(VOLUME_MAX_STEP);
+
+            current = if target > current {
+                current + step
+            } else {
+                current - step
+            };
+
+            if let Err(error) = inner.backend.set_volume(current) {
                 debug!(%error, "volume not sent");
             }
-
-            last_sent = Some(volume);
         }
 
-        tokio::time::sleep(VOLUME_THROTTLE).await;
+        {
+            let mut state = lock(&inner.volume);
 
-        let mut state = lock(&inner.volume);
+            if current == target && state.target == Some(target) {
+                state.target = None;
 
-        if state.latest.is_none() {
-            state.running = false;
-            break;
+                break target;
+            }
         }
-    }
 
-    if let Some(volume) = last_sent {
-        inner.config.update(|config| config.last_volume = volume);
-    }
+        tokio::time::sleep(VOLUME_TICK).await;
+    };
+
+    inner.config.update(|config| config.last_volume = target);
 }
 
 #[cfg(test)]
@@ -548,6 +566,8 @@ mod routing_tests;
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::AtomicBool;
+
     use sonear_soloist::protocol::Event;
 
     use super::*;
@@ -565,6 +585,7 @@ mod tests {
     struct Recorder {
         calls: Mutex<Vec<Call>>,
         events: broadcast::Sender<ClientEvent>,
+        fail_volume: AtomicBool,
     }
 
     impl Recorder {
@@ -572,6 +593,7 @@ mod tests {
             Arc::new(Self {
                 calls: Mutex::new(Vec::new()),
                 events: broadcast::channel(16).0,
+                fail_volume: AtomicBool::new(false),
             })
         }
 
@@ -616,7 +638,13 @@ mod tests {
         }
 
         fn set_volume(&self, volume: u8) -> Result<(), PlayerError> {
-            self.record(Call::Volume(volume))
+            self.record(Call::Volume(volume))?;
+
+            if self.fail_volume.load(Ordering::Relaxed) {
+                return Err(PlayerError::NotConnected);
+            }
+
+            Ok(())
         }
 
         fn set_shuffle(&self, enabled: bool) -> Result<(), PlayerError> {
@@ -725,36 +753,146 @@ mod tests {
         );
     }
 
-    #[tokio::test(start_paused = true)]
-    async fn volume_is_throttled_with_a_trailing_send_and_persisted() {
-        let fx = fixture();
+    async fn ticks(count: u32) {
+        for _ in 0..count {
+            tokio::time::advance(VOLUME_TICK).await;
 
-        fx.player.set_volume(1);
+            for _ in 0..3 {
+                tokio::task::yield_now().await;
+            }
+        }
+    }
+
+    fn volumes(fx: &Fixture) -> Vec<u8> {
+        fx.recorder
+            .calls()
+            .into_iter()
+            .filter_map(|call| match call {
+                Call::Volume(volume) => Some(volume),
+                _ => None,
+            })
+            .collect()
+    }
+
+    async fn start_at(volume: u8) -> Fixture {
+        let mut fx = fixture();
+
+        feed(
+            &mut fx,
+            &format!(r#"{{"type":"volume_changed","volume":{volume}}}"#),
+        )
+        .await;
+
+        fx
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn volume_ramps_in_bounded_steps_and_ends_on_the_target() {
+        let fx = start_at(20).await;
+
+        fx.player.set_volume(80);
         tokio::task::yield_now().await;
 
-        assert_eq!(fx.recorder.calls(), [Call::Volume(1)]);
+        assert_eq!(volumes(&fx), [28]);
+        assert_eq!(fx.player.volume_target(), 80);
 
-        for volume in 2..=10 {
-            fx.player.set_volume(volume);
-            tokio::time::advance(Duration::from_millis(5)).await;
+        ticks(20).await;
+
+        let sent = volumes(&fx);
+        let mut previous = 20;
+
+        for volume in &sent {
+            assert!(*volume > previous);
+            assert!(volume - previous <= VOLUME_MAX_STEP);
+
+            previous = *volume;
         }
 
-        assert_eq!(fx.recorder.calls(), [Call::Volume(1)]);
+        assert_eq!(sent.len(), 8);
+        assert_eq!(sent.last(), Some(&80));
+        assert_eq!(fx.player.volume_target(), 20);
+    }
 
-        tokio::time::advance(Duration::from_millis(100)).await;
+    #[tokio::test(start_paused = true)]
+    async fn volume_redirects_a_running_ramp_from_where_it_is() {
+        let fx = start_at(20).await;
+
+        fx.player.set_volume(80);
         tokio::task::yield_now().await;
+        ticks(2).await;
 
-        assert_eq!(fx.recorder.calls(), [Call::Volume(1), Call::Volume(10)]);
+        assert_eq!(volumes(&fx), [28, 36, 44]);
 
-        tokio::time::advance(Duration::from_millis(300)).await;
+        fx.player.set_volume(30);
+        ticks(5).await;
+
+        assert_eq!(volumes(&fx), [28, 36, 44, 36, 30]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_small_volume_change_is_one_command() {
+        let fx = start_at(20).await;
+
+        fx.player.set_volume(23);
         tokio::task::yield_now().await;
+        ticks(5).await;
 
-        assert_eq!(fx.config.get().last_volume, 10);
+        assert_eq!(volumes(&fx), [23]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn no_volume_command_when_already_at_the_target() {
+        let fx = start_at(20).await;
+
+        fx.player.set_volume(20);
+        tokio::task::yield_now().await;
+        ticks(3).await;
+
+        assert!(volumes(&fx).is_empty());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn volume_above_100_is_clamped() {
+        let fx = start_at(90).await;
 
         fx.player.set_volume(200);
         tokio::task::yield_now().await;
+        ticks(5).await;
 
-        assert_eq!(fx.recorder.calls().last(), Some(&Call::Volume(100)));
+        assert_eq!(volumes(&fx), [98, 100]);
+        assert_eq!(fx.config.get().last_volume, 100);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn volume_is_persisted_once_with_the_final_target() {
+        let fx = start_at(20).await;
+        let before = fx.config.get().last_volume;
+
+        fx.player.set_volume(80);
+        tokio::task::yield_now().await;
+        ticks(3).await;
+
+        assert_eq!(fx.config.get().last_volume, before);
+
+        fx.player.set_volume(60);
+        ticks(20).await;
+
+        assert_eq!(fx.config.get().last_volume, 60);
+        assert_eq!(volumes(&fx).last(), Some(&60));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn volume_ramp_ends_and_persists_when_sends_fail() {
+        let fx = start_at(20).await;
+
+        fx.recorder.fail_volume.store(true, Ordering::Relaxed);
+        fx.player.set_volume(80);
+        tokio::task::yield_now().await;
+        ticks(30).await;
+
+        assert_eq!(volumes(&fx).len(), 8);
+        assert_eq!(fx.config.get().last_volume, 80);
+        assert_eq!(fx.player.volume_target(), 20);
     }
 
     #[tokio::test]
