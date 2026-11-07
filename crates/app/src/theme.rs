@@ -7,6 +7,7 @@ use gpui_kit::{App, Hsla, Pixels, Rgba, SharedString, px, rgb, rgba};
 
 pub const FONT: &str = "Segoe UI Variable Text";
 pub const FONT_DISPLAY: &str = "Segoe UI Variable Display";
+pub const FONT_MONO: &str = "Consolas";
 
 pub const PANEL_GAP: Pixels = px(10.);
 pub const PANEL_RADIUS: Pixels = px(16.);
@@ -89,6 +90,11 @@ pub const WIZARD_STATUS_ICON: f32 = 44.;
 pub const STEP_DOT: f32 = 18.;
 pub const STEP_CHECK: f32 = 11.;
 pub const PROGRESS_HEIGHT: Pixels = px(4.);
+/// The guided setup column, and the extra space that separates its groups.
+pub const SETUP_COLUMN_WIDTH: Pixels = px(520.);
+pub const SETUP_GROUP_SPACE: Pixels = px(10.);
+pub const SETUP_BADGE: f32 = 20.;
+pub const SETUP_LOG_HEIGHT: Pixels = px(180.);
 
 /// Window width below which the sidebar collapses to a rail.
 pub const COLLAPSE_BELOW: f32 = 1100.;

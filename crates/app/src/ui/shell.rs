@@ -18,7 +18,7 @@ use super::pages::home::HomePage;
 use super::pages::library::LibraryPage;
 use super::pages::search::SearchPage;
 use super::pages::settings::SettingsPage;
-use super::pages::setup::SetupView;
+use super::pages::setup::{SetupView, starting_notice};
 use super::pages::show::ShowPage;
 use super::palette::PaletteView;
 use super::player_bar::PlayerBar;
@@ -32,7 +32,7 @@ use crate::keymap::{
     SeekBack, SeekForward, ToggleLyrics, ToggleMiniPlayer, TogglePlayPause, ToggleQueue,
     ToggleShuffle, ToggleSidebar, VolumeDown, VolumeUp,
 };
-use crate::store::{AppStore, Confirm, LibraryTab, Route};
+use crate::store::{AppStore, Confirm, LibraryTab, Route, SetupStep};
 use crate::theme;
 
 /// Days before expiry at which the non-blocking update banner appears.
@@ -46,6 +46,7 @@ pub struct Shell {
     right_panel: Entity<RightPanel>,
     lyrics_panel: Option<Entity<LyricsPanel>>,
     setup: Entity<SetupView>,
+    guided_setup: bool,
     page: Option<(Route, AnyView)>,
     focus: FocusHandle,
     palette: Option<(Entity<PaletteView>, Subscription)>,
@@ -67,6 +68,7 @@ impl Shell {
             right_panel: cx.new(|cx| RightPanel::new(store.clone(), cx)),
             lyrics_panel: None,
             setup: cx.new(|cx| SetupView::new(store.clone(), window, cx)),
+            guided_setup: false,
             page: None,
             _subscription: cx.observe(&store, |_, _, cx| cx.notify()),
             store,
@@ -97,16 +99,9 @@ impl Shell {
     fn main_content(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let state = self.store.read(cx);
         let route = state.route.clone();
-        let connected = state.connected();
-        let needs_setup = state.needs_setup();
 
-        // A page holds the account's data, so the next login must not reuse it.
-        if !connected {
-            self.page = None;
-        }
-
-        if needs_setup {
-            return self.setup.clone().into_any_element();
+        if state.needs_setup() {
+            return starting_notice();
         }
 
         if self.page.as_ref().map(|(current, _)| current) != Some(&route) {
@@ -462,6 +457,89 @@ impl Shell {
 }
 
 impl Shell {
+    fn full_body(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Div {
+        let width = f32::from(window.viewport_size().width);
+        let (collapsed, right_open, lyrics_showing) = {
+            let state = self.store.read(cx);
+
+            (
+                state.sidebar_collapsed || width < theme::COLLAPSE_BELOW,
+                state.right_panel_open,
+                state.lyrics_showing(),
+            )
+        };
+        let gap = f32::from(theme::PANEL_GAP);
+        let sidebar_width = f32::from(if collapsed {
+            theme::RAIL_WIDTH
+        } else {
+            theme::SIDEBAR_WIDTH
+        });
+        let span = width - gap * 4. - sidebar_width;
+        let show_right = right_open && span >= theme::RIGHT_PANEL_MIN_SPAN;
+        let main_width = if show_right {
+            span - f32::from(theme::RIGHT_PANEL_WIDTH)
+        } else {
+            span
+        };
+
+        self.store.read(cx).main_width.set(main_width);
+
+        let banner = self.expiry_banner(cx);
+        let content = self.main_content(window, cx);
+        let state = self.store.read(cx);
+        let sidebar = sidebar(&self.store, state, collapsed);
+        let right_style = StyleRefinement::default()
+            .flex_none()
+            .h_full()
+            .w(theme::RIGHT_PANEL_WIDTH);
+        let right = show_right.then(|| {
+            if lyrics_showing {
+                let store = self.store.clone();
+                let panel = self
+                    .lyrics_panel
+                    .get_or_insert_with(|| cx.new(|cx| LyricsPanel::new(store, cx)));
+
+                panel.clone().cached(right_style).into_any_element()
+            } else {
+                self.right_panel
+                    .clone()
+                    .cached(right_style)
+                    .into_any_element()
+            }
+        });
+
+        let main = panel()
+            .flex_1()
+            .min_w_0()
+            .children(banner)
+            .child(div().flex_1().min_h_0().child(content));
+
+        div()
+            .flex()
+            .flex_col()
+            .flex_1()
+            .min_h_0()
+            .px(theme::PANEL_GAP)
+            .pb(theme::PANEL_GAP)
+            .gap(theme::PANEL_GAP)
+            .child(
+                div()
+                    .flex()
+                    .flex_1()
+                    .min_h_0()
+                    .gap(theme::PANEL_GAP)
+                    .child(sidebar)
+                    .child(main)
+                    .children(right),
+            )
+            .child(
+                div()
+                    .flex_none()
+                    .h(theme::PLAYER_HEIGHT)
+                    .child(self.player_bar.clone()),
+            )
+    }
+
     fn ready(&self, cx: &Context<Self>) -> bool {
         let state = self.store.read(cx);
 
@@ -680,6 +758,27 @@ impl Render for Shell {
             window.focus(&self.focus, cx);
         }
 
+        let (connected, needs_setup, step) = {
+            let state = self.store.read(cx);
+
+            (
+                state.connected(),
+                state.needs_setup(),
+                state.setup_state().step(),
+            )
+        };
+
+        // A page holds the account's data, so the next login must not reuse it.
+        if !connected {
+            self.page = None;
+        }
+
+        if !needs_setup {
+            self.guided_setup = false;
+        } else if step != SetupStep::Starting {
+            self.guided_setup = true;
+        }
+
         let shortcuts_open = self.store.read(cx).shortcuts_open;
 
         if !shortcuts_open {
@@ -690,65 +789,21 @@ impl Render for Shell {
             self.shortcuts = Some(cx.new(|_| ShortcutsView::new(store)));
         }
 
-        let width = f32::from(window.viewport_size().width);
-        let (collapsed, right_open, lyrics_showing) = {
-            let state = self.store.read(cx);
-
-            (
-                state.sidebar_collapsed || width < theme::COLLAPSE_BELOW,
-                state.right_panel_open,
-                state.lyrics_showing(),
-            )
-        };
-        let gap = f32::from(theme::PANEL_GAP);
-        let sidebar_width = f32::from(if collapsed {
-            theme::RAIL_WIDTH
-        } else {
-            theme::SIDEBAR_WIDTH
-        });
-        let span = width - gap * 4. - sidebar_width;
-        let show_right = right_open && span >= theme::RIGHT_PANEL_MIN_SPAN;
-        let main_width = if show_right {
-            span - f32::from(theme::RIGHT_PANEL_WIDTH)
-        } else {
-            span
-        };
-
-        self.store.read(cx).main_width.set(main_width);
-
-        let banner = self.expiry_banner(cx);
-        let content = self.main_content(window, cx);
         let rate = self.rate_notice(cx);
         let toast = self.toast(cx);
         let menu = self.avatar_menu(cx);
         let dialog = self.confirm_dialog(cx);
-        let state = self.store.read(cx);
-        let sidebar = sidebar(&self.store, state, collapsed);
-        let right_style = StyleRefinement::default()
-            .flex_none()
-            .h_full()
-            .w(theme::RIGHT_PANEL_WIDTH);
-        let right = show_right.then(|| {
-            if lyrics_showing {
-                let store = self.store.clone();
-                let panel = self
-                    .lyrics_panel
-                    .get_or_insert_with(|| cx.new(|cx| LyricsPanel::new(store, cx)));
-
-                panel.clone().cached(right_style).into_any_element()
-            } else {
-                self.right_panel
-                    .clone()
-                    .cached(right_style)
-                    .into_any_element()
-            }
-        });
-
-        let main = panel()
-            .flex_1()
-            .min_w_0()
-            .children(banner)
-            .child(div().flex_1().min_h_0().child(content));
+        let body = if self.guided_setup {
+            div()
+                .flex()
+                .flex_1()
+                .min_h_0()
+                .px(theme::PANEL_GAP)
+                .pb(theme::PANEL_GAP)
+                .child(self.setup.clone())
+        } else {
+            self.full_body(window, cx)
+        };
 
         let overlay = || StyleRefinement::default().absolute().inset_0();
         let palette = self
@@ -792,32 +847,7 @@ impl Render for Shell {
                     .child("SONEAR"),
             )
             .children(rate)
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .flex_1()
-                    .min_h_0()
-                    .px(theme::PANEL_GAP)
-                    .pb(theme::PANEL_GAP)
-                    .gap(theme::PANEL_GAP)
-                    .child(
-                        div()
-                            .flex()
-                            .flex_1()
-                            .min_h_0()
-                            .gap(theme::PANEL_GAP)
-                            .child(sidebar)
-                            .child(main)
-                            .children(right),
-                    )
-                    .child(
-                        div()
-                            .flex_none()
-                            .h(theme::PLAYER_HEIGHT)
-                            .child(self.player_bar.clone()),
-                    ),
-            )
+            .child(body)
             .children(toast)
             .children(menu)
             .children(dialog)

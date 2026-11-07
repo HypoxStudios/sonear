@@ -84,7 +84,32 @@ fn step_dot(done: bool, current: bool) -> Div {
     }
 }
 
-fn rail(steps: &[&'static str], current: usize) -> Div {
+/// The logo with the app name and version, stacked.
+pub fn rail_header() -> Div {
+    div()
+        .flex()
+        .flex_col()
+        .gap_1()
+        .child(logo_mark(theme::WIZARD_LOGO))
+        .child(
+            div()
+                .pt_3()
+                .text_size(px(20.))
+                .font_weight(FontWeight::BOLD)
+                .font_family(theme::FONT_DISPLAY)
+                .text_color(theme::text_primary())
+                .child("Sonear"),
+        )
+        .child(
+            div()
+                .text_size(px(12.))
+                .text_color(theme::text_tertiary())
+                .child(format!("Version {}", env!("CARGO_PKG_VERSION"))),
+        )
+}
+
+/// One row per step, with the steps before `current` ticked.
+pub fn step_list(steps: &[&'static str], current: usize) -> Div {
     let list = steps.iter().enumerate().map(|(index, label)| {
         let color = if index <= current {
             theme::text_primary()
@@ -108,29 +133,18 @@ fn rail(steps: &[&'static str], current: usize) -> Div {
             )
     });
 
+    div().flex().flex_col().gap_3().children(list)
+}
+
+fn rail(steps: &[&'static str], current: usize) -> Div {
     panel()
         .w(theme::WIZARD_RAIL_WIDTH)
         .flex_none()
         .p_6()
         .gap_1()
-        .child(logo_mark(theme::WIZARD_LOGO))
-        .child(
-            div()
-                .pt_3()
-                .text_size(px(20.))
-                .font_weight(FontWeight::BOLD)
-                .font_family(theme::FONT_DISPLAY)
-                .text_color(theme::text_primary())
-                .child("Sonear"),
-        )
-        .child(
-            div()
-                .text_size(px(12.))
-                .text_color(theme::text_tertiary())
-                .child(format!("Version {}", env!("CARGO_PKG_VERSION"))),
-        )
+        .child(rail_header())
         .child(div().flex_1())
-        .child(div().flex().flex_col().gap_3().children(list))
+        .child(step_list(steps, current))
 }
 
 /// The whole window: title bar, rail and `page`. With no `steps` the rail

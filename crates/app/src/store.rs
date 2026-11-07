@@ -114,6 +114,54 @@ impl InstallState {
     }
 }
 
+/// The screen the guided setup shows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SetupStep {
+    Agreement,
+    Spotify,
+    Download,
+    Key,
+    Pair,
+    Starting,
+    Failed,
+}
+
+/// What decides the setup step, read from the store in one place.
+#[derive(Debug, Clone)]
+pub struct SetupState {
+    pub account: AccountState,
+    pub status: Status,
+    pub install: InstallState,
+    pub key_error: Option<String>,
+    pub editing_key: bool,
+    pub legal_accepted: bool,
+    pub connected: bool,
+}
+
+impl SetupState {
+    pub fn step(&self) -> SetupStep {
+        if !self.legal_accepted {
+            return SetupStep::Agreement;
+        }
+
+        if !self.connected {
+            return SetupStep::Spotify;
+        }
+
+        if self.editing_key {
+            return SetupStep::Key;
+        }
+
+        match self.status {
+            Status::NeedsKey => SetupStep::Key,
+            Status::NotInstalled | Status::Expired => SetupStep::Download,
+            Status::NeedsPairing { .. } => SetupStep::Pair,
+            Status::Failed { .. } => SetupStep::Failed,
+            Status::Starting | Status::Stopped | Status::Ready { .. } => SetupStep::Starting,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Confirm {
     Logout,
@@ -350,6 +398,25 @@ impl AppStore {
                 || !matches!(self.soloist, Status::Ready { .. })
                 || !self.connected()))
             || (self.is_demo() && std::env::var("SONEAR_DEMO_SETUP").is_ok())
+    }
+
+    pub fn setup_state(&self) -> SetupState {
+        let state = SetupState {
+            account: self.account.clone(),
+            status: self.soloist.clone(),
+            install: self.install.clone(),
+            key_error: self.key_error.clone(),
+            editing_key: self.editing_key,
+            legal_accepted: self.legal_accepted(),
+            connected: self.connected(),
+        };
+
+        #[cfg(feature = "demo")]
+        if self.is_demo() {
+            return demo_setup(state);
+        }
+
+        state
     }
 
     /// Whether views that follow the playing position should repaint on a timer.
@@ -1616,6 +1683,12 @@ impl AppStore {
         cx.notify();
     }
 
+    pub fn cancel_edit_key(&mut self, cx: &mut Context<Self>) {
+        self.editing_key = false;
+        self.key_error = None;
+        cx.notify();
+    }
+
     pub fn retry(&mut self, cx: &mut Context<Self>) {
         let Some(manager) = self.core.soloist.clone() else {
             return;
@@ -1626,6 +1699,72 @@ impl AppStore {
         });
         cx.notify();
     }
+}
+
+/// `SONEAR_DEMO_SETUP` picks a setup screen for screenshots.
+#[cfg(feature = "demo")]
+fn demo_setup(mut state: SetupState) -> SetupState {
+    let Ok(screen) = std::env::var("SONEAR_DEMO_SETUP") else {
+        return state;
+    };
+
+    state.legal_accepted = true;
+    state.connected = true;
+    state.editing_key = false;
+    state.key_error = None;
+    state.install = InstallState::Idle;
+    state.status = Status::Starting;
+
+    match screen.as_str() {
+        "connect" => {
+            state.account = AccountState::Disconnected;
+            state.connected = false;
+        }
+        "waiting" => {
+            state.account = AccountState::LoggingIn {
+                url: "https://accounts.spotify.com/authorize".to_owned(),
+            };
+            state.connected = false;
+        }
+        "expired" => {
+            state.account = AccountState::SessionExpired;
+            state.connected = false;
+        }
+        "loginfailed" => {
+            state.account =
+                AccountState::LoginFailed("Spotify did not accept that Client ID.".to_owned());
+            state.connected = false;
+        }
+        "download" => state.status = Status::NotInstalled,
+        "downloading" => {
+            state.status = Status::NotInstalled;
+            state.install = InstallState::Downloading {
+                received: 38_000_000,
+                total: Some(96_000_000),
+            };
+        }
+        "expired-soloist" => state.status = Status::Expired,
+        "key" => state.status = Status::NeedsKey,
+        "pair" => {
+            state.status = Status::NeedsPairing {
+                device_name: "Sonear (DESKTOP)".to_owned(),
+            };
+        }
+        "failed" => {
+            state.status = Status::Failed {
+                reason: "Soloist exited before it was ready.".to_owned(),
+                recent_log: vec![
+                    "starting soloist".to_owned(),
+                    "listening on 127.0.0.1:49152".to_owned(),
+                    "error: could not open the audio device".to_owned(),
+                ],
+            };
+        }
+        "starting" => {}
+        _ => state.legal_accepted = false,
+    }
+
+    state
 }
 
 pub fn new_entity(core: Arc<Core>, runtime: Handle, cx: &mut gpui_kit::App) -> Entity<AppStore> {
@@ -1660,5 +1799,83 @@ mod tests {
     fn routes_have_breadcrumb_labels() {
         assert_eq!(Route::Library(LibraryTab::Shows).label(), "Your Library");
         assert_eq!(Route::Playlist("p".into()).label(), "Playlist");
+    }
+
+    fn state(status: Status) -> SetupState {
+        SetupState {
+            account: AccountState::Connected,
+            status,
+            install: InstallState::Idle,
+            key_error: None,
+            editing_key: false,
+            legal_accepted: true,
+            connected: true,
+        }
+    }
+
+    #[test]
+    fn agreement_comes_before_everything() {
+        let mut setup = state(Status::NeedsKey);
+
+        setup.legal_accepted = false;
+        setup.connected = false;
+
+        assert_eq!(setup.step(), SetupStep::Agreement);
+    }
+
+    #[test]
+    fn spotify_comes_before_soloist() {
+        let mut setup = state(Status::NotInstalled);
+
+        setup.connected = false;
+
+        assert_eq!(setup.step(), SetupStep::Spotify);
+    }
+
+    #[test]
+    fn editing_the_key_wins_over_the_status() {
+        let mut setup = state(Status::Failed {
+            reason: String::new(),
+            recent_log: Vec::new(),
+        });
+
+        setup.editing_key = true;
+
+        assert_eq!(setup.step(), SetupStep::Key);
+    }
+
+    #[test]
+    fn soloist_status_picks_the_step() {
+        let device_name = || "PC".to_owned();
+        let cases = [
+            (Status::NeedsKey, SetupStep::Key),
+            (Status::NotInstalled, SetupStep::Download),
+            (Status::Expired, SetupStep::Download),
+            (
+                Status::NeedsPairing {
+                    device_name: device_name(),
+                },
+                SetupStep::Pair,
+            ),
+            (
+                Status::Failed {
+                    reason: String::new(),
+                    recent_log: Vec::new(),
+                },
+                SetupStep::Failed,
+            ),
+            (Status::Starting, SetupStep::Starting),
+            (Status::Stopped, SetupStep::Starting),
+            (
+                Status::Ready {
+                    device_name: device_name(),
+                },
+                SetupStep::Starting,
+            ),
+        ];
+
+        for (status, expected) in cases {
+            assert_eq!(state(status).step(), expected);
+        }
     }
 }
