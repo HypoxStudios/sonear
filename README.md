@@ -5,8 +5,7 @@
 <h1 align="center">Sonear</h1>
 
 <p align="center">
-  <strong>Spotify, without the browser.</strong><br>
-  A native desktop client, built in Rust and drawn by your GPU.
+  <strong>A native Spotify client for Windows, built in Rust.</strong>
 </p>
 
 <p align="center">
@@ -25,19 +24,19 @@
 
 ![Sonear playing music: colours change with every song, lyrics follow along, the palette searches, and the queue reorders](docs/demo.webp)
 
-<p align="center"><sub>Demo mode, with made-up artists and original artwork. Sonear is independent and not affiliated with Spotify.</sub></p>
+<p align="center"><sub>Demo mode, with made-up artists and artwork. Not affiliated with Spotify.</sub></p>
 
 ## Features
 
-| | |
-|---|---|
-| **A queue that's yours** | Drag, drop, remove, reorder. Sonear runs the queue itself, so you can change your mind. |
-| **Ctrl+K** | Search, playback, navigation and Spotify links, all from one box. Every shortcut can be rebound. |
-| **Synced lyrics** | Line by line, from [LRCLIB](https://lrclib.net). Click a line to jump to it. |
-| **Color from the cover** | The whole app takes its accent from what's playing. |
-| **Mini player** | Small, draggable and always on top. |
-| **Tray and media keys** | Close the window and the music keeps going. Your keyboard and the Windows overlay still work. |
-| **History** | A plain list of what you played. No stats, no recaps. |
+<table>
+<tr><td><strong>Queue</strong></td><td>Drag, drop, remove, reorder.</td></tr>
+<tr><td><strong>Ctrl+K</strong></td><td>Search, playback, navigation and Spotify links, all from one box. Every shortcut can be rebound.</td></tr>
+<tr><td><strong>Synced lyrics</strong></td><td>Line by line, from <a href="https://lrclib.net">LRCLIB</a>. Click a line to jump to it.</td></tr>
+<tr><td><strong>Color from the cover</strong></td><td>The whole app takes its accent from what's playing.</td></tr>
+<tr><td><strong>Mini player</strong></td><td>Small, draggable and always on top.</td></tr>
+<tr><td><strong>Tray and media keys</strong></td><td>Close the window and the music keeps going. Your keyboard and the Windows overlay still work.</td></tr>
+<tr><td><strong>History</strong></td><td>A list of what you played.</td></tr>
+</table>
 
 <p align="center">
   <img src="docs/palette.png" alt="The Ctrl+K palette" width="56%">
@@ -45,17 +44,16 @@
   <img src="docs/mini-player.png" alt="The mini player" width="38%">
 </p>
 
-## Light on purpose
+## Performance
 
-| | |
-|---|---|
-| Idle | **0.8%** of one core |
-| Playing | **4.2%** of one core |
-| Playing from the tray | **0.5%** of one core |
-| Memory | **~95 MB** |
-| Size | **36 MB** |
+| | CPU | Memory |
+|---|---|---|
+| Idle | **0.17%** | **90 MB** |
+| Playing | **0.25%** | **91 MB** |
+| In use | **0.57%** | **91 MB** |
+| Playing from the tray | **0.06%** | **91 MB** |
 
-<sub>Release build in demo mode, on one Windows 11 machine, without Soloist. Real libraries use more memory, around 140 MB.</sub>
+<sub>Two-minute averages from a release build with a real Spotify account, on one Windows 11 machine with an i5-12500H and a 144 Hz display, as a share of the whole CPU, without Soloist. The app is 36 MB.</sub>
 
 ## Install
 
@@ -80,21 +78,14 @@ cargo run -p sonear --features demo --target-dir target/demo
 <details>
 <summary><strong>Why do I need my own developer app?</strong></summary>
 
-Spotify gives third-party apps access per developer app, and wide access is reserved for large companies. So you create your own, for your personal use. It's free and takes a couple of minutes.
-
-</details>
-
-<details>
-<summary><strong>Is this official?</strong></summary>
-
-No. Sonear is independent, and isn't made, sponsored or endorsed by Spotify. It uses only official APIs, and music plays through Spotify's own Soloist. Attribution, artwork and data handling follow Spotify's [Developer Policy](https://developer.spotify.com/policy) and [branding guidelines](https://developer.spotify.com/documentation/design).
+Spotify only gives wide API access to large companies, so you create your own app for personal use. It's free and takes a couple of minutes.
 
 </details>
 
 <details>
 <summary><strong>What does it send, and where?</strong></summary>
 
-Nothing goes to us. There are no analytics, and everything stays on your computer. Sonear talks to Spotify, and to LRCLIB while the lyrics panel is open. **Settings → Delete all Sonear data** wipes everything. Details are in the [privacy policy](docs/legal/privacy.md).
+Nothing goes to us. Sonear talks to Spotify, and to LRCLIB while the lyrics panel is open. **Settings → Delete all Sonear data** wipes everything. More in the [privacy policy](docs/legal/privacy.md).
 
 </details>
 
@@ -114,7 +105,7 @@ Mostly Spotify's:
 <details>
 <summary><strong>Is it safe?</strong></summary>
 
-Your login and keys live in Windows Credential Manager, and Soloist only listens on your own machine. Soloist does take its key on the command line, which other programs running as you could read. That's how Soloist works. Report security problems to <support@hypox.studio>.
+Your login and keys live in Windows Credential Manager, and Soloist only listens on your own machine. Report security problems to <support@hypox.studio>.
 
 </details>
 
@@ -139,6 +130,6 @@ cargo test --workspace --all-features
 
 Built on [GPUI](https://github.com/zed-industries/zed) and [gpui-kit](https://crates.io/crates/gpui-kit), with lyrics from [LRCLIB](https://lrclib.net). Inspired by [Spotifast](https://github.com/crmne/spotifast) and [spotatui](https://github.com/LargeModGames/spotatui).
 
-[Apache 2.0](LICENSE). Spotify's marks belong to Spotify; see [NOTICE](NOTICE). [End-user agreement](docs/legal/terms.md).
+[Apache 2.0](LICENSE) · [Notice](NOTICE) · [End-user agreement](docs/legal/terms.md)
 
 Questions? <support@hypox.studio>
