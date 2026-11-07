@@ -20,6 +20,8 @@ icon_assets!(
         VolumeX,
         Sparkles,
         ListMusic,
+        ListPlus,
+        GripVertical,
         MicVocal,
         Music,
         PanelLeftClose,

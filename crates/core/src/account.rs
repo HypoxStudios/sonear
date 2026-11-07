@@ -17,6 +17,7 @@ use crate::library::SpotifyLibrary;
 use crate::likes::LikeStore;
 use crate::meta::MetaCache;
 use crate::paths::AppPaths;
+use crate::queue::QueueManager;
 use crate::secrets::{SPOTIFY_REFRESH_TOKEN, Secret, SecretStore};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -85,6 +86,7 @@ pub struct Account {
     meta: Arc<MetaCache>,
     history: Arc<History>,
     likes: Arc<LikeStore>,
+    queue: Arc<QueueManager>,
     events: broadcast::Sender<AppEvent>,
     state: Mutex<AccountState>,
     cancel: Mutex<Option<Arc<Notify>>>,
@@ -103,6 +105,7 @@ impl Account {
         meta: Arc<MetaCache>,
         history: Arc<History>,
         likes: Arc<LikeStore>,
+        queue: Arc<QueueManager>,
         events: broadcast::Sender<AppEvent>,
     ) -> Arc<Self> {
         let state = if library.is_some() {
@@ -120,6 +123,7 @@ impl Account {
             meta,
             history,
             likes,
+            queue,
             events,
             state: Mutex::new(state),
             cancel: Mutex::new(None),
@@ -282,7 +286,7 @@ impl Account {
     }
 
     /// Forgets the Spotify login and deletes everything stored for it: the
-    /// refresh token, cached metadata, covers, history and the Client ID.
+    /// refresh token, cached metadata, covers, history, queue and the Client ID.
     /// The Soloist key and install are left alone.
     pub async fn disconnect(self: &Arc<Self>) -> Vec<String> {
         let mut problems = Vec::new();
@@ -313,6 +317,10 @@ impl Account {
 
         if let Err(error) = self.history.store().wipe().await {
             problems.push(format!("history: {error}"));
+        }
+
+        if let Err(error) = self.queue.wipe() {
+            problems.push(format!("queue: {error}"));
         }
 
         let covers = self.paths.cover_cache_dir();

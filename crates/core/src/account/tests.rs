@@ -10,6 +10,7 @@ struct Fixture {
     paths: AppPaths,
     meta: Arc<MetaCache>,
     history: Arc<History>,
+    queue: Arc<QueueManager>,
     config: ConfigHandle,
     _dir: tempfile::TempDir,
 }
@@ -31,6 +32,18 @@ fn fixture() -> Fixture {
         events.clone(),
     );
     let likes = LikeStore::new(backend, events.clone());
+    let player = crate::Player::new(
+        crate::queue::tests::FakeBackend::new(),
+        Handle::current(),
+        config.clone(),
+        events.clone(),
+    );
+    let queue = QueueManager::new(
+        player,
+        events.clone(),
+        Some(paths.queue_file()),
+        Handle::current(),
+    );
     let account = Account::new(
         Handle::current(),
         paths.clone(),
@@ -40,6 +53,7 @@ fn fixture() -> Fixture {
         meta.clone(),
         history.clone(),
         likes,
+        queue.clone(),
         events,
     );
 
@@ -49,6 +63,7 @@ fn fixture() -> Fixture {
         paths,
         meta,
         history,
+        queue,
         config,
         _dir: dir,
     }
@@ -104,6 +119,8 @@ async fn disconnect_deletes_the_login_cache_covers_history_and_client_id() {
         .unwrap();
 
     assert!(fx.paths.history_db().exists());
+    fx.queue.add("spotify:track:q", crate::QueueSource::User);
+    fs::write(fx.paths.queue_file(), b"{}").unwrap();
 
     let problems = fx.account.disconnect().await;
 
@@ -120,8 +137,10 @@ async fn disconnect_deletes_the_login_cache_covers_history_and_client_id() {
     assert!(fx.meta.get::<String>("playlist:x").is_none());
     assert!(!covers.exists());
     assert!(!fx.paths.history_db().exists());
+    assert!(!fx.paths.queue_file().exists());
     assert_eq!(fx.config.get().spotify_client_id, "");
     assert_eq!(fx.config.get().history_cleared_at_ms, 0);
+    assert!(fx.queue.snapshot().entries.is_empty());
     assert_eq!(fx.account.state(), AccountState::Disconnected);
 }
 

@@ -144,6 +144,10 @@ impl Render for PlayerBar {
         let (status_label, status_ready) = soloist_label(&state.soloist, demo);
         let right_open = state.right_panel_open;
         let player = state.core.player.clone();
+        let queue = state.core.queue.clone();
+        let has_queued = model.is_active
+            && model.item.is_some()
+            && (state.queue.locked.is_some() || !state.queue.entries.is_empty());
         let pending_play = state.pending_play;
         let likes = state.core.likes.clone();
         let store = self.store.clone();
@@ -311,7 +315,7 @@ impl Render for PlayerBar {
             })
             .child(play_button)
             .child({
-                let player = player.clone();
+                let queue = queue.clone();
 
                 icon_button(
                     "next",
@@ -319,9 +323,9 @@ impl Render for PlayerBar {
                     18.,
                     34.,
                     theme::text_primary(),
-                    model.can("skip_next"),
+                    model.can("skip_next") || has_queued,
                 )
-                .on_click(move |_, _, _| player.next())
+                .on_click(move |_, _, _| queue.next())
             })
             .child({
                 let player = player.clone();

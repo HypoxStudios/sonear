@@ -3,6 +3,7 @@
 pub mod catalog;
 pub mod library;
 
+use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -94,6 +95,7 @@ enum Cmd {
     Shuffle(bool),
     RepeatContext(bool),
     RepeatTrack(bool),
+    AddToQueue(String),
     Refresh,
     Activate,
 }
@@ -171,8 +173,8 @@ impl PlayerBackend for DemoBackend {
         self.send(Cmd::RepeatTrack(enabled))
     }
 
-    fn add_to_queue(&self, _: &str) -> Result<(), PlayerError> {
-        Ok(())
+    fn add_to_queue(&self, uri: &str) -> Result<(), PlayerError> {
+        self.send(Cmd::AddToQueue(uri.to_owned()))
     }
 
     fn activate(&self) -> Result<(), PlayerError> {
@@ -195,6 +197,10 @@ struct Sim {
     repeat_context: bool,
     repeat_track: bool,
     shuffle_seed: u64,
+    /// Catalogue indices the user queued, played before the context resumes.
+    queued: VecDeque<usize>,
+    /// A queued track that is playing now, on top of the context cursor.
+    interrupt: Option<usize>,
 }
 
 impl Sim {
@@ -217,11 +223,17 @@ impl Sim {
             repeat_context: false,
             repeat_track: false,
             shuffle_seed: 0x9E37_79B9,
+            queued: VecDeque::new(),
+            interrupt: None,
         }
     }
 
     fn current(&self) -> &DemoTrack {
-        &catalog().tracks[self.order[self.cursor]]
+        &catalog().tracks[self.current_index()]
+    }
+
+    fn current_index(&self) -> usize {
+        self.interrupt.unwrap_or(self.order[self.cursor])
     }
 
     fn position_ms(&self) -> u64 {
@@ -241,7 +253,32 @@ impl Sim {
 
     fn start_track(&mut self, cursor: usize) {
         self.cursor = cursor;
+        self.interrupt = None;
         self.set_position(0);
+    }
+
+    /// Plays the next queued track, if any. The context cursor stays put.
+    fn start_queued(&mut self) -> bool {
+        let Some(index) = self.queued.pop_front() else {
+            return false;
+        };
+
+        self.interrupt = Some(index);
+        self.set_position(0);
+
+        true
+    }
+
+    /// Moves on to the following context track, resuming after a queued one.
+    fn advance_context(&mut self) {
+        if self.cursor + 1 < self.order.len() {
+            self.start_track(self.cursor + 1);
+        } else if self.repeat_context {
+            self.start_track(0);
+        } else {
+            self.status = PlayStatus::Paused;
+            self.start_track(0);
+        }
     }
 
     fn deadline(&self) -> Option<Instant> {
@@ -288,14 +325,9 @@ impl Sim {
 
     fn advance(&mut self) {
         if self.repeat_track {
-            self.start_track(self.cursor);
-        } else if self.cursor + 1 < self.order.len() {
-            self.start_track(self.cursor + 1);
-        } else if self.repeat_context {
-            self.start_track(0);
-        } else {
-            self.status = PlayStatus::Paused;
-            self.start_track(0);
+            self.set_position(0);
+        } else if !self.start_queued() {
+            self.advance_context();
         }
     }
 
@@ -314,14 +346,19 @@ impl Sim {
                 self.status = PlayStatus::Paused;
             }
             Cmd::Next => {
-                if self.cursor + 1 < self.order.len() {
-                    self.start_track(self.cursor + 1);
-                } else if self.repeat_context {
-                    self.start_track(0);
+                if !self.start_queued()
+                    && (self.cursor + 1 < self.order.len() || self.repeat_context)
+                {
+                    self.advance_context();
+                }
+            }
+            Cmd::AddToQueue(uri) => {
+                if let Some(track) = catalog().track(&uri) {
+                    self.queued.push_back(track.index);
                 }
             }
             Cmd::Previous => {
-                if self.position_ms() > 3_000 || self.cursor == 0 {
+                if self.position_ms() > 3_000 || self.cursor == 0 || self.interrupt.is_some() {
                     self.set_position(0);
                 } else {
                     self.start_track(self.cursor - 1);
@@ -352,6 +389,7 @@ impl Sim {
         }
 
         self.status = PlayStatus::Playing;
+        self.interrupt = None;
         self.set_position(0);
     }
 
@@ -457,7 +495,13 @@ impl Sim {
     }
 
     fn upcoming(&self) -> Vec<QueueEntry> {
-        self.order
+        let queued = self.queued.iter().map(|index| QueueEntry {
+            uid: format!("demo-queue-{index}"),
+            source: "queue".into(),
+            item: track_entity(&catalog().tracks[*index]),
+        });
+        let context = self
+            .order
             .iter()
             .skip(self.cursor + 1)
             .take(10)
@@ -465,8 +509,9 @@ impl Sim {
                 uid: format!("demo-{index}"),
                 source: "context".into(),
                 item: track_entity(&catalog().tracks[*index]),
-            })
-            .collect()
+            });
+
+        queued.chain(context).collect()
     }
 
     fn emit(&self, events: &broadcast::Sender<ClientEvent>) {
@@ -655,6 +700,43 @@ mod tests {
         assert_eq!(sim.current().index, 40);
         assert_eq!(sim.order.len(), 2);
         assert!(sim.context.is_none());
+    }
+
+    #[test]
+    fn queued_tracks_play_next_and_the_context_resumes_after_them() {
+        let mut sim = Sim::new(40);
+        let queued = catalog().tracks[40].uri.clone();
+
+        sim.handle(Cmd::Play(None));
+        sim.handle(Cmd::AddToQueue(queued.clone()));
+        sim.handle(Cmd::AddToQueue("spotify:track:unknown".into()));
+        sim.handle(Cmd::AddToQueue(catalog().tracks[41].uri.clone()));
+
+        let upcoming = sim.upcoming();
+
+        assert_eq!(upcoming[0].source, "queue");
+        assert_eq!(upcoming[0].item.uri, queued);
+        assert_eq!(upcoming[1].source, "queue");
+        assert_eq!(upcoming[2].source, "context");
+        assert_eq!(upcoming[2].item.uri, catalog().tracks[1].uri);
+
+        sim.handle(Cmd::Next);
+
+        assert_eq!(sim.current().uri, queued);
+        assert_eq!(sim.cursor, 0);
+        assert_eq!(sim.upcoming()[0].item.uri, catalog().tracks[41].uri);
+
+        sim.advance();
+
+        assert_eq!(sim.current().index, 41);
+        assert!(sim.queued.is_empty());
+        assert_eq!(sim.upcoming()[0].source, "context");
+        assert_eq!(sim.upcoming()[0].item.uri, catalog().tracks[1].uri);
+
+        sim.advance();
+
+        assert_eq!(sim.current().index, 1);
+        assert_eq!(sim.cursor, 1);
     }
 
     #[tokio::test(start_paused = true)]

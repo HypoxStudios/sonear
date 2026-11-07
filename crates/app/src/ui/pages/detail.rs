@@ -786,6 +786,7 @@ impl DetailPage {
                             show_album,
                             show_number: !not_exposed,
                             trailing: None,
+                            queue_store: Some(&store),
                         };
                         let play_store = store.clone();
                         let like_store = store.clone();

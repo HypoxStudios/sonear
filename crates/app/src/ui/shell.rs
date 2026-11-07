@@ -16,7 +16,7 @@ use super::pages::search::SearchPage;
 use super::pages::setup::SetupView;
 use super::pages::show::ShowPage;
 use super::player_bar::PlayerBar;
-use super::right_panel::right_panel;
+use super::right_panel::RightPanel;
 use super::sidebar::sidebar;
 use super::widgets::{accent_button, ghost_button, icon, panel};
 use crate::store::{AppStore, Confirm, Route};
@@ -28,6 +28,7 @@ const EXPIRY_WARNING_DAYS: i64 = 30;
 pub struct Shell {
     store: Entity<AppStore>,
     player_bar: Entity<PlayerBar>,
+    right_panel: Entity<RightPanel>,
     setup: Entity<SetupView>,
     page: Option<(Route, AnyView)>,
     _subscription: Subscription,
@@ -37,6 +38,7 @@ impl Shell {
     pub fn new(store: Entity<AppStore>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         Self {
             player_bar: cx.new(|cx| PlayerBar::new(store.clone(), cx)),
+            right_panel: cx.new(|cx| RightPanel::new(store.clone(), cx)),
             setup: cx.new(|cx| SetupView::new(store.clone(), window, cx)),
             page: None,
             _subscription: cx.observe(&store, |_, _, cx| cx.notify()),
@@ -288,7 +290,7 @@ impl Shell {
         let (title, text, action) = match confirm {
             Confirm::Logout => (
                 "Log out of Spotify?",
-                "This removes your Spotify login, cached data, cover art and listening history from this computer. Your Soloist key, install and pairing stay.",
+                "This removes your Spotify login, cached data, cover art, listening history and queue from this computer. Your Soloist key, install and pairing stay.",
                 "Log out",
             ),
             Confirm::ClearHistory => (
@@ -399,7 +401,7 @@ impl Render for Shell {
         let dialog = self.confirm_dialog(cx);
         let state = self.store.read(cx);
         let sidebar = sidebar(&self.store, state, collapsed);
-        let right = show_right.then(|| right_panel(&self.store, state));
+        let right = show_right.then(|| self.right_panel.clone());
 
         let main = panel()
             .flex_1()

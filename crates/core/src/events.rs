@@ -17,6 +17,8 @@ pub enum AppEvent {
     /// Saved-music hearts changed.
     Likes,
     HistoryChanged,
+    /// The user's play queue changed.
+    Queue,
     RateLimit(RateLimit),
     /// A short message for the user, shown as a toast.
     Notice(String),

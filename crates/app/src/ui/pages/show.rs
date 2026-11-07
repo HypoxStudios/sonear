@@ -266,6 +266,7 @@ impl ShowPage {
                             show_album: false,
                             show_number: false,
                             trailing: None,
+                            queue_store: None,
                         };
                         let play_store = store.clone();
                         let play_page = page.clone();

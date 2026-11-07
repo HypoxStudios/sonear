@@ -417,6 +417,8 @@ pub struct TrackRowSpec<'a> {
     pub show_number: bool,
     /// Replaces the duration, e.g. with when a track was played.
     pub trailing: Option<String>,
+    /// `Some` shows an add-to-queue button on hover.
+    pub queue_store: Option<&'a Entity<AppStore>>,
 }
 
 pub fn track_row(
@@ -452,6 +454,12 @@ pub fn track_row(
     let heart = spec
         .liked
         .filter(|_| track.kind == ItemKind::Track && !track.is_local);
+    let queueable = track.kind == ItemKind::Track && !track.is_local && track.playable;
+    let queue = spec
+        .queue_store
+        .filter(|_| queueable)
+        .map(|store| (store.clone(), track.clone()));
+    let group = SharedString::from(format!("{id_prefix}-row-{}", spec.index));
 
     div()
         .w_full()
@@ -459,6 +467,7 @@ pub fn track_row(
         .child(
             div()
                 .id(ElementId::from((id_prefix, spec.index)))
+                .group(group.clone())
                 .flex()
                 .items_center()
                 .gap_3()
@@ -525,6 +534,27 @@ pub fn track_row(
                             .text_size(px(12.))
                             .text_color(theme::text_secondary())
                             .child(album_name),
+                    )
+                })
+                .when_some(queue, |this, (store, track)| {
+                    this.child(
+                        icon_button(
+                            ElementId::from((
+                                SharedString::from(format!("{id_prefix}-queue")),
+                                spec.index,
+                            )),
+                            IconName::ListPlus,
+                            16.,
+                            28.,
+                            theme::text_secondary(),
+                            true,
+                        )
+                        .invisible()
+                        .group_hover(group.clone(), |style| style.visible())
+                        .on_click(move |_, _, cx| {
+                            cx.stop_propagation();
+                            store.update(cx, |state, cx| state.add_to_queue(&track, cx));
+                        }),
                     )
                 })
                 .child(

@@ -15,6 +15,7 @@ pub mod model;
 pub mod paths;
 pub mod playback;
 pub mod player;
+pub mod queue;
 pub mod secrets;
 pub mod soloist_backend;
 
@@ -34,6 +35,7 @@ pub use meta::{Freshness, MetaCache, TrackResolver};
 pub use paths::AppPaths;
 pub use playback::PlaybackModel;
 pub use player::{Player, PlayerBackend, PlayerError};
+pub use queue::{QueueManager, QueueSnapshot, QueueSource, QueuedTrack};
 pub use secrets::{KeyringStore, Secret, SecretStore};
 
 const EVENT_BUFFER: usize = 256;
@@ -49,6 +51,7 @@ pub struct Core {
     pub history: Arc<History>,
     pub likes: Arc<LikeStore>,
     pub account: Arc<Account>,
+    pub queue: Arc<QueueManager>,
     events: broadcast::Sender<AppEvent>,
 }
 
@@ -87,6 +90,12 @@ impl Core {
             events.clone(),
         );
         let likes = LikeStore::new(library.clone(), events.clone());
+        let queue = QueueManager::new(
+            player.clone(),
+            events.clone(),
+            Some(paths.queue_file()),
+            runtime.clone(),
+        );
         let account = Account::new(
             runtime.clone(),
             paths.clone(),
@@ -96,6 +105,7 @@ impl Core {
             meta.clone(),
             history.clone(),
             likes.clone(),
+            queue.clone(),
             events.clone(),
         );
 
@@ -112,6 +122,7 @@ impl Core {
             history,
             likes,
             account,
+            queue,
             events,
         }
     }
@@ -139,6 +150,7 @@ impl Core {
             events.clone(),
         );
         let likes = LikeStore::new(library.clone(), events.clone());
+        let queue = QueueManager::new(player.clone(), events.clone(), None, runtime.clone());
         let account = Account::new(
             runtime.clone(),
             AppPaths::new("demo", "demo"),
@@ -148,6 +160,7 @@ impl Core {
             meta.clone(),
             history.clone(),
             likes.clone(),
+            queue.clone(),
             events.clone(),
         );
 
@@ -168,6 +181,7 @@ impl Core {
             history,
             likes,
             account,
+            queue,
             events,
         }
     }

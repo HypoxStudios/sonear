@@ -5,8 +5,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui_kit::{AppContext as _, Context, Entity, SharedString, Task};
+use sonear_core::model::ItemKind;
 use sonear_core::model::{PlayOffset, PlaybackRequest, Playlist, Profile, Track};
-use sonear_core::{AccountState, AppEvent, Core, PlaybackModel};
+use sonear_core::queue::QueueSource;
+use sonear_core::{AccountState, AppEvent, Core, PlaybackModel, QueueSnapshot};
 use sonear_soloist::Status;
 use sonear_soloist::install::InstallProgress;
 use sonear_spotify::RateLimit;
@@ -141,6 +143,8 @@ pub struct AppStore {
     pub core: Arc<Core>,
     runtime: Handle,
     pub playback: PlaybackModel,
+    /// The user's own queue, which Sonear holds and hands to Soloist one track at a time.
+    pub queue: QueueSnapshot,
     pub soloist: Status,
     pub expiry_days: Option<i64>,
     pub route: Route,
@@ -180,6 +184,7 @@ impl AppStore {
             .map_or(Status::Stopped, |manager| manager.status());
         let mut store = Self {
             playback: core.player.snapshot(),
+            queue: core.queue.snapshot(),
             account: core.account.state(),
             core: core.clone(),
             runtime,
@@ -309,6 +314,7 @@ impl AppStore {
             AppEvent::Account(state) => self.apply_account(state, cx),
             AppEvent::Likes => {}
             AppEvent::HistoryChanged => self.history_version += 1,
+            AppEvent::Queue => self.queue = self.core.queue.snapshot(),
             AppEvent::RateLimit(rate) => self.apply_rate(rate, cx),
             AppEvent::Notice(text) => {
                 self.pending_play = false;
@@ -340,6 +346,7 @@ impl AppStore {
             | AccountState::LoginFailed(_) => {
                 self.profile = Slot::default();
                 self.sidebar_playlists.clear();
+                self.queue = QueueSnapshot::default();
                 self.queue_tracks.clear();
                 self.queue_requested.clear();
                 self.loads.clear();
@@ -350,10 +357,6 @@ impl AppStore {
     /// Soloist can send queue entries with only a URI. Looks up the ones on
     /// screen, each once.
     fn resolve_queue(&mut self, cx: &mut Context<Self>) {
-        if !self.connected() {
-            return;
-        }
-
         let missing: Vec<String> = self
             .playback
             .upcoming
@@ -361,6 +364,22 @@ impl AppStore {
             .take(UP_NEXT_ROWS)
             .filter(|entry| entry.item.name().is_empty())
             .map(|entry| entry.item.uri.clone())
+            .collect();
+
+        self.ensure_queue_rows(missing, cx);
+    }
+
+    /// Looks up the details of `uris` that have none yet, each URI once. Asks
+    /// only for what the panel shows: every lookup is a request against the
+    /// developer account's quota.
+    pub fn ensure_queue_rows(&mut self, uris: Vec<String>, cx: &mut Context<Self>) {
+        if !self.connected() {
+            return;
+        }
+
+        let missing: Vec<String> = uris
+            .into_iter()
+            .filter(|uri| !self.queue_tracks.contains_key(uri))
             .filter(|uri| self.queue_requested.insert(uri.clone()))
             .collect();
 
@@ -395,6 +414,24 @@ impl AppStore {
             }
         })
         .detach();
+    }
+
+    /// Adds a track to the user's queue. Episodes and local files can't be queued.
+    pub fn add_to_queue(&mut self, track: &Track, cx: &mut Context<Self>) {
+        if track.kind != ItemKind::Track || track.is_local || !track.playable {
+            return;
+        }
+
+        self.core.history.resolver().remember(track);
+        self.queue_tracks
+            .insert(track.uri.clone(), Some(track.clone()));
+        self.queue_requested.insert(track.uri.clone());
+
+        if self.core.queue.add(&track.uri, QueueSource::User) {
+            self.show_toast("Added to queue", cx);
+        } else {
+            self.show_toast("Your queue is full.", cx);
+        }
     }
 
     fn apply_rate(&mut self, rate: RateLimit, cx: &mut Context<Self>) {
@@ -694,7 +731,7 @@ impl AppStore {
             if let Some(problems) = inbox.recv().await {
                 let _ = this.update(cx, |store, cx| {
                     let text = if problems.is_empty() {
-                        "Disconnected. The login, cached data and history were removed from this computer."
+                        "Disconnected. The login, cached data, history and queue were removed from this computer."
                             .to_owned()
                     } else {
                         format!("Disconnected, but some data could not be removed: {}", problems.join("; "))

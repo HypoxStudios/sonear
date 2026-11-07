@@ -54,4 +54,8 @@ impl AppPaths {
     pub fn history_db(&self) -> PathBuf {
         self.local_root.join("history.db")
     }
+
+    pub fn queue_file(&self) -> PathBuf {
+        self.local_root.join("queue.json")
+    }
 }
