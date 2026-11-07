@@ -266,7 +266,7 @@ impl Shell {
                 .id("avatar-backdrop")
                 .occlude()
                 .on_click(move |_, _, cx| {
-                    close.update(cx, |state, cx| state.toggle_avatar_menu(cx));
+                    close.update(cx, |state, cx| state.close_avatar_menu(cx));
                 })
                 .child(
                     div()

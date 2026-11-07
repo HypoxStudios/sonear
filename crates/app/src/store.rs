@@ -723,6 +723,7 @@ impl AppStore {
 
     pub fn navigate(&mut self, route: Route, cx: &mut Context<Self>) {
         self.avatar_menu_open = false;
+        cx.notify();
 
         if self.route == route {
             return;
@@ -735,8 +736,6 @@ impl AppStore {
         if self.back_stack.len() > BACK_STACK_LIMIT {
             self.back_stack.remove(0);
         }
-
-        cx.notify();
     }
 
     pub fn can_go_back(&self) -> bool {
@@ -1039,6 +1038,11 @@ impl AppStore {
 
     pub fn toggle_avatar_menu(&mut self, cx: &mut Context<Self>) {
         self.avatar_menu_open = !self.avatar_menu_open;
+        cx.notify();
+    }
+
+    pub fn close_avatar_menu(&mut self, cx: &mut Context<Self>) {
+        self.avatar_menu_open = false;
         cx.notify();
     }
 
