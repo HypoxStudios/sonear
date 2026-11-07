@@ -212,8 +212,22 @@ impl SpotifyClient {
                     self.inner.auth.renew_after_rejection(&token).await?;
                 }
                 401 => return Err(SpotifyError::NeedsLogin),
-                403 => return Err(SpotifyError::Forbidden),
-                404 => return Err(SpotifyError::NotFound),
+                403 | 404 => {
+                    debug!(
+                        status,
+                        %method,
+                        path = url.path(),
+                        query = url.query().unwrap_or_default(),
+                        message = %error_message(&bytes),
+                        "Spotify refused the request"
+                    );
+
+                    return Err(if status == 403 {
+                        SpotifyError::Forbidden
+                    } else {
+                        SpotifyError::NotFound
+                    });
+                }
                 429 => {
                     if error_reason(&bytes).as_deref() == Some("QUOTA_EXCEEDED") {
                         warn!("Spotify quota exceeded");
