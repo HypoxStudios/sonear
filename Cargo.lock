@@ -6451,7 +6451,7 @@ dependencies = [
 
 [[package]]
 name = "sonear"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -6476,7 +6476,7 @@ dependencies = [
 
 [[package]]
 name = "sonear-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -6504,7 +6504,7 @@ dependencies = [
 
 [[package]]
 name = "sonear-soloist"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -6524,7 +6524,7 @@ dependencies = [
 
 [[package]]
 name = "sonear-spotify"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "base64 0.22.1",
  "rand 0.9.5",
