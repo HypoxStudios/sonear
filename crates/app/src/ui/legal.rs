@@ -4,9 +4,11 @@ use gpui_kit::{
     Div, Entity, FontWeight, InteractiveElement as _, IntoElement, ParentElement as _,
     StatefulInteractiveElement as _, Styled as _, div, px, relative,
 };
+use rust_i18n::t;
 
-use super::widgets::icon_button;
+use super::widgets::{icon, icon_button};
 use crate::legal::LegalDoc;
+use crate::site;
 use crate::store::AppStore;
 use crate::theme;
 
@@ -79,16 +81,38 @@ fn header(doc: LegalDoc, close: Entity<AppStore>) -> Div {
                 .child(doc.title()),
         )
         .child(
-            icon_button(
-                "legal-close",
-                IconName::X,
-                16.,
-                30.,
-                theme::text_secondary(),
-                true,
-            )
-            .on_click(move |_, _, cx| {
-                close.update(cx, |state, cx| state.close_legal(cx));
-            }),
+            div()
+                .flex()
+                .items_center()
+                .gap_3()
+                .child(
+                    div()
+                        .id("legal-website")
+                        .flex()
+                        .items_center()
+                        .gap_1()
+                        .cursor_pointer()
+                        .tab_index(0)
+                        .text_size(px(13.))
+                        .text_color(theme::accent())
+                        .hover(|style| style.text_color(theme::accent_hover()))
+                        .focus_visible(|style| style.text_color(theme::text_primary()))
+                        .child(t!("legal.on_website"))
+                        .child(icon(IconName::ExternalLink, 12., theme::accent()))
+                        .on_click(move |_, _, cx| cx.open_url(&site::legal(doc))),
+                )
+                .child(
+                    icon_button(
+                        "legal-close",
+                        IconName::X,
+                        16.,
+                        30.,
+                        theme::text_secondary(),
+                        true,
+                    )
+                    .on_click(move |_, _, cx| {
+                        close.update(cx, |state, cx| state.close_legal(cx));
+                    }),
+                ),
         )
 }

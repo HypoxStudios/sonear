@@ -17,6 +17,7 @@ mod legal;
 mod media_controls;
 mod platform_window;
 mod protocol;
+mod site;
 mod store;
 mod theme;
 mod tray;

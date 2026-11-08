@@ -239,6 +239,13 @@ pub struct LrcLibSource {
     user_agent: String,
 }
 
+fn user_agent() -> String {
+    format!(
+        "Sonear/{} (https://sonear.hypox.studio)",
+        env!("CARGO_PKG_VERSION")
+    )
+}
+
 impl LrcLibSource {
     pub fn new() -> Self {
         Self::with_base_url(DEFAULT_BASE_URL)
@@ -248,10 +255,7 @@ impl LrcLibSource {
         Self {
             client: reqwest::Client::builder().build().unwrap_or_default(),
             base_url: base_url.into().trim_end_matches('/').to_owned(),
-            user_agent: format!(
-                "Sonear/{} (https://github.com/HypoxStudios/sonear)",
-                env!("CARGO_PKG_VERSION")
-            ),
+            user_agent: user_agent(),
         }
     }
 
@@ -553,14 +557,7 @@ mod tests {
             .and(query_param("artist_name", "Artist"))
             .and(query_param("album_name", "Album"))
             .and(query_param("duration", "200"))
-            .and(header(
-                "user-agent",
-                format!(
-                    "Sonear/{} (https://github.com/HypoxStudios/sonear)",
-                    env!("CARGO_PKG_VERSION")
-                )
-                .as_str(),
-            ))
+            .and(header("user-agent", user_agent().as_str()))
             .respond_with(ResponseTemplate::new(200).set_body_json(synced(200.)))
             .expect(1)
             .mount(&server)

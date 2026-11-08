@@ -17,6 +17,7 @@ use sonear_core::data_dir::resolve_target;
 use crate::format::megabytes;
 use crate::legal::LegalDoc;
 use crate::protocol::{self, Registration};
+use crate::site;
 use crate::store::{AppStore, Confirm, DEVICE_NAME_MAX, InstallState, UpdateState};
 use crate::theme;
 use crate::ui::widgets::{accent_button, danger_button, ghost_button, icon, label_caps};
@@ -657,27 +658,25 @@ impl SettingsPage {
     fn version_row(&self, cx: &mut Context<Self>) -> AnyElement {
         let title = format!("Sonear {}", env!("CARGO_PKG_VERSION"));
         let description = t!("settings.about.independent");
-        let UpdateState::Ready {
-            version, notes_url, ..
-        } = self.store.read(cx).update.clone()
-        else {
+        let UpdateState::Ready { version, .. } = self.store.read(cx).update.clone() else {
             return row(title, description, None, div());
         };
         let store = self.store.clone();
-        let controls =
-            div()
-                .flex()
-                .items_center()
-                .gap_4()
-                .children(notes_url.map(|url| {
-                    external_link("about-whats-new", t!("settings.about.whats_new"), url)
-                }))
-                .child(
-                    accent_button("about-restart", t!("sidebar.restart_to_update"), None, true)
-                        .on_click(move |_, _, cx| {
-                            store.update(cx, |state, cx| state.restart_to_update(cx));
-                        }),
-                );
+        let controls = div()
+            .flex()
+            .items_center()
+            .gap_4()
+            .child(external_link(
+                "about-whats-new",
+                t!("settings.about.whats_new"),
+                site::changelog(),
+            ))
+            .child(
+                accent_button("about-restart", t!("sidebar.restart_to_update"), None, true)
+                    .on_click(move |_, _, cx| {
+                        store.update(cx, |state, cx| state.restart_to_update(cx));
+                    }),
+            );
 
         row(
             title,
@@ -700,6 +699,11 @@ impl SettingsPage {
             .gap_x_6()
             .gap_y_2()
             .py_4()
+            .child(external_link(
+                "about-website",
+                t!("settings.about.website"),
+                site::home(),
+            ))
             .child(
                 text_link("about-terms", LegalDoc::Terms.title()).on_click(move |_, _, cx| {
                     terms.update(cx, |state, cx| state.open_legal(LegalDoc::Terms, cx));

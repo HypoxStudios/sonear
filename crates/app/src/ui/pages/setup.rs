@@ -17,6 +17,7 @@ use sonear_spotify::REDIRECT_URI;
 use crate::format::megabytes;
 use crate::installer::chrome;
 use crate::legal::LegalDoc;
+use crate::site;
 use crate::store::{AppStore, InstallState, SetupState, SetupStep};
 use crate::theme;
 use crate::ui::widgets::{accent_button, ghost_button, icon, panel};
@@ -353,6 +354,11 @@ impl SetupView {
                 .on_click(cx.listener(|this, _, _, cx| this.connect(cx))),
             ))
             .child(note(t!("setup.connect.note")))
+            .child(spaced(link(
+                "setup-guide-connect",
+                t!("setup.help"),
+                site::setup_guide(),
+            )))
             .into_any_element()
     }
 
@@ -451,6 +457,11 @@ impl SetupView {
                     })),
             ))
             .child(note(t!("setup.key.note")))
+            .child(spaced(link(
+                "setup-guide-key",
+                t!("setup.help"),
+                site::setup_guide(),
+            )))
             .into_any_element()
     }
 
@@ -575,8 +586,10 @@ fn text_link(id: impl Into<ElementId>, text: impl Into<SharedString>) -> Statefu
 fn link(
     id: impl Into<ElementId>,
     text: impl Into<SharedString>,
-    url: &'static str,
+    url: impl Into<String>,
 ) -> Stateful<Div> {
+    let url = url.into();
+
     div()
         .id(id)
         .flex()
@@ -590,7 +603,7 @@ fn link(
         .focus_visible(|style| style.text_color(theme::text_primary()))
         .child(text.into())
         .child(icon(IconName::ExternalLink, 12., theme::accent()))
-        .on_click(move |_, _, cx: &mut App| cx.open_url(url))
+        .on_click(move |_, _, cx: &mut App| cx.open_url(&url))
 }
 
 fn instruction(

@@ -519,6 +519,9 @@ installer.working.update:
   en: "Updating Sonear"
   es: "Actualizando Sonear"
 
+legal.on_website:
+  en: "Open on the website"
+  es: "Abrir en el sitio web"
 legal.privacy:
   en: "Privacy policy"
   es: "Política de privacidad"
@@ -823,6 +826,9 @@ settings.about.updates.body:
 settings.about.updates.title:
   en: "Check for updates"
   es: "Buscar actualizaciones"
+settings.about.website:
+  en: "Website"
+  es: "Sitio web"
 settings.about.whats_new:
   en: "What's new"
   es: "Novedades"
@@ -1082,6 +1088,9 @@ setup.failed.change_key:
 setup.failed.title:
   en: "Soloist stopped"
   es: "Soloist se detuvo"
+setup.help:
+  en: "Need help? Read the setup guide"
+  es: "¿Necesitas ayuda? Lee la guía de configuración"
 setup.key.body:
   en: "Create a personal Soloist key in the Spotify developer dashboard. It needs Spotify Premium."
   es: "Crea una clave personal de Soloist en el panel de desarrolladores de Spotify. Requiere Spotify Premium."

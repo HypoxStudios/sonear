@@ -25,7 +25,6 @@ pub enum UpdateState {
     Ready {
         version: String,
         file: PathBuf,
-        notes_url: Option<String>,
     },
 }
 
@@ -51,7 +50,6 @@ impl From<UpdateEvent> for UpdateState {
             UpdateEvent::Ready(prepared) => Self::Ready {
                 version: prepared.version,
                 file: prepared.file,
-                notes_url: prepared.notes_url,
             },
             UpdateEvent::Idle => Self::Idle,
         }
@@ -64,9 +62,6 @@ fn demo_update() -> Option<UpdateState> {
     let version = std::env::var("SONEAR_DEMO_UPDATE").ok()?;
 
     Some(UpdateState::Ready {
-        notes_url: Some(format!(
-            "https://github.com/HypoxStudios/sonear/releases/tag/v{version}"
-        )),
         version,
         file: std::env::current_exe().unwrap_or_default(),
     })
@@ -158,12 +153,7 @@ impl AppStore {
     /// Verifies the downloaded update once more, then starts it and quits. The
     /// update replaces the installed program once this process has gone.
     pub fn restart_to_update(&mut self, cx: &mut Context<Self>) {
-        let UpdateState::Ready {
-            version,
-            file,
-            notes_url,
-        } = self.update.clone()
-        else {
+        let UpdateState::Ready { version, file } = self.update.clone() else {
             return;
         };
 
@@ -190,7 +180,7 @@ impl AppStore {
         let prepared = Prepared {
             version,
             file: file.clone(),
-            notes_url,
+            notes_url: None,
         };
         let (done, mut inbox) = mpsc::unbounded_channel();
 

@@ -25,7 +25,6 @@ const NOTICE_NAME: &str = "NOTICE";
 const LICENSE: &[u8] = include_bytes!("../../../../LICENSE");
 const NOTICE: &[u8] = include_bytes!("../../../../NOTICE");
 pub const UNINSTALL_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Sonear";
-const ABOUT_URL: &str = "https://github.com/HypoxStudios/sonear";
 const PUBLISHER: &str = "Hypox Studios";
 const COPY_CHUNK: usize = 256 * 1024;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -324,7 +323,7 @@ fn register(target: &Target, exe: &Path) -> Result<(), InstallError> {
         ("DisplayIcon", format!("\"{exe}\",0")),
         ("InstallLocation", target.dir.display().to_string()),
         ("UninstallString", format!("\"{exe}\" --uninstall")),
-        ("URLInfoAbout", ABOUT_URL.to_owned()),
+        ("URLInfoAbout", crate::site::HOME.to_owned()),
     ] {
         protocol::write_string(key, Some(name), &data)?;
     }
