@@ -1,0 +1,34 @@
+---
+import { getCollection, render } from "astro:content";
+import { type Locale, localePath, t } from "../../i18n";
+import Base from "../../layouts/Base.astro";
+
+interface Props {
+	locale: Locale;
+	doc: "terms" | "privacy";
+}
+
+const { locale, doc } = Astro.props;
+const dict = t(locale);
+const id = locale === "es" ? `${doc}es` : doc;
+
+const entries = await getCollection("legal");
+const entry = entries.find((e) => e.id === id);
+if (!entry) {
+	throw new Error(`missing legal document ${id}`);
+}
+
+const { Content, headings } = await render(entry);
+const title = headings.find((h) => h.depth === 1)?.text ?? dict.legal[doc];
+const otherDoc = doc === "terms" ? "privacy" : "terms";
+---
+<Base locale={locale} path={localePath(locale, `/${doc}/`)} title={title}>
+	<div class="mx-auto max-w-[1100px] px-4 pt-14 sm:px-6 sm:pt-20">
+		<article class="prose max-w-[70ch]">
+			<Content />
+		</article>
+		<p class="copy mt-12 max-w-[70ch] border-t border-line pt-6 text-muted">
+			{dict.legal.other}: <a href={localePath(locale, `/${otherDoc}/`)}>{dict.legal[otherDoc]}</a>
+		</p>
+	</div>
+</Base>

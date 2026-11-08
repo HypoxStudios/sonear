@@ -1,0 +1,31 @@
+---
+import { type Locale, localePath, t } from "../i18n";
+
+interface Props {
+	locale: Locale;
+}
+
+const { locale } = Astro.props;
+const dict = t(locale);
+
+const links = [
+	{ href: "https://github.com/HypoxStudios/sonear", label: dict.footer.github },
+	{ href: localePath(locale, "/changelog/"), label: dict.footer.changelog },
+	{ href: localePath(locale, "/setup/"), label: dict.footer.setup },
+	{ href: localePath(locale, "/terms/"), label: dict.footer.terms },
+	{ href: localePath(locale, "/privacy/"), label: dict.footer.privacy },
+	{ href: "https://github.com/HypoxStudios/sonear/blob/main/LICENSE", label: dict.footer.license },
+	{ href: "mailto:support@hypox.studio", label: "support@hypox.studio" },
+];
+---
+<footer class="mt-24 border-t border-white/5">
+	<div class="mx-auto max-w-[1100px] px-4 py-10 sm:px-6">
+		<p class="font-heading font-semibold">{dict.footer.madeBy}</p>
+		<ul class="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
+			{links.map((link) => (
+				<li><a href={link.href} class="transition-colors hover:text-ink">{link.label}</a></li>
+			))}
+		</ul>
+		<p class="mt-6 max-w-2xl text-sm text-faint">{dict.footer.trademark}</p>
+	</div>
+</footer>

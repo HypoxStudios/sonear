@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths-ignore: &docs-only
       - README.md
+      - site/**
+      - .github/workflows/site.yml
       - docs/*.png
       - docs/*.webp
   pull_request:

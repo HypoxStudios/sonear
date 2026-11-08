@@ -1,0 +1,66 @@
+---
+import { type Locale, localePath, t } from "../../i18n";
+import Base from "../../layouts/Base.astro";
+import { getReleaseData } from "../../lib/releases";
+
+interface Props {
+	locale: Locale;
+}
+
+const REDIRECT_URI = "http://127.0.0.1:27196/callback";
+const redirectBlock = `<pre class="mt-2 overflow-x-auto rounded-control border border-line bg-bg p-3 font-mono text-sm text-ink"><code>${REDIRECT_URI}</code></pre>`;
+
+const { locale } = Astro.props;
+const dict = t(locale);
+const setup = dict.setup;
+const { latest } = await getReleaseData();
+---
+<Base locale={locale} path={localePath(locale, "/setup/")} title={dict.meta.setupTitle} description={dict.meta.setupDescription}>
+	<div class="mx-auto max-w-[1100px] px-4 pt-14 sm:px-6 sm:pt-20">
+		<h1 class="text-4xl sm:text-5xl">{setup.title}</h1>
+		<p class="mt-4 max-w-2xl text-lg text-muted">{setup.intro}</p>
+
+		<ol class="step-counter mt-12 max-w-3xl space-y-4">
+			{setup.steps.map((step) => (
+				<li class="rounded-panel border border-line bg-surface p-5 sm:p-7">
+					<div class="flex items-center gap-3">
+						<span class="step-number grid size-8 flex-none place-items-center rounded-full bg-accent font-mono text-sm font-semibold text-on-accent" aria-hidden="true"></span>
+						<h2 class="font-heading text-xl font-semibold sm:text-2xl">
+							<span class="sr-only">{setup.stepLabel} </span>{step.title}
+						</h2>
+					</div>
+					<div class="copy mt-4 space-y-3 text-muted sm:pl-11">
+						{step.body.map((block) =>
+							typeof block !== "string" ? (
+								<ol>
+									{block.ol.map((item) => (
+										<li set:html={item.replace("{redirect}", redirectBlock)} />
+									))}
+								</ol>
+							) : block === "{download}" ? (
+								<p>
+									<a href={latest.downloadUrl} class="btn-link">{setup.downloadButton}</a>
+								</p>
+							) : (
+								<p set:html={block} />
+							),
+						)}
+					</div>
+				</li>
+			))}
+		</ol>
+
+		<p class="mt-8 max-w-3xl text-lg text-muted">{setup.done}</p>
+
+		<h2 class="mt-20 text-3xl">{setup.troubleTitle}</h2>
+		<div class="mt-6 max-w-3xl divide-y divide-line border-y border-line">
+			{setup.trouble.map((item) => (
+				<details class="py-1">
+					<summary class="flex items-center justify-between gap-4 py-4 font-semibold">{item.q}</summary>
+					<p class="copy pb-5 text-muted" set:html={item.a} />
+				</details>
+			))}
+		</div>
+		<p class="copy mt-6 text-muted" set:html={setup.needHelp} />
+	</div>
+</Base>

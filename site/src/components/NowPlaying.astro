@@ -1,0 +1,39 @@
+---
+import { Image } from "astro:assets";
+import { tracks } from "../data/now-playing";
+import Mark from "./Mark.astro";
+---
+<div class="rounded-panel border border-line bg-surface p-4 sm:p-5" aria-hidden="true">
+	<div class="relative aspect-square overflow-hidden rounded-[8px] bg-raised">
+		{tracks.map((track, i) => (
+			<Image
+				src={track.cover}
+				alt=""
+				widths={[480, 960]}
+				sizes="(min-width: 1024px) 440px, calc(100vw - 4.5rem)"
+				format="webp"
+				loading={i === 0 ? "eager" : "lazy"}
+				class="np-slide absolute inset-0 size-full object-cover"
+				data-i={i}
+			/>
+		))}
+	</div>
+
+	<div class="mt-4 flex items-center justify-between gap-4">
+		<div class="grid min-w-0 flex-1">
+			{tracks.map((track, i) => (
+				<div class="np-slide col-start-1 row-start-1 min-w-0" data-i={i}>
+					<p class="truncate font-heading text-lg font-semibold">{track.title}</p>
+					<p class="truncate text-sm text-muted">{track.artist}</p>
+				</div>
+			))}
+		</div>
+		<Mark animated class="size-9 flex-none text-accent" />
+	</div>
+
+	<div class="relative mt-4 h-1 overflow-hidden rounded-full bg-raised">
+		{tracks.map((_, i) => (
+			<div class="np-fill absolute inset-0 rounded-full bg-accent" data-i={i}></div>
+		))}
+	</div>
+</div>

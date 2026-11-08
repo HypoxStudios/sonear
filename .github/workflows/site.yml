@@ -1,0 +1,96 @@
+name: Site
+
+on:
+  push:
+    branches: [main]
+    paths: &site-paths
+      - site/**
+      - docs/legal/**
+      - docs/demo.webp
+      - crates/app/assets/*.svg
+      - .github/workflows/site.yml
+  pull_request:
+    paths: *site-paths
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-deploy
+  cancel-in-progress: false
+
+jobs:
+  check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: site/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: site/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Check
+        run: pnpm check
+
+      - name: Build
+        run: pnpm build
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      # A release event checks out the tag, which could roll back newer site changes on main.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'release' && 'main' || '' }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: site/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: site/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Check
+        run: pnpm check
+
+      - name: Build
+        run: pnpm build
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Deploy
+        run: pnpm exec wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}

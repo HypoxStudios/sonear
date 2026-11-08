@@ -1,0 +1,40 @@
+---
+import { formatDate, type Locale, localePath, t } from "../../i18n";
+import Base from "../../layouts/Base.astro";
+import { getReleaseData } from "../../lib/releases";
+
+interface Props {
+	locale: Locale;
+}
+
+const { locale } = Astro.props;
+const dict = t(locale);
+const log = dict.changelog;
+const { releases } = await getReleaseData();
+---
+<Base locale={locale} path={localePath(locale, "/changelog/")} title={dict.meta.changelogTitle} description={dict.meta.changelogDescription}>
+	<div class="mx-auto max-w-[1100px] px-4 pt-14 sm:px-6 sm:pt-20">
+		<h1 class="text-4xl sm:text-5xl">{log.title}</h1>
+		<p class="mt-4 text-lg text-muted">{log.intro}</p>
+		{log.esNote && <p class="mt-1 text-sm text-faint">{log.esNote}</p>}
+
+		{releases.length === 0 ? (
+			<p class="copy mt-10 text-muted">
+				{log.empty} <a href="https://github.com/HypoxStudios/sonear/releases">{log.allOnGithub}</a>
+			</p>
+		) : (
+			<div class="mt-12 max-w-3xl space-y-4">
+				{releases.map((release) => (
+					<article class="rounded-panel border border-line bg-surface p-5 sm:p-7">
+						<header class="flex flex-wrap items-baseline justify-between gap-x-4">
+							<h2 class="font-heading text-2xl font-semibold">{log.release.replace("{version}", release.tag.replace(/^v/, ""))}</h2>
+							<time datetime={release.date} class="font-mono text-sm text-faint">{formatDate(locale, release.date)}</time>
+						</header>
+						<div class="prose mt-4 text-[0.95rem]" set:html={release.html} />
+						<p class="copy mt-5 text-sm"><a href={release.url}>{log.onGithub}</a></p>
+					</article>
+				))}
+			</div>
+		)}
+	</div>
+</Base>

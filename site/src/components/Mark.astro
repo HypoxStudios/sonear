@@ -1,0 +1,20 @@
+---
+interface Props {
+	/** Bounce the five bars. */
+	animated?: boolean;
+	class?: string;
+}
+
+const { animated = false, class: className } = Astro.props;
+---
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" fill="currentColor" class={className} aria-hidden="true" focusable="false">
+	<path d="M410.94 23.06L410.94 63.29C410.94 91.53 391.18 116.94 362.94 123.29L239.41 154.35C175.18 169.18 134.24 197.41 134.24 231.29C134.24 265.18 170.24 296.24 207.65 308.94C145.53 292 98.94 253.88 98.94 200.94C98.94 146.59 145.53 104.24 203.41 86.59Z" />
+	<path d="M101.06 488.94L101.06 448.71C101.06 420.47 120.82 395.06 149.06 388.71L272.59 357.65C336.82 342.82 377.76 314.59 377.76 280.71C377.76 246.82 341.76 215.76 304.35 203.06C366.47 220 413.06 258.12 413.06 311.06C413.06 365.41 366.47 407.76 308.59 425.41Z" />
+	<g>
+		<path class:list={[animated && "mark-bar"]} d="M170.59 248.24a9.18 9.18 0 0 1 18.35 0V263.76a9.18 9.18 0 0 1 -18.35 0Z" />
+		<path class:list={[animated && "mark-bar"]} d="M208.71 227.06a9.18 9.18 0 0 1 18.35 0V284.94a9.18 9.18 0 0 1 -18.35 0Z" />
+		<path class:list={[animated && "mark-bar"]} d="M246.82 192.47a9.18 9.18 0 0 1 18.35 0V319.53a9.18 9.18 0 0 1 -18.35 0Z" />
+		<path class:list={[animated && "mark-bar"]} d="M284.94 227.06a9.18 9.18 0 0 1 18.35 0V284.94a9.18 9.18 0 0 1 -18.35 0Z" />
+		<path class:list={[animated && "mark-bar"]} d="M323.06 248.24a9.18 9.18 0 0 1 18.35 0V263.76a9.18 9.18 0 0 1 -18.35 0Z" />
+	</g>
+</svg>

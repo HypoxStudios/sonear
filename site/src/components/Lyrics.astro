@@ -1,0 +1,21 @@
+---
+interface Props {
+	lines: string[];
+}
+
+const { lines } = Astro.props;
+---
+<ul id="lyrics" class="space-y-2 rounded-panel border border-line bg-surface p-4 font-heading text-xl font-semibold sm:p-6 sm:text-2xl" data-lyrics>
+	{lines.map((line, i) => (
+		<li>
+			<button type="button" class="lyric px-2 py-1" aria-current={i === 2 ? "true" : undefined}>
+				<span class="text-faint">{line}</span>
+				<span class="lyric-on" aria-hidden="true">{line}</span>
+			</button>
+		</li>
+	))}
+</ul>
+
+<script>
+	import "../scripts/lyrics";
+</script>
