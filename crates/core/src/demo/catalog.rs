@@ -64,6 +64,8 @@ pub const ARTISTS: [&str; 5] = [
     "Lumen Park",
     "Hollow Vale",
 ];
+const STATION_SIZE: usize = 50;
+const STATION_SEED_AT: usize = 12;
 const FILLER_SECONDS: [u64; 8] = [250, 281, 243, 297, 262, 310, 236, 275];
 const ALBUM_NAMES: [&str; 12] = [
     "Night Drive",
@@ -426,8 +428,65 @@ impl Catalog {
 
                 (index < ARTISTS.len()).then(|| self.artist_indices(index))
             }
+            "station" => self.station_indices(uri),
             _ => None,
         }
+    }
+
+    fn station_indices(&self, uri: &str) -> Option<Vec<usize>> {
+        let seed = crate::radio::station_seed(uri)?;
+        let (kind, id) = crate::model::split_uri(&seed)?;
+        let total = self.tracks.len();
+        let (first, artist, seed_index) = match kind {
+            "track" => {
+                let track = self.track(&seed)?;
+
+                // Like the real station, which does not open with its seed.
+                (
+                    (track.index + 7) % total,
+                    track.artist_index,
+                    Some(track.index),
+                )
+            }
+            "artist" => {
+                let artist: usize = id.strip_prefix("demo-artist-")?.parse().ok()?;
+                let first = *self.artist_indices(artist).first()?;
+
+                (first, artist, None)
+            }
+            _ => return None,
+        };
+        let mut used = vec![first];
+        let mut own = self
+            .artist_indices(artist)
+            .into_iter()
+            .filter(|index| *index != first && Some(*index) != seed_index);
+        let mut others = (1..total)
+            .map(|step| (first + step * 7) % total)
+            .filter(|index| {
+                self.tracks[*index].artist_index != artist && Some(*index) != seed_index
+            });
+
+        while used.len() < STATION_SIZE {
+            let next = if used.len() % 4 == 0 {
+                own.next().or_else(|| others.next())
+            } else {
+                others.next().or_else(|| own.next())
+            };
+            let Some(next) = next else {
+                break;
+            };
+
+            if !used.contains(&next) {
+                used.push(next);
+            }
+        }
+
+        if let Some(seed_index) = seed_index {
+            used.insert(STATION_SEED_AT.min(used.len()), seed_index);
+        }
+
+        Some(used)
     }
 }
 

@@ -122,12 +122,13 @@ fn context_entity(uri: &str) -> Entity {
             }
         });
 
-    named(
-        uri,
-        uri.split(':').nth(1).unwrap_or("playlist"),
-        &name,
-        slot,
-    )
+    let kind = if crate::radio::is_station(uri) {
+        "unknown"
+    } else {
+        uri.split(':').nth(1).unwrap_or("playlist")
+    };
+
+    named(uri, kind, &name, slot)
 }
 
 #[derive(Debug)]
@@ -640,6 +641,28 @@ mod tests {
 
     fn night_drive() -> &'static catalog::DemoPlaylist {
         catalog().playlist("demo-night-drive").unwrap()
+    }
+
+    #[test]
+    fn stations_carry_their_seed_later_and_have_no_name() {
+        let track = &catalog().tracks[5];
+        let station = crate::radio::station_uri(&track.uri).unwrap();
+        let indices = catalog().context_indices(&station).unwrap();
+
+        assert_ne!(indices[0], 5);
+        assert_eq!(indices.iter().filter(|index| **index == 5).count(), 1);
+        assert!(indices.len() > 20 && indices.len() <= 51);
+        assert!(
+            context_entity(&station)
+                .decorations
+                .identity
+                .name
+                .is_empty()
+        );
+
+        let artist = crate::radio::station_uri(&track.artist_uri()).unwrap();
+
+        assert!(catalog().context_indices(&artist).is_some());
     }
 
     #[test]

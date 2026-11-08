@@ -19,6 +19,7 @@ pub mod paths;
 pub mod playback;
 pub mod player;
 pub mod queue;
+pub mod radio;
 pub mod secrets;
 pub mod seen;
 pub mod soloist_backend;

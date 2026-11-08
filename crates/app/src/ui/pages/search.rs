@@ -472,6 +472,7 @@ impl SearchPage {
                                     show_number: false,
                                     trailing: None,
                                     queue_store: Some(&store),
+                                    menu_store: Some(&store),
                                 };
                                 let play_store = store.clone();
                                 let like_store = store.clone();

@@ -886,3 +886,193 @@ async fn the_engine_saves_and_reloads_uris_only() {
     assert!(!path.exists());
     assert_eq!(engine.manager.snapshot(), QueueSnapshot::default());
 }
+
+const STATION: &str = "spotify:station:track:s";
+const SEED: &str = "spotify:track:s";
+
+fn radio_model(item: &str, upcoming: &[(&str, &str)]) -> PlaybackModel {
+    let mut model = model(item, 150_000, upcoming);
+
+    model.context = Some(entity(STATION, 0));
+
+    model
+}
+
+fn started(old: &str) -> QueueState {
+    let mut queue = QueueState::new();
+
+    queue.start_radio(
+        SEED.to_owned(),
+        STATION.to_owned(),
+        &model(old, 100_000, &[]),
+        NOW,
+    );
+
+    queue
+}
+
+#[test]
+fn radio_seed_goes_first_once_the_station_has_replaced_the_old_item() {
+    let mut queue = started("spotify:track:old");
+
+    let old_item = radio_model("spotify:track:old", &[]);
+
+    assert!(queue.observe(&old_item, NOW + 20).is_empty(), "old item");
+
+    let first = radio_model("spotify:track:t1", &[("spotify:track:t2", "context")]);
+
+    assert_eq!(queue.observe(&first, NOW + 500), add(SEED));
+    assert_eq!(
+        queue.snapshot().locked.map(|entry| entry.uri),
+        Some(SEED.into())
+    );
+
+    let queued = radio_model(
+        "spotify:track:t1",
+        &[(SEED, "queue"), ("spotify:track:t2", "context")],
+    );
+
+    assert_eq!(queue.observe(&queued, NOW + 600), vec![SKIP]);
+}
+
+#[test]
+fn radio_waits_for_the_placeholder_to_go() {
+    let mut queue = started("spotify:track:old");
+    let placeholder = radio_model(
+        "spotify:track:t1",
+        &[("spotify:meta:node_rules_placeholder", "context")],
+    );
+
+    assert!(queue.observe(&placeholder, NOW + 500).is_empty());
+    assert_eq!(
+        queue.observe(&radio_model("spotify:track:t1", &[]), NOW + 600),
+        add(SEED)
+    );
+}
+
+#[test]
+fn radio_trusts_an_unchanged_item_after_the_settle_time() {
+    let mut queue = started("spotify:track:t1");
+    let same = radio_model("spotify:track:t1", &[]);
+
+    assert!(queue.observe(&same, NOW + 1_499).is_empty());
+    assert_eq!(queue.observe(&same, NOW + 1_500), add(SEED));
+}
+
+#[test]
+fn radio_gives_up_when_the_station_never_loads() {
+    let mut queue = started("spotify:track:old");
+    let old = model("spotify:track:old", 100_000, &[]);
+
+    assert_eq!(queue.next_wake_ms(&old, NOW), Some(1_500));
+    assert!(queue.observe(&old, NOW + 10_000).is_empty());
+    assert_eq!(queue.next_wake_ms(&old, NOW + 10_000), None);
+    assert!(
+        queue
+            .observe(&radio_model("spotify:track:t1", &[]), NOW + 10_100)
+            .is_empty()
+    );
+    assert!(queue.snapshot().locked.is_none());
+}
+
+#[test]
+fn the_seed_coming_up_in_the_station_after_it_played_is_skipped() {
+    let mut queue = started("spotify:track:old");
+
+    queue.observe(&radio_model("spotify:track:t1", &[]), NOW + 500);
+    queue.observe(
+        &radio_model("spotify:track:t1", &[(SEED, "queue")]),
+        NOW + 600,
+    );
+    queue.observe(
+        &radio_model(SEED, &[("spotify:track:t2", "context")]),
+        NOW + 700,
+    );
+    queue.observe(&radio_model("spotify:track:t2", &[]), NOW + 800);
+    queue.observe(
+        &radio_model("spotify:track:t3", &[(SEED, "context")]),
+        NOW + 900,
+    );
+
+    assert_eq!(
+        queue.observe(&radio_model(SEED, &[]), NOW + 1_000),
+        vec![SKIP]
+    );
+}
+
+#[test]
+fn going_back_to_the_seed_is_not_skipped() {
+    let mut queue = started("spotify:track:old");
+
+    queue.observe(&radio_model("spotify:track:t1", &[]), NOW + 500);
+    queue.observe(
+        &radio_model("spotify:track:t1", &[(SEED, "queue")]),
+        NOW + 600,
+    );
+    queue.observe(
+        &radio_model(SEED, &[("spotify:track:t2", "context")]),
+        NOW + 700,
+    );
+    queue.observe(&radio_model("spotify:track:t2", &[]), NOW + 800);
+
+    assert!(
+        queue
+            .observe(
+                &radio_model(SEED, &[("spotify:track:t2", "context")]),
+                NOW + 900
+            )
+            .is_empty()
+    );
+}
+
+#[test]
+fn leaving_the_station_ends_the_session() {
+    let mut queue = started("spotify:track:old");
+
+    queue.observe(&radio_model("spotify:track:t1", &[]), NOW + 500);
+    queue.observe(&model("spotify:track:other", 100_000, &[]), NOW + 600);
+    queue.observe(&model("spotify:track:other", 100_000, &[]), NOW + 700);
+
+    assert!(queue.observe(&radio_model(SEED, &[]), NOW + 800).is_empty());
+}
+
+#[test]
+fn a_hand_off_in_flight_gets_the_seed_in_front_and_one_skip() {
+    let mut queue = state(&["spotify:track:mine"]);
+
+    queue.start_radio(
+        SEED.into(),
+        STATION.into(),
+        &model("spotify:track:old", 100_000, &[]),
+        NOW,
+    );
+
+    let mut ending = model("spotify:track:old", 10_000, &[]);
+
+    ending.context = Some(entity("spotify:playlist:x", 0));
+
+    assert_eq!(queue.observe(&ending, NOW + 100), add("spotify:track:mine"));
+
+    let unconfirmed = radio_model("spotify:track:t1", &[]);
+
+    assert!(queue.observe(&unconfirmed, NOW + 500).is_empty());
+    assert_eq!(uris(&queue), vec![SEED]);
+
+    let confirmed = radio_model("spotify:track:t1", &[("spotify:track:mine", "queue")]);
+
+    assert_eq!(queue.observe(&confirmed, NOW + 600), vec![SKIP]);
+}
+
+#[test]
+fn the_station_playing_the_seed_first_is_not_skipped() {
+    let mut queue = started("spotify:track:old");
+
+    queue.observe(&radio_model("spotify:track:t1", &[]), NOW + 500);
+
+    assert!(queue.observe(&radio_model(SEED, &[]), NOW + 600).is_empty());
+    assert!(
+        queue
+            .observe(&radio_model("spotify:track:t2", &[]), NOW + 700)
+            .is_empty()
+    );
+}

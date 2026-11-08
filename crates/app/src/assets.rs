@@ -43,7 +43,9 @@ icon_assets!(
         Maximize2,
         Check,
         Folder,
-        FolderOpen
+        FolderOpen,
+        Radio,
+        Disc3
     ]
 );
 

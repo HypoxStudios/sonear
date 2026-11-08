@@ -15,6 +15,7 @@ use tokio::sync::{Notify, broadcast};
 use tracing::{debug, warn};
 
 use crate::events::AppEvent;
+use crate::model::is_playable_uri;
 use crate::playback::{PlaybackModel, now_ms};
 use crate::player::Player;
 
@@ -25,6 +26,11 @@ pub const CONFIRM_TIMEOUT_MS: u64 = 10_000;
 /// How long a confirmed track may be missing from Soloist's queue before it counts as lost.
 pub const LOST_GRACE_MS: u64 = 3_000;
 pub const QUEUE_LIMIT: usize = 500;
+
+/// How long a new station gets to replace the old item before the item is trusted anyway.
+const RADIO_SETTLE_MS: u64 = 1_500;
+/// How long a station gets to load before its seed is given up on.
+const RADIO_GIVE_UP_MS: u64 = 10_000;
 
 const MIN_WAKE_MS: u64 = 50;
 
@@ -85,11 +91,33 @@ pub struct SavedQueue {
     pub entries: Vec<SavedEntry>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum SeedPhase {
+    /// The station has not replaced what played before it yet.
+    Waiting,
+    Inserted,
+    /// The seed has played, so the station repeating it is skipped.
+    Played,
+}
+
+/// A song radio that puts its seed song among the station's tracks.
+#[derive(Debug, Clone)]
+struct RadioSeed {
+    station: String,
+    seed: String,
+    item_at_start: Option<String>,
+    started_at_ms: u64,
+    phase: SeedPhase,
+    last_item: Option<String>,
+    seed_was_next: bool,
+}
+
 /// The queue rules, with no IO and the clock passed in.
 #[derive(Debug, Default)]
 pub struct QueueState {
     entries: Vec<QueuedTrack>,
     handoff: Option<Handoff>,
+    radio: Option<RadioSeed>,
     next_id: u64,
     dirty: bool,
 }
@@ -213,7 +241,29 @@ impl QueueState {
     pub fn reset(&mut self) {
         self.entries.clear();
         self.handoff = None;
+        self.radio = None;
         self.dirty = true;
+    }
+
+    /// Starts working the seed of a song radio into `station`, replacing any
+    /// earlier one: the seed plays first and the station's repeat of it is
+    /// skipped. Call it before starting the station.
+    pub fn start_radio(
+        &mut self,
+        seed: String,
+        station: String,
+        model: &PlaybackModel,
+        now_ms: u64,
+    ) {
+        self.radio = Some(RadioSeed {
+            station,
+            seed,
+            item_at_start: model.item.as_ref().map(|item| item.uri.clone()),
+            started_at_ms: now_ms,
+            phase: SeedPhase::Waiting,
+            last_item: None,
+            seed_was_next: false,
+        });
     }
 
     fn start_handoff(
@@ -249,6 +299,7 @@ impl QueueState {
 
         self.observe_handoff(model, now_ms, &mut commands);
         self.adopt(model);
+        self.observe_radio(model, now_ms, &mut commands);
 
         if self.handoff.is_none() && self.handoff_due(model, now_ms) {
             let entry = self.entries.remove(0);
@@ -345,6 +396,122 @@ impl QueueState {
         self.dirty = true;
     }
 
+    fn seed_entry(&mut self, seed: &str) -> QueuedTrack {
+        let id = self.next_id;
+
+        self.next_id += 1;
+
+        QueuedTrack {
+            id,
+            uri: seed.to_owned(),
+            source: QueueSource::User,
+        }
+    }
+
+    /// Plays the seed next, the way the Next button would.
+    fn play_seed_next(
+        &mut self,
+        seed: &str,
+        model: &PlaybackModel,
+        now_ms: u64,
+    ) -> Vec<QueueCommand> {
+        let entry = self.seed_entry(seed);
+        let foreign = self.foreign_ahead(model);
+        let mut commands = Vec::new();
+
+        match &mut self.handoff {
+            Some(handoff) => {
+                if handoff.confirmed {
+                    commands.push(QueueCommand::SkipNext);
+                } else {
+                    handoff.skip_on_confirm = true;
+                }
+
+                self.entries.insert(0, entry);
+                self.dirty = true;
+            }
+            None if foreign => {
+                self.entries.insert(0, entry);
+                self.dirty = true;
+            }
+            None => commands.push(self.start_handoff(entry, model, now_ms, true)),
+        }
+
+        commands
+    }
+
+    fn observe_radio(
+        &mut self,
+        model: &PlaybackModel,
+        now_ms: u64,
+        commands: &mut Vec<QueueCommand>,
+    ) {
+        let Some(mut radio) = self.radio.take() else {
+            return;
+        };
+
+        let item = model.item.as_ref().map(|item| item.uri.clone());
+        let in_station = model
+            .context
+            .as_ref()
+            .is_some_and(|context| context.uri == radio.station);
+        let changed = item != radio.last_item;
+        let is_seed = item.as_deref() == Some(radio.seed.as_str());
+        let seed_next = model
+            .upcoming
+            .first()
+            .is_some_and(|entry| entry.source == "context" && entry.item.uri == radio.seed);
+
+        match radio.phase {
+            SeedPhase::Waiting => {
+                let age = now_ms.saturating_sub(radio.started_at_ms);
+
+                if age >= RADIO_GIVE_UP_MS {
+                    return;
+                }
+
+                let settled = in_station
+                    && item.as_deref().is_some_and(is_playable_uri)
+                    && !model
+                        .upcoming
+                        .iter()
+                        .any(|entry| entry.item.uri.starts_with("spotify:meta:"))
+                    && (item != radio.item_at_start || age >= RADIO_SETTLE_MS);
+
+                if settled {
+                    if is_seed {
+                        radio.phase = SeedPhase::Played;
+                        radio.seed_was_next = seed_next;
+                    } else {
+                        commands.extend(self.play_seed_next(&radio.seed, model, now_ms));
+                        radio.phase = SeedPhase::Inserted;
+                    }
+
+                    radio.last_item = item;
+                }
+            }
+            _ if !in_station => return,
+            SeedPhase::Inserted => {
+                if changed && is_seed {
+                    radio.phase = SeedPhase::Played;
+                    radio.seed_was_next = seed_next;
+                }
+
+                radio.last_item = item;
+            }
+            SeedPhase::Played => {
+                if changed && is_seed && radio.seed_was_next {
+                    commands.push(QueueCommand::SkipNext);
+                }
+
+                radio.seed_was_next = seed_next;
+                radio.last_item = item;
+            }
+        }
+
+        self.radio = Some(radio);
+    }
+
     fn remaining_ms(model: &PlaybackModel, now_ms: u64) -> Option<u64> {
         let duration = model.duration_ms()?;
 
@@ -423,6 +590,31 @@ impl QueueState {
     /// Milliseconds until the next transition that depends on time, or `None`
     /// when an idle queue needs no timer.
     pub fn next_wake_ms(&self, model: &PlaybackModel, now_ms: u64) -> Option<u64> {
+        match (
+            self.radio_wake_ms(now_ms),
+            self.queue_wake_ms(model, now_ms),
+        ) {
+            (Some(radio), Some(queue)) => Some(radio.min(queue)),
+            (radio, queue) => radio.or(queue),
+        }
+    }
+
+    fn radio_wake_ms(&self, now_ms: u64) -> Option<u64> {
+        let radio = self
+            .radio
+            .as_ref()
+            .filter(|radio| radio.phase == SeedPhase::Waiting)?;
+        let age = now_ms.saturating_sub(radio.started_at_ms);
+        let deadline = if age < RADIO_SETTLE_MS {
+            RADIO_SETTLE_MS
+        } else {
+            RADIO_GIVE_UP_MS
+        };
+
+        Some(deadline.saturating_sub(age))
+    }
+
+    fn queue_wake_ms(&self, model: &PlaybackModel, now_ms: u64) -> Option<u64> {
         if let Some(handoff) = &self.handoff {
             if !trustworthy(model) {
                 return None;
@@ -580,6 +772,18 @@ impl QueueManager {
         let commands = lock(&self.state).next_pressed(&self.player.snapshot(), (self.clock)());
 
         self.send(commands);
+        self.wake.notify_one();
+    }
+
+    /// Makes `seed_uri` play first in the station `station_uri`. Call it
+    /// before starting the station.
+    pub fn start_radio(&self, seed_uri: &str, station_uri: &str) {
+        lock(&self.state).start_radio(
+            seed_uri.to_owned(),
+            station_uri.to_owned(),
+            &self.player.snapshot(),
+            (self.clock)(),
+        );
         self.wake.notify_one();
     }
 

@@ -272,6 +272,7 @@ impl ShowPage {
                             show_number: false,
                             trailing: None,
                             queue_store: None,
+                            menu_store: None,
                         };
                         let play_store = store.clone();
                         let play_page = page.clone();

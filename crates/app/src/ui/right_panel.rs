@@ -16,6 +16,8 @@ use sonear_soloist::protocol::Entity as SoloistEntity;
 use super::widgets::{art, cover_for, icon, icon_button};
 use crate::store::{AppStore, Route, UP_NEXT_ROWS};
 use crate::theme;
+use sonear_core::model::is_playable_uri;
+use sonear_core::radio;
 
 const COVER: f32 = 40.;
 const ROW_HEIGHT: f32 = 54.;
@@ -100,7 +102,7 @@ fn build_rows(state: &AppStore) -> Vec<Row> {
     }
 
     for (index, entry) in upcoming.iter().enumerate() {
-        if entry.source == "queue" {
+        if entry.source == "queue" && is_playable_uri(&entry.item.uri) {
             rows.push(Row::Spotify(index));
         }
     }
@@ -117,7 +119,7 @@ fn build_rows(state: &AppStore) -> Vec<Row> {
     let context: Vec<usize> = upcoming
         .iter()
         .enumerate()
-        .filter(|(_, entry)| entry.source != "queue")
+        .filter(|(_, entry)| entry.source != "queue" && is_playable_uri(&entry.item.uri))
         .map(|(index, _)| index)
         .take(UP_NEXT_ROWS)
         .collect();
@@ -130,6 +132,11 @@ fn build_rows(state: &AppStore) -> Vec<Row> {
             .map(|context| {
                 if sonear_core::model::is_liked_context(&context.uri) {
                     Route::LikedSongs.label()
+                } else if radio::is_station(&context.uri) {
+                    match state.radio_name(&context.uri) {
+                        Some(name) => t!("right.radio", name = name).into_owned(),
+                        None => t!("right.radio_unnamed").into_owned(),
+                    }
                 } else {
                     context.name().to_owned()
                 }

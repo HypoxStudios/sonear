@@ -302,6 +302,14 @@ pub struct WebPlayRequest {
 /// The most track URIs sent in one play call.
 pub const MAX_PLAY_URIS: usize = 100;
 
+/// Whether `uri` is something that can play as a queue entry: a track, an
+/// episode or a local file. Soloist also sends internal placeholders.
+pub fn is_playable_uri(uri: &str) -> bool {
+    ["spotify:track:", "spotify:episode:", "spotify:local:"]
+        .iter()
+        .any(|prefix| uri.starts_with(prefix))
+}
+
 /// `spotify:album:abc` becomes `("album", "abc")`.
 pub fn split_uri(uri: &str) -> Option<(&str, &str)> {
     let mut parts = uri.split(':');

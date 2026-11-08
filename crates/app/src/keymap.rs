@@ -27,6 +27,7 @@ actions!(
         ToggleShuffle,
         CycleRepeat,
         LikeCurrent,
+        StartRadio,
         ToggleQueue,
         ToggleLyrics,
         ToggleMiniPlayer,
@@ -114,7 +115,7 @@ macro_rules! shortcut {
     };
 }
 
-pub static SHORTCUTS: [Shortcut; 24] = [
+pub static SHORTCUTS: [Shortcut; 25] = [
     shortcut!("palette", General, Some("ctrl-k"), OpenPalette),
     shortcut!("shortcuts", General, Some("ctrl-/"), OpenShortcuts),
     shortcut!(
@@ -134,6 +135,7 @@ pub static SHORTCUTS: [Shortcut; 24] = [
     shortcut!("shuffle", Playback, Some("ctrl-s"), ToggleShuffle),
     shortcut!("repeat", Playback, Some("ctrl-r"), CycleRepeat),
     shortcut!("like", Playback, Some("alt-shift-b"), LikeCurrent),
+    shortcut!("start_radio", Playback, None, StartRadio),
     shortcut!("toggle_queue", Queue, Some("alt-shift-q"), ToggleQueue),
     shortcut!("toggle_lyrics", Queue, Some("ctrl-shift-l"), ToggleLyrics),
     shortcut!("clear_queue", Queue, None, ClearQueue),

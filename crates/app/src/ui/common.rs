@@ -1,11 +1,12 @@
 //! Pieces shared by the library pages: cards, rows, skeletons, errors and the breadcrumb.
 
 use gpui_kit::assets::IconName;
+use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
-    AnyElement, App, ClickEvent, Div, ElementId, Entity, FontWeight, InteractiveElement as _,
-    IntoElement, ParentElement as _, SharedString, StatefulInteractiveElement as _, Styled as _,
-    Window, div, px,
+    AnyElement, App, ClickEvent, Context, Div, ElementId, Entity, FontWeight,
+    InteractiveElement as _, IntoElement, ParentElement as _, SharedString,
+    StatefulInteractiveElement as _, Styled as _, Window, div, px,
 };
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
@@ -450,6 +451,8 @@ pub struct TrackRowSpec<'a> {
     pub trailing: Option<String>,
     /// `Some` shows an add-to-queue button on hover.
     pub queue_store: Option<&'a Entity<AppStore>>,
+    /// `Some` adds a right-click menu to track rows.
+    pub menu_store: Option<&'a Entity<AppStore>>,
 }
 
 pub fn track_row(
@@ -500,146 +503,262 @@ pub fn track_row(
         .filter(|_| queueable)
         .map(|store| (store.clone(), track.clone()));
     let group = SharedString::from(format!("{id_prefix}-row-{}", spec.index));
+    let menu = spec
+        .menu_store
+        .filter(|_| track.kind == ItemKind::Track && !track.is_local)
+        .map(|store| (store.clone(), track.clone()));
 
-    div()
+    let row = div()
+        .id(ElementId::from((id_prefix, spec.index)))
+        .group(group.clone())
+        .flex()
+        .items_center()
+        .gap_3()
         .w_full()
-        .px_5()
+        .h(px(ROW_HEIGHT))
+        .px_3()
+        .rounded(theme::CONTROL_RADIUS)
+        .border_b_1()
+        .border_color(theme::hairline())
+        .text_size(px(13.))
+        .when(playable, |this| {
+            this.cursor_pointer()
+                .hover(|style| style.bg(theme::hover()))
+                .on_click(on_play)
+        })
+        .when(!playable, |this| this.opacity(0.5))
+        .when(spec.show_number, |this| {
+            this.child(
+                div()
+                    .w(px(28.))
+                    .flex_none()
+                    .text_color(theme::text_tertiary())
+                    .child(marker),
+            )
+        })
+        .when(spec.show_art, |this| {
+            this.child(art(&track.art, &track.uri, 36., theme::ART_RADIUS_SMALL))
+        })
         .child(
             div()
-                .id(ElementId::from((id_prefix, spec.index)))
-                .group(group.clone())
                 .flex()
-                .items_center()
-                .gap_3()
-                .w_full()
-                .h(px(ROW_HEIGHT))
-                .px_3()
-                .rounded(theme::CONTROL_RADIUS)
-                .border_b_1()
-                .border_color(theme::hairline())
-                .text_size(px(13.))
-                .when(playable, |this| {
-                    this.cursor_pointer()
-                        .hover(|style| style.bg(theme::hover()))
-                        .on_click(on_play)
-                })
-                .when(!playable, |this| this.opacity(0.5))
-                .when(spec.show_number, |this| {
-                    this.child(
-                        div()
-                            .w(px(28.))
-                            .flex_none()
-                            .text_color(theme::text_tertiary())
-                            .child(marker),
-                    )
-                })
-                .when(spec.show_art, |this| {
-                    this.child(art(&track.art, &track.uri, 36., theme::ART_RADIUS_SMALL))
-                })
+                .flex_col()
+                .flex_1()
+                .min_w_0()
                 .child(
                     div()
-                        .flex()
-                        .flex_col()
-                        .flex_1()
-                        .min_w_0()
-                        .child(
-                            div()
-                                .id(ElementId::from((
-                                    SharedString::from(format!("{id_prefix}-title")),
-                                    spec.index,
-                                )))
-                                .truncate()
-                                .text_color(color)
-                                .font_weight(if spec.current {
-                                    FontWeight::MEDIUM
-                                } else {
-                                    FontWeight::NORMAL
-                                })
-                                .tooltip(text_tooltip(track.name.clone()))
-                                .child(track.name.clone()),
-                        )
-                        .child(
-                            div()
-                                .id(ElementId::from((
-                                    SharedString::from(format!("{id_prefix}-artists")),
-                                    spec.index,
-                                )))
-                                .truncate()
-                                .text_size(px(12.))
-                                .text_color(theme::text_secondary())
-                                .tooltip(text_tooltip(artist_line.clone()))
-                                .child(artist_line),
-                        ),
-                )
-                .when(spec.show_album, |this| {
-                    this.child(
-                        div()
-                            .w(px(180.))
-                            .flex_none()
-                            .truncate()
-                            .text_size(px(12.))
-                            .text_color(theme::text_secondary())
-                            .child(album_name),
-                    )
-                })
-                .when_some(queue, |this, (store, track)| {
-                    this.child(
-                        icon_button(
-                            ElementId::from((
-                                SharedString::from(format!("{id_prefix}-queue")),
-                                spec.index,
-                            )),
-                            IconName::ListPlus,
-                            16.,
-                            28.,
-                            theme::text_secondary(),
-                            true,
-                        )
-                        .invisible()
-                        .group_hover(group.clone(), |style| style.visible())
-                        .on_click(move |_, _, cx| {
-                            cx.stop_propagation();
-                            store.update(cx, |state, cx| state.add_to_queue(&track, cx));
-                        }),
-                    )
-                })
-                .child(
-                    div()
-                        .w(px(30.))
-                        .flex_none()
-                        .when_some(heart, |this, liked| {
-                            this.child(
-                                heart_button(
-                                    ElementId::from((
-                                        SharedString::from(format!("{id_prefix}-like")),
-                                        spec.index,
-                                    )),
-                                    liked,
-                                    15.,
-                                    28.,
-                                    theme::text_tertiary(),
-                                    true,
-                                )
-                                .on_click(
-                                    move |event, window, cx| {
-                                        cx.stop_propagation();
-                                        on_like(event, window, cx);
-                                    },
-                                ),
-                            )
-                        }),
+                        .id(ElementId::from((
+                            SharedString::from(format!("{id_prefix}-title")),
+                            spec.index,
+                        )))
+                        .truncate()
+                        .text_color(color)
+                        .font_weight(if spec.current {
+                            FontWeight::MEDIUM
+                        } else {
+                            FontWeight::NORMAL
+                        })
+                        .tooltip(text_tooltip(track.name.clone()))
+                        .child(track.name.clone()),
                 )
                 .child(
                     div()
-                        .w(px(if spec.trailing.is_some() { 120. } else { 52. }))
-                        .flex_none()
-                        .text_right()
+                        .id(ElementId::from((
+                            SharedString::from(format!("{id_prefix}-artists")),
+                            spec.index,
+                        )))
+                        .truncate()
                         .text_size(px(12.))
-                        .text_color(theme::text_tertiary())
-                        .child(trailing),
+                        .text_color(theme::text_secondary())
+                        .tooltip(text_tooltip(artist_line.clone()))
+                        .child(artist_line),
                 ),
         )
-        .into_any_element()
+        .when(spec.show_album, |this| {
+            this.child(
+                div()
+                    .w(px(180.))
+                    .flex_none()
+                    .truncate()
+                    .text_size(px(12.))
+                    .text_color(theme::text_secondary())
+                    .child(album_name),
+            )
+        })
+        .when_some(queue, |this, (store, track)| {
+            this.child(
+                icon_button(
+                    ElementId::from((SharedString::from(format!("{id_prefix}-queue")), spec.index)),
+                    IconName::ListPlus,
+                    16.,
+                    28.,
+                    theme::text_secondary(),
+                    true,
+                )
+                .invisible()
+                .group_hover(group.clone(), |style| style.visible())
+                .on_click(move |_, _, cx| {
+                    cx.stop_propagation();
+                    store.update(cx, |state, cx| state.add_to_queue(&track, cx));
+                }),
+            )
+        })
+        .child(
+            div()
+                .w(px(30.))
+                .flex_none()
+                .when_some(heart, |this, liked| {
+                    this.child(
+                        heart_button(
+                            ElementId::from((
+                                SharedString::from(format!("{id_prefix}-like")),
+                                spec.index,
+                            )),
+                            liked,
+                            15.,
+                            28.,
+                            theme::text_tertiary(),
+                            true,
+                        )
+                        .on_click(move |event, window, cx| {
+                            cx.stop_propagation();
+                            on_like(event, window, cx);
+                        }),
+                    )
+                }),
+        )
+        .child(
+            div()
+                .w(px(if spec.trailing.is_some() { 120. } else { 52. }))
+                .flex_none()
+                .text_right()
+                .text_size(px(12.))
+                .text_color(theme::text_tertiary())
+                .child(trailing),
+        );
+    let row = match menu {
+        Some((store, track)) => row
+            .context_menu(move |menu, window, cx| track_menu(menu, &store, &track, window, cx))
+            .into_any_element(),
+        None => row.into_any_element(),
+    };
+
+    div().w_full().px_5().child(row).into_any_element()
+}
+
+fn track_menu(
+    mut menu: PopupMenu,
+    store: &Entity<AppStore>,
+    track: &Track,
+    window: &mut Window,
+    cx: &mut Context<PopupMenu>,
+) -> PopupMenu {
+    let route = store.read(cx).route.clone();
+
+    if track.playable {
+        let (radio_store, radio_track) = (store.clone(), track.clone());
+        let (queue_store, queue_track) = (store.clone(), track.clone());
+
+        menu = menu
+            .item(
+                PopupMenuItem::new(t!("menu.start_radio"))
+                    .icon(IconName::Radio)
+                    .on_click(move |_, _, cx| {
+                        radio_store.update(cx, |state, cx| {
+                            state.start_radio(&radio_track.uri, &radio_track.name, cx);
+                        });
+                    }),
+            )
+            .item(
+                PopupMenuItem::new(t!("menu.add_to_queue"))
+                    .icon(IconName::ListPlus)
+                    .on_click(move |_, _, cx| {
+                        queue_store.update(cx, |state, cx| state.add_to_queue(&queue_track, cx));
+                    }),
+            );
+    }
+
+    let artists: Vec<(String, String)> = track
+        .artists
+        .iter()
+        .filter_map(|artist| Some((artist.id.clone()?, artist.name.clone())))
+        .filter(|(id, _)| route != Route::Artist(id.clone()))
+        .collect();
+    let album = track
+        .album
+        .as_ref()
+        .and_then(|album| album.id.clone())
+        .filter(|id| route != Route::Album(id.clone()));
+
+    if !artists.is_empty() || album.is_some() {
+        menu = menu.separator();
+    }
+
+    match artists.as_slice() {
+        [] => {}
+        [(id, _)] => {
+            menu = menu.item(go_to_item(
+                store,
+                t!("menu.go_to_artist"),
+                IconName::User,
+                Route::Artist(id.clone()),
+            ));
+        }
+        _ => {
+            let store = store.clone();
+
+            menu = menu.submenu_with_icon(
+                Some(IconName::User.into()),
+                t!("menu.go_to_artist"),
+                window,
+                cx,
+                move |submenu, _, _| {
+                    artists.iter().fold(submenu, |submenu, (id, name)| {
+                        submenu.item(go_to_item(
+                            &store,
+                            name.clone(),
+                            IconName::User,
+                            Route::Artist(id.clone()),
+                        ))
+                    })
+                },
+            );
+        }
+    }
+
+    if let Some(id) = album {
+        menu = menu.item(go_to_item(
+            store,
+            t!("menu.go_to_album"),
+            IconName::Disc3,
+            Route::Album(id),
+        ));
+    }
+
+    if let Some(url) = track.open_url.clone() {
+        menu = menu.separator().item(
+            PopupMenuItem::new(t!("menu.open_spotify"))
+                .icon(IconName::ExternalLink)
+                .on_click(move |_, _, cx| cx.open_url(&url)),
+        );
+    }
+
+    menu
+}
+
+fn go_to_item(
+    store: &Entity<AppStore>,
+    label: impl Into<SharedString>,
+    icon: IconName,
+    route: Route,
+) -> PopupMenuItem {
+    let store = store.clone();
+
+    PopupMenuItem::new(label)
+        .icon(icon)
+        .on_click(move |_, _, cx| {
+            store.update(cx, |state, cx| state.navigate(route.clone(), cx));
+        })
 }
 
 /// Converts every item of a page, keeping its paging state.

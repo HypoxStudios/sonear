@@ -30,8 +30,8 @@ use super::widgets::{accent_button, ghost_button, icon, panel};
 use crate::keymap::{
     self, ClearQueue, CloseOverlay, CycleRepeat, GoBack, GoHistory, GoHome, GoLibrary, GoLiked,
     GoSearch, LikeCurrent, NextTrack, OpenPalette, OpenSettings, OpenShortcuts, PreviousTrack,
-    SeekBack, SeekForward, ToggleLyrics, ToggleMiniPlayer, TogglePlayPause, ToggleQueue,
-    ToggleShuffle, ToggleSidebar, VolumeDown, VolumeUp,
+    SeekBack, SeekForward, StartRadio, ToggleLyrics, ToggleMiniPlayer, TogglePlayPause,
+    ToggleQueue, ToggleShuffle, ToggleSidebar, VolumeDown, VolumeUp,
 };
 use crate::store::{AppStore, Confirm, LibraryTab, Route, SetupStep};
 use crate::theme;
@@ -680,6 +680,26 @@ impl Shell {
         }
     }
 
+    fn start_radio(&self, cx: &mut Context<Self>) {
+        if !self.ready(cx) {
+            return;
+        }
+
+        let seed = self
+            .store
+            .read(cx)
+            .playback
+            .item
+            .as_ref()
+            .filter(|item| item.uri.starts_with("spotify:track:"))
+            .map(|item| (item.uri.clone(), item.name().to_owned()));
+
+        self.store.update(cx, |state, cx| match seed {
+            Some((uri, name)) => state.start_radio(&uri, &name, cx),
+            None => state.show_toast(t!("store.toast.radio_needs_song"), cx),
+        });
+    }
+
     fn go(&self, route: Route, cx: &mut Context<Self>) {
         self.store.update(cx, |state, cx| state.navigate(route, cx));
     }
@@ -721,6 +741,7 @@ impl Shell {
             shell.playback(cx, |state| state.core.player.cycle_repeat());
         }))
         .on_action(cx.listener(|shell, _: &LikeCurrent, _, cx| shell.like_current(cx)))
+        .on_action(cx.listener(|shell, _: &StartRadio, _, cx| shell.start_radio(cx)))
         .on_action(cx.listener(|shell, _: &ToggleQueue, _, cx| {
             shell
                 .store

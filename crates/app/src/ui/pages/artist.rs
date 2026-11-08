@@ -1,6 +1,7 @@
 use rust_i18n::t;
 use std::rc::Rc;
 
+use gpui_kit::assets::IconName;
 use gpui_kit::component::{VirtualListScrollHandle, v_virtual_list};
 use gpui_kit::{
     AnyElement, Context, Entity, FontWeight, IntoElement, ParentElement as _, Pixels, Render, Size,
@@ -8,6 +9,7 @@ use gpui_kit::{
 };
 use sonear_core::LibraryError;
 use sonear_core::model::{Artist, Track};
+use sonear_core::radio;
 
 use crate::data::{self, Env, Load, Paged, Slot};
 use crate::store::AppStore;
@@ -16,7 +18,9 @@ use crate::ui::common::{
     CardItem, GRID_ROW, ROW_HEIGHT, TrackRowSpec, breadcrumb, card_row, error_panel, grid_columns,
     heading, open_spotify, skeleton_rows, track_row, with_retry_bar,
 };
-use crate::ui::widgets::{accent_button, art, label_caps, pending_overlay, play_pause_icon};
+use crate::ui::widgets::{
+    accent_button, art, ghost_button_with_icon, icon, label_caps, pending_overlay, play_pause_icon,
+};
 
 const HEADING_HEIGHT: f32 = 46.;
 
@@ -233,6 +237,43 @@ impl ArtistPage {
             })
         };
 
+        let station = radio::station_uri(&artist.uri);
+        let radio_playing = state.playback.is_playing()
+            && station.as_deref().is_some_and(|station| {
+                state
+                    .playback
+                    .context
+                    .as_ref()
+                    .is_some_and(|context| context.uri == station)
+            });
+        let (radio_store, radio_uri, radio_name) =
+            (self.store.clone(), artist.uri.clone(), artist.name.clone());
+        let radio_button = station.map(|_| {
+            ghost_button_with_icon(
+                "artist-radio",
+                if radio_playing {
+                    t!("common.pause")
+                } else {
+                    t!("artist.radio")
+                },
+                Some(if radio_playing {
+                    play_pause_icon(true, 14., theme::text_secondary())
+                } else {
+                    icon(IconName::Radio, 14., theme::text_secondary())
+                }),
+                true,
+            )
+            .on_click(move |_, _, cx| {
+                if radio_playing {
+                    radio_store.read(cx).core.player.pause();
+                } else {
+                    radio_store.update(cx, |state, cx| {
+                        state.start_radio(&radio_uri, &radio_name, cx);
+                    });
+                }
+            })
+        });
+
         div()
             .flex()
             .items_center()
@@ -263,6 +304,7 @@ impl ArtistPage {
                             .items_center()
                             .gap_3()
                             .child(play)
+                            .children(radio_button)
                             .children(open_spotify("artist-open", artist.open_url.clone())),
                     ),
             )
@@ -343,6 +385,7 @@ impl ArtistPage {
                                     show_number: true,
                                     trailing: None,
                                     queue_store: Some(&store),
+                                    menu_store: Some(&store),
                                 };
                                 let play_store = store.clone();
                                 let like_store = store.clone();

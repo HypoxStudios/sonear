@@ -162,10 +162,21 @@ pub fn ghost_button(
     label: impl Into<SharedString>,
     enabled: bool,
 ) -> Stateful<Div> {
+    ghost_button_with_icon(id, label, None, enabled)
+}
+
+/// `ghost_button` with an icon before the label.
+pub fn ghost_button_with_icon(
+    id: impl Into<ElementId>,
+    label: impl Into<SharedString>,
+    leading: Option<Icon>,
+    enabled: bool,
+) -> Stateful<Div> {
     div()
         .id(id)
         .flex()
         .items_center()
+        .gap_2()
         .h(px(34.))
         .px_4()
         .rounded(theme::CONTROL_RADIUS)
@@ -173,6 +184,7 @@ pub fn ghost_button(
         .border_color(theme::hairline())
         .text_size(px(13.))
         .text_color(theme::text_secondary())
+        .children(leading)
         .child(label.into())
         .when(enabled, |this| {
             this.cursor_pointer()

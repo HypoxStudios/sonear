@@ -9,10 +9,11 @@ use gpui_kit::{AnyWindowHandle, AppContext as _, Context, Entity, SharedString, 
 use rust_i18n::t;
 use sonear_core::config::{LEGAL_VERSION, Language};
 use sonear_core::data_dir::check_target;
-use sonear_core::model::ItemKind;
+use sonear_core::model::{ItemKind, is_playable_uri};
 use sonear_core::model::{PlayOffset, PlaybackRequest, Playlist, Profile, Track};
 use sonear_core::playback::{SeekHold, VolumeHold, now_ms};
 use sonear_core::queue::QueueSource;
+use sonear_core::radio;
 use sonear_core::{
     AccountState, AppEvent, AppPaths, Core, PlaybackModel, QueueSnapshot, SpotifyLink,
 };
@@ -40,6 +41,7 @@ pub use updates::UpdateState;
 use updates::UpdateTask;
 
 const TOAST_FOR: Duration = Duration::from_secs(6);
+const RADIO_WAIT: Duration = Duration::from_secs(8);
 const PENDING_PLAY_FOR: Duration = Duration::from_secs(10);
 const SIDEBAR_PLAYLISTS: usize = 8;
 /// Longest device name the settings page accepts.
@@ -278,6 +280,12 @@ pub struct AppStore {
     /// Details of queue entries Soloist sent without any. `None` means the lookup failed.
     pub queue_tracks: HashMap<String, Option<Track>>,
     queue_requested: HashSet<String>,
+    /// What the user's radio stations are called, by station URI. Soloist sends no name for them.
+    radio_names: HashMap<String, String>,
+    radio_name_requested: HashSet<String>,
+    /// The station just started and the play generation, until it shows up as the context.
+    radio_pending: Option<(String, u64)>,
+    radio_generation: u64,
     pub rate: RateLimit,
     pub toast: Option<Toast>,
     pub pending_play: bool,
@@ -353,6 +361,10 @@ impl AppStore {
             sidebar_playlists: Vec::new(),
             queue_tracks: HashMap::new(),
             queue_requested: HashSet::new(),
+            radio_names: HashMap::new(),
+            radio_name_requested: HashSet::new(),
+            radio_pending: None,
+            radio_generation: 0,
             rate: RateLimit::default(),
             toast: None,
             pending_play: false,
@@ -758,6 +770,7 @@ impl AppStore {
                 self.track_disconnect_pause();
                 self.clear_released_holds(now_ms());
                 self.resolve_queue(cx);
+                self.sync_radio(cx);
 
                 if started {
                     self.pending_play = false;
@@ -829,6 +842,9 @@ impl AppStore {
                 self.queue = QueueSnapshot::default();
                 self.queue_tracks.clear();
                 self.queue_requested.clear();
+                self.radio_names.clear();
+                self.radio_name_requested.clear();
+                self.radio_pending = None;
                 self.loads.clear();
             }
         }
@@ -841,6 +857,9 @@ impl AppStore {
 
         self.queue_tracks.clear();
         self.queue_requested.clear();
+        self.radio_names.clear();
+        self.radio_name_requested.clear();
+        self.radio_pending = None;
         self.history_version += 1;
     }
 
@@ -851,6 +870,7 @@ impl AppStore {
             .playback
             .upcoming
             .iter()
+            .filter(|entry| is_playable_uri(&entry.item.uri))
             .take(UP_NEXT_ROWS)
             .filter(|entry| entry.item.name().is_empty())
             .map(|entry| entry.item.uri.clone())
@@ -1173,6 +1193,7 @@ impl AppStore {
 
     fn begin_play(&mut self, cx: &mut Context<Self>) {
         self.pending_play = true;
+        self.radio_pending = None;
         cx.spawn(async move |this, cx| {
             cx.background_executor().timer(PENDING_PLAY_FOR).await;
 
@@ -1205,6 +1226,131 @@ impl AppStore {
         } else {
             self.core.player.play_context(uri);
         }
+    }
+
+    /// Starts Spotify's radio for a track or an artist. Nothing happens for
+    /// other kinds. Warns when the station never shows up, since the station
+    /// URIs are undocumented and may stop working.
+    pub fn start_radio(&mut self, seed_uri: &str, seed_name: &str, cx: &mut Context<Self>) {
+        let Some(station) = radio::station_uri(seed_uri) else {
+            return;
+        };
+
+        self.radio_names
+            .insert(station.clone(), seed_name.to_owned());
+
+        let resumes = !self.playback.is_playing() && self.playing_station(&station);
+
+        if seed_uri.starts_with("spotify:track:") && !resumes {
+            self.core.queue.start_radio(seed_uri, &station);
+        }
+
+        self.play_context(&station, cx);
+
+        self.radio_generation += 1;
+
+        let generation = self.radio_generation;
+
+        self.radio_pending = Some((station, generation));
+        cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(RADIO_WAIT).await;
+
+            let _ = this.update(cx, |store, cx| {
+                let Some((station, pending)) = store.radio_pending.clone() else {
+                    return;
+                };
+
+                if pending != generation {
+                    return;
+                }
+
+                store.radio_pending = None;
+
+                if store.playing_station(&station) {
+                    return;
+                }
+
+                store.show_toast(t!("store.toast.radio_unavailable"), cx);
+            });
+        })
+        .detach();
+    }
+
+    fn playing_station(&self, station: &str) -> bool {
+        self.playback
+            .context
+            .as_ref()
+            .is_some_and(|context| context.uri == station)
+    }
+
+    /// The seed's name for a station, once known.
+    pub fn radio_name(&self, station: &str) -> Option<&str> {
+        self.radio_names.get(station).map(String::as_str)
+    }
+
+    /// Settles the pending radio and names the station that plays, looking the
+    /// seed up once when the name isn't known (after a restart, for one).
+    fn sync_radio(&mut self, cx: &mut Context<Self>) {
+        let Some(station) = self
+            .playback
+            .context
+            .as_ref()
+            .map(|context| context.uri.clone())
+            .filter(|uri| radio::is_station(uri))
+        else {
+            return;
+        };
+
+        if self
+            .radio_pending
+            .as_ref()
+            .is_some_and(|(pending, _)| *pending == station)
+        {
+            self.radio_pending = None;
+        }
+
+        if self.radio_names.contains_key(&station) || !self.connected() {
+            return;
+        }
+
+        let Some(seed) = radio::station_seed(&station) else {
+            return;
+        };
+
+        if !self.radio_name_requested.insert(station.clone()) {
+            return;
+        }
+
+        let core = self.core.clone();
+        let (sender, receiver) = tokio::sync::oneshot::channel();
+
+        self.runtime.spawn(async move {
+            let name = match sonear_core::model::split_uri(&seed) {
+                Some(("track", _)) => core
+                    .history
+                    .resolver()
+                    .resolve(&seed)
+                    .await
+                    .map(|track| track.name),
+                Some(("artist", id)) => {
+                    core.library.artist(id).await.ok().map(|artist| artist.name)
+                }
+                _ => None,
+            };
+
+            let _ = sender.send(name);
+        });
+        cx.spawn(async move |this, cx| {
+            let Some(name) = receiver.await.ok().flatten() else {
+                return;
+            };
+
+            let _ = this.update(cx, |store, cx| {
+                store.radio_names.insert(station, name);
+                cx.notify();
+            });
+        })
+        .detach();
     }
 
     /// Starts a context at a row.

@@ -25,6 +25,9 @@ artist.no_albums:
 artist.popular:
   en: "Popular"
   es: "Populares"
+artist.radio:
+  en: "Radio"
+  es: "Radio"
 
 common.cancel:
   en: "Cancel"
@@ -582,6 +585,22 @@ lyrics.title:
   en: "Lyrics"
   es: "Letra"
 
+menu.add_to_queue:
+  en: "Add to queue"
+  es: "Agregar a la fila"
+menu.go_to_album:
+  en: "Go to album"
+  es: "Ir al álbum"
+menu.go_to_artist:
+  en: "Go to artist"
+  es: "Ir al artista"
+menu.open_spotify:
+  en: "Open in Spotify"
+  es: "Abrir en Spotify"
+menu.start_radio:
+  en: "Start radio"
+  es: "Iniciar radio"
+
 mini.show:
   en: "Show Sonear"
   es: "Mostrar Sonear"
@@ -749,6 +768,12 @@ right.loading:
 right.notice:
   en: "Playing on another device. Your queue picks up when playback returns here."
   es: "Se está reproduciendo en otro dispositivo. Tu fila continúa cuando la reproducción vuelva aquí."
+right.radio:
+  en: "Radio · %{name}"
+  es: "Radio · %{name}"
+right.radio_unnamed:
+  en: "Radio"
+  es: "Radio"
 right.then:
   en: "Then"
   es: "Luego"
@@ -1328,6 +1353,9 @@ shortcut.shortcuts:
 shortcut.shuffle:
   en: "Shuffle"
   es: "Aleatorio"
+shortcut.start_radio:
+  en: "Start radio from this song"
+  es: "Iniciar radio con esta canción"
 shortcut.toggle_lyrics:
   en: "Lyrics"
   es: "Letra"
@@ -1443,6 +1471,12 @@ store.toast.output_failed:
 store.toast.queue_full:
   en: "Your queue is full."
   es: "Tu fila está llena."
+store.toast.radio_needs_song:
+  en: "Play a song to start its radio."
+  es: "Pon una canción para iniciar su radio."
+store.toast.radio_unavailable:
+  en: "Couldn't start radio. Try again later."
+  es: "No se pudo iniciar la radio. Intenta más tarde."
 store.toast.soloist_restarted:
   en: "Soloist restarted as “%{name}”."
   es: "Soloist se reinició como “%{name}”."

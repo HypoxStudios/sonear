@@ -66,6 +66,7 @@ const COMMANDS: [(&str, &[Entry]); 4] = [
             entry("shuffle", IconName::Shuffle),
             entry("repeat", IconName::Repeat),
             entry("like", IconName::Heart),
+            entry("start_radio", IconName::Radio),
         ],
     ),
     (
