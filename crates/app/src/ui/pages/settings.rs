@@ -469,7 +469,7 @@ impl SettingsPage {
 
                 chip(
                     ElementId::from((SharedString::from("retention"), choice as usize)),
-                    choice.to_string(),
+                    retention_label(choice),
                     months == choice,
                 )
                 .on_click(move |_, _, cx| {
@@ -954,6 +954,18 @@ fn row(
         )
         .child(div().flex_none().child(control))
         .into_any_element()
+}
+
+fn retention_label(months: u32) -> String {
+    match months {
+        1 => t!("settings.history.keep.choice_1"),
+        3 => t!("settings.history.keep.choice_3"),
+        6 => t!("settings.history.keep.choice_6"),
+        12 => t!("settings.history.keep.choice_12"),
+        24 => t!("settings.history.keep.choice_24"),
+        other => return other.to_string(),
+    }
+    .into_owned()
 }
 
 fn chip(id: impl Into<ElementId>, label: String, selected: bool) -> Stateful<Div> {

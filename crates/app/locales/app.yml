@@ -937,8 +937,23 @@ settings.history.clear.title:
   en: "Clear history"
   es: "Eliminar historial"
 settings.history.keep.body:
-  en: "Months. Older plays are deleted from this computer."
-  es: "Meses. Las reproducciones más antiguas se eliminan de esta computadora."
+  en: "Older plays are deleted from this computer."
+  es: "Las reproducciones más antiguas se eliminan de esta computadora."
+settings.history.keep.choice_1:
+  en: "1 month"
+  es: "1 mes"
+settings.history.keep.choice_12:
+  en: "1 year"
+  es: "1 año"
+settings.history.keep.choice_24:
+  en: "2 years"
+  es: "2 años"
+settings.history.keep.choice_3:
+  en: "3 months"
+  es: "3 meses"
+settings.history.keep.choice_6:
+  en: "6 months"
+  es: "6 meses"
 settings.history.keep.title:
   en: "Keep history for"
   es: "Conservar el historial durante"
