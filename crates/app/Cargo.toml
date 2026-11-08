@@ -38,6 +38,7 @@ windows = { workspace = true, features = [
     "Win32_Foundation",
     "Win32_Graphics_Dwm",
     "Win32_Graphics_Gdi",
+    "Win32_Media_Audio",
     "Win32_Security",
     "Win32_Storage_EnhancedStorage",
     "Win32_Storage_FileSystem",
@@ -54,6 +55,7 @@ windows = { workspace = true, features = [
     "Win32_UI_Shell_PropertiesSystem",
     "Win32_UI_WindowsAndMessaging",
 ] }
+windows-core.workspace = true
 
 [build-dependencies]
 embed-resource.workspace = true
