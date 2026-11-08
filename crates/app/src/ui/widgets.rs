@@ -27,6 +27,15 @@ pub fn set_image_cache(cache: UiEntity<LruImageCache>) {
     IMAGE_CACHE.with(|slot| *slot.borrow_mut() = Some(cache));
 }
 
+/// Frees the decoded covers; they reload from the disk cache when drawn again.
+pub fn release_images(cx: &mut App) {
+    let Some(cache) = IMAGE_CACHE.with(|slot| slot.borrow().clone()) else {
+        return;
+    };
+
+    cache.update(cx, |cache, cx| cache.clear(cx));
+}
+
 pub fn icon(name: IconName, size: f32, color: Hsla) -> Icon {
     Icon::new(name).size(px(size)).text_color(color)
 }

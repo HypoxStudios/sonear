@@ -270,6 +270,18 @@ impl LruImageCache {
             capacity,
         }
     }
+
+    /// Drops every decoded cover, including its texture in every window that
+    /// is not being drawn right now.
+    pub fn clear(&mut self, cx: &mut App) {
+        self.order.clear();
+
+        for (_, item) in self.items.drain() {
+            if let Some(Ok(image)) = item.get() {
+                cx.drop_image(image, None);
+            }
+        }
+    }
 }
 
 fn key_of(resource: &Resource) -> u64 {

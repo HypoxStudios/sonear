@@ -29,7 +29,7 @@ use crate::i18n;
 use crate::keymap;
 use crate::legal::LegalDoc;
 use crate::theme;
-use crate::ui::mini_player;
+use crate::ui::{mini_player, widgets};
 use crate::{platform_window, tray};
 
 mod updates;
@@ -608,6 +608,18 @@ impl AppStore {
             platform_window::hide(hwnd);
             self.set_main_window_hidden(true, cx);
             self.show_tray_hint();
+
+            let mini = self.mini_player;
+
+            // The main window is leased while it handles this request, and
+            // dropping an image skips leased windows.
+            cx.defer(move |cx| {
+                widgets::release_images(cx);
+
+                if let Some(handle) = mini {
+                    let _ = handle.update(cx, |_, window, _| window.refresh());
+                }
+            });
 
             return false;
         }
