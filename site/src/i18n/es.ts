@@ -59,7 +59,7 @@ export const es: Dict = {
 		},
 		mini: {
 			title: "Un reproductor que cabe en una esquina",
-			body: "Achica Sonear a una ventana pequeña que se queda encima de todo y llévala a donde menos te estorbe.",
+			body: "Achica Sonear a una ventana pequeña que se queda encima de todo. Muévela, cambia su tamaño, hazla transparente o ponle la letra.",
 			hint: "Prueba los botones o muévelo por ahí.",
 		},
 		palette: {

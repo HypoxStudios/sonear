@@ -59,7 +59,7 @@ export const en = {
 		},
 		mini: {
 			title: "A player that fits in a corner",
-			body: "Shrink Sonear down to a small window that stays on top of everything, then drag it wherever it gets in your way the least.",
+			body: "Shrink Sonear down to a small window that stays on top of everything. Drag it, resize it, fade it, or switch it to the lyrics.",
 			hint: "Try the buttons, or drag it around.",
 		},
 		palette: {

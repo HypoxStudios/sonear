@@ -35,7 +35,7 @@
 <tr><td><strong>Ctrl+K</strong></td><td>Search, playback, navigation and Spotify links, all from one box. Every shortcut can be rebound.</td></tr>
 <tr><td><strong>Synced lyrics</strong></td><td>Line by line, from <a href="https://lrclib.net">LRCLIB</a>. Click a line to jump to it.</td></tr>
 <tr><td><strong>Color from the cover</strong></td><td>The whole app takes its accent from what's playing.</td></tr>
-<tr><td><strong>Mini player</strong></td><td>Small, draggable and always on top.</td></tr>
+<tr><td><strong>Mini player</strong></td><td>Always on top. Resize it, fade it, or switch it to the lyrics. It never steals focus from a game.</td></tr>
 <tr><td><strong>Tray and media keys</strong></td><td>Close the window and the music keeps going. Your keyboard and the Windows overlay still work.</td></tr>
 <tr><td><strong>History</strong></td><td>A list of what you played.</td></tr>
 </table>
@@ -90,7 +90,7 @@ Spotify only gives wide API access to large companies, so you create your own ap
 <details>
 <summary><strong>What does it send, and where?</strong></summary>
 
-Nothing goes to us. Sonear talks to Spotify, to LRCLIB while the lyrics panel is open, and to GitHub to check for updates, which you can turn off. **Settings → Delete all Sonear data** wipes everything. More in the [privacy policy](docs/legal/privacy.md).
+Nothing goes to us. Sonear talks to Spotify, to LRCLIB while lyrics are showing, and to GitHub to check for updates, which you can turn off. **Settings → Delete all Sonear data** wipes everything. More in the [privacy policy](docs/legal/privacy.md).
 
 </details>
 
