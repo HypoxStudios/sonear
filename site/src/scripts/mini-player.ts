@@ -40,6 +40,7 @@ if (stage && mini) {
 			return;
 		}
 
+		event.preventDefault();
 		drag = { pointer: event.pointerId, x: event.clientX, y: event.clientY, dx, dy };
 		mini.setPointerCapture(event.pointerId);
 		mini.dataset.dragging = "true";
@@ -60,6 +61,7 @@ if (stage && mini) {
 
 	mini.addEventListener("pointerup", end);
 	mini.addEventListener("pointercancel", end);
+	mini.addEventListener("lostpointercapture", end);
 
 	mini.addEventListener("keydown", (event) => {
 		if (event.target !== mini) {

@@ -599,6 +599,7 @@ html[data-hidden="true"] .np-fill {
 	translate: calc(-50% + var(--dx, 0px)) calc(-50% + var(--dy, 0px));
 	scale: var(--lift, 1);
 	touch-action: none;
+	-webkit-user-select: none;
 	cursor: grab;
 	user-select: none;
 	box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
