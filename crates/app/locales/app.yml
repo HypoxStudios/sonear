@@ -1118,6 +1118,9 @@ setup.legal.accept:
 setup.legal.accept_note:
   en: "By continuing you accept both documents."
   es: "Al continuar, aceptas ambos documentos."
+setup.legal.changes:
+  en: "The privacy policy now covers the Sonear website. The app handles your data the same way as before."
+  es: "La política de privacidad ahora incluye el sitio web de Sonear. La app maneja tus datos igual que antes."
 setup.legal.independent:
   en: "Sonear is independent. It isn't made or endorsed by Spotify."
   es: "Sonear es independiente. No lo crea ni lo respalda Spotify."
@@ -1130,6 +1133,9 @@ setup.legal.needs:
 setup.legal.title:
   en: "Before you start"
   es: "Antes de empezar"
+setup.legal.updated_title:
+  en: "We updated our terms"
+  es: "Actualizamos nuestros términos"
 setup.pair.note:
   en: "If Windows Firewall asks, allow Soloist on private networks."
   es: "Si el Firewall de Windows lo pide, permite Soloist en redes privadas."

@@ -139,9 +139,17 @@ pub struct SetupState {
     pub key_error: Option<String>,
     pub editing_key: bool,
     pub legal_accepted: bool,
+    /// An older version of the documents was accepted.
+    pub legal_updated: bool,
     /// Whether a language was saved or the user already went through setup.
     pub language_chosen: bool,
     pub connected: bool,
+}
+
+/// Whether `accepted` is a version older than the current documents, as
+/// opposed to nothing accepted yet.
+fn legal_is_updated(accepted: u32) -> bool {
+    0 < accepted && accepted < LEGAL_VERSION
 }
 
 impl SetupState {
@@ -424,6 +432,7 @@ impl AppStore {
             key_error: self.key_error.clone(),
             editing_key: self.editing_key,
             legal_accepted: self.legal_accepted(),
+            legal_updated: legal_is_updated(self.core.config.get().legal_accepted),
             language_chosen: {
                 let config = self.core.config.get();
 
@@ -1906,9 +1915,18 @@ mod tests {
             key_error: None,
             editing_key: false,
             legal_accepted: true,
+            legal_updated: false,
             language_chosen: true,
             connected: true,
         }
+    }
+
+    #[test]
+    fn only_an_older_accepted_version_counts_as_updated() {
+        assert!(!legal_is_updated(0));
+        assert!(legal_is_updated(LEGAL_VERSION - 1));
+        assert!(legal_is_updated(1));
+        assert!(!legal_is_updated(LEGAL_VERSION));
     }
 
     #[test]

@@ -252,16 +252,24 @@ impl SetupView {
             .into_any_element()
     }
 
-    fn legal_step(&self) -> AnyElement {
+    fn legal_step(&self, updated: bool) -> AnyElement {
         let agreement = self.store.clone();
         let policy = self.store.clone();
         let accept = self.store.clone();
 
-        column()
-            .child(title(t!("setup.legal.title")))
-            .child(point(t!("setup.legal.independent")))
-            .child(point(t!("setup.legal.local")))
-            .child(point(t!("setup.legal.needs")))
+        let heading = if updated {
+            column()
+                .child(title(t!("setup.legal.updated_title")))
+                .child(body(t!("setup.legal.changes")))
+        } else {
+            column()
+                .child(title(t!("setup.legal.title")))
+                .child(point(t!("setup.legal.independent")))
+                .child(point(t!("setup.legal.local")))
+                .child(point(t!("setup.legal.needs")))
+        };
+
+        heading
             .child(spaced(
                 div()
                     .flex()
@@ -724,7 +732,7 @@ impl Render for SetupView {
 
         let content: AnyElement = match (step, &setup.status) {
             (SetupStep::Language, _) => self.language_step(cx),
-            (SetupStep::Agreement, _) => self.legal_step(),
+            (SetupStep::Agreement, _) => self.legal_step(setup.legal_updated),
             (SetupStep::Spotify, _) => self.spotify_step(&setup, cx),
             (SetupStep::Key, _) => self.key_step(&setup, cx),
             (SetupStep::Download, Status::Expired) => download_step(
