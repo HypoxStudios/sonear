@@ -4,7 +4,7 @@ export type Block = string | { ol: string[] };
 export const en = {
 	meta: {
 		siteName: "Sonear",
-		tagline: "A native Spotify client for Windows, built in Rust.",
+		tagline: "a light Spotify player for Windows",
 		description:
 			"Sonear plays your Spotify library from a light Windows app with synced lyrics, a Ctrl+K palette, a mini player and colors that follow every song.",
 		setupTitle: "Setup guide",

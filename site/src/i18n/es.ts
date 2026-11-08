@@ -3,7 +3,7 @@ import type { Block, Dict } from "./en";
 export const es: Dict = {
 	meta: {
 		siteName: "Sonear",
-		tagline: "Un cliente nativo de Spotify para Windows, hecho en Rust.",
+		tagline: "un reproductor ligero de Spotify para Windows",
 		description:
 			"Sonear reproduce tu biblioteca de Spotify desde una app ligera para Windows, con letras sincronizadas, una paleta con Ctrl+K, un reproductor en miniatura y colores que cambian con cada canción.",
 		setupTitle: "Guía de configuración",
