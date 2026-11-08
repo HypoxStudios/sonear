@@ -289,6 +289,7 @@ fn backup_path(path: &Path) -> PathBuf {
 pub struct ConfigHandle {
     path: Arc<PathBuf>,
     value: Arc<Mutex<Config>>,
+    saving: Arc<Mutex<()>>,
 }
 
 impl ConfigHandle {
@@ -299,6 +300,7 @@ impl ConfigHandle {
         Self {
             path: Arc::new(path),
             value: Arc::new(Mutex::new(value)),
+            saving: Arc::new(Mutex::new(())),
         }
     }
 
@@ -316,6 +318,12 @@ impl ConfigHandle {
     /// Applies `change` and saves. A failed save is logged and the in-memory
     /// value is still updated.
     pub fn update(&self, change: impl FnOnce(&mut Config)) {
+        // Saves share one temp file, so two at once would rename it twice, and
+        // an older snapshot could land after a newer one.
+        let _saving = self
+            .saving
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let snapshot = {
             let mut value = self
                 .value
