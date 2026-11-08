@@ -623,6 +623,22 @@ mover.save_failed:
   en: "Could not save the new location: %{error}"
   es: "No se pudo guardar la nueva ubicación: %{error}"
 
+output.popup.body:
+  en: "%{name} is connected."
+  es: "%{name} se conectó."
+output.popup.current:
+  en: "current device"
+  es: "dispositivo actual"
+output.popup.keep:
+  en: "Keep %{name}"
+  es: "Seguir con %{name}"
+output.popup.switch:
+  en: "Switch"
+  es: "Cambiar"
+output.popup.title:
+  en: "New audio device"
+  es: "Nuevo dispositivo de audio"
+
 palette.albums:
   en: "Albums"
   es: "Álbumes"
@@ -943,6 +959,21 @@ settings.lyrics.title:
 settings.open:
   en: "Open"
   es: "Abrir"
+settings.output.body:
+  en: "Where Sonear plays. Switching restarts playback for a moment."
+  es: "Dónde suena Sonear. Al cambiar, la reproducción se reinicia un momento."
+settings.output.default:
+  en: "Windows default"
+  es: "Predeterminado de Windows"
+settings.output.missing:
+  en: "%{name} (not connected)"
+  es: "%{name} (no conectado)"
+settings.output.title:
+  en: "Output device"
+  es: "Dispositivo de salida"
+settings.output.unavailable:
+  en: "Choosing an output device isn't available on this version of Windows."
+  es: "Elegir un dispositivo de salida no está disponible en esta versión de Windows."
 settings.save:
   en: "Save"
   es: "Guardar"
@@ -1403,6 +1434,12 @@ store.toast.move_demo:
 store.toast.move_failed:
   en: "Could not start moving your data: %{error}"
   es: "No se pudo iniciar el traslado de tus datos: %{error}"
+store.toast.output_disconnected:
+  en: "%{name} disconnected. Playback paused."
+  es: "Se desconectó %{name}. La música está en pausa."
+store.toast.output_failed:
+  en: "Could not change the output device."
+  es: "No se pudo cambiar el dispositivo de salida."
 store.toast.queue_full:
   en: "Your queue is full."
   es: "Tu fila está llena."

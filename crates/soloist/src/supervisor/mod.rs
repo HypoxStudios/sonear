@@ -177,6 +177,8 @@ impl fmt::Debug for LaunchParams {
 
 pub struct SpawnedProcess {
     pub handle: Box<dyn ProcessHandle>,
+    /// Operating system process ID, when the spawner has one.
+    pub pid: Option<u32>,
     /// Lines from stdout and stderr, closed when the process ends.
     pub output: mpsc::UnboundedReceiver<String>,
 }
@@ -250,6 +252,7 @@ struct Shared {
     client_tx: watch::Sender<Option<SoloistClient>>,
     log: Mutex<VecDeque<String>>,
     version: Mutex<Option<SoloistVersion>>,
+    pid: Mutex<Option<u32>>,
 }
 
 impl Shared {
@@ -326,6 +329,7 @@ impl Supervisor {
                 client_tx,
                 log: Mutex::new(VecDeque::new()),
                 version: Mutex::new(None),
+                pid: Mutex::new(None),
             }),
             run: Arc::new(Mutex::new(None)),
         }
@@ -373,6 +377,11 @@ impl Supervisor {
 
     pub fn recent_log(&self) -> Vec<String> {
         self.shared.recent_log()
+    }
+
+    /// Process ID of the running Soloist, or `None` while it is not running.
+    pub fn process_id(&self) -> Option<u32> {
+        *lock(&self.shared.pid)
     }
 
     /// Launches Soloist, replacing a previous run. Missing install or key
@@ -510,10 +519,17 @@ async fn run_once(
     let _ = std::fs::remove_file(dirs.addr_file());
 
     let args = build_args(params, key, config);
-    let SpawnedProcess { mut handle, output } = match shared.spawner.spawn(&dirs.exe(), &args) {
+    let SpawnedProcess {
+        mut handle,
+        pid,
+        output,
+    } = match shared.spawner.spawn(&dirs.exe(), &args) {
         Ok(process) => process,
         Err(error) => return failed(FailReason::Start(error.to_string())),
     };
+
+    *lock(&shared.pid) = pid;
+
     let started = Instant::now();
     let pump = tokio::spawn(pump_log(shared.clone(), output, key.to_owned()));
 
@@ -522,6 +538,8 @@ async fn run_once(
     let outcome = supervise(shared, params, &mut *handle, started, cancel).await;
 
     handle.kill().await;
+
+    *lock(&shared.pid) = None;
 
     let _ = timeout(Duration::from_millis(500), pump).await;
 

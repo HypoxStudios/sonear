@@ -63,6 +63,7 @@ impl Spawner for ProcessSpawner {
             tracing::warn!(%error, "could not assign Soloist to the job object");
         }
 
+        let pid = child.id();
         let (lines, output) = mpsc::unbounded_channel();
 
         if let Some(stdout) = child.stdout.take() {
@@ -75,6 +76,7 @@ impl Spawner for ProcessSpawner {
 
         Ok(SpawnedProcess {
             handle: Box::new(RealProcess(child)),
+            pid,
             output,
         })
     }

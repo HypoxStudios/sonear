@@ -108,6 +108,10 @@ pub struct Config {
     pub tray_hint_shown: bool,
     /// Top-left corner of the mini player in logical pixels, once the user has placed it.
     pub mini_player_position: Option<[f32; 2]>,
+    /// Windows ID of the output device Soloist plays on; unset means the Windows default.
+    pub output_device: Option<String>,
+    /// Last known name of `output_device`, to show it while it isn't connected.
+    pub output_device_name: Option<String>,
     pub right_panel: RightPanelConfig,
     pub ui: UiConfig,
     /// Keystrokes the user changed, by shortcut id. An empty string means unbound.
@@ -147,6 +151,8 @@ impl Default for Config {
             check_for_updates: true,
             tray_hint_shown: false,
             mini_player_position: None,
+            output_device: None,
+            output_device_name: None,
             right_panel: RightPanelConfig::default(),
             ui: UiConfig::default(),
             shortcuts: BTreeMap::new(),
@@ -343,6 +349,8 @@ mod tests {
         assert_eq!(config.legal_accepted, 0);
         assert_eq!(config.account_user_id, "");
         assert!(config.lyrics_enabled);
+        assert_eq!(config.output_device, None);
+        assert_eq!(config.output_device_name, None);
         assert!(config.cover_accent);
         assert!(config.close_to_tray);
         assert!(!config.tray_hint_shown);
@@ -505,6 +513,21 @@ open = false
 
         assert_eq!(Config::load(&path), config);
         assert!(!path.with_extension("toml.tmp").exists());
+
+        config.save(&path).unwrap();
+
+        assert_eq!(Config::load(&path), config);
+    }
+
+    #[test]
+    fn output_device_round_trips() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let config = Config {
+            output_device: Some("{0.0.0.00000000}.{8d776c5f-0000-0000-0000-000000000000}".into()),
+            output_device_name: Some("Headphones".into()),
+            ..Config::default()
+        };
 
         config.save(&path).unwrap();
 

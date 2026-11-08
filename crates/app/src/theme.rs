@@ -45,6 +45,13 @@ pub const MINI_PADDING: f32 = 12.;
 pub const MINI_PREVIOUS_INSET: f32 = 6.;
 /// Empty margin inside the 22 px close button around its 12 px glyph.
 pub const MINI_CLOSE_INSET: f32 = 5.;
+/// The new output device popup: its window, the padding inside it, the gap between its
+/// buttons and the gap kept above the mini player when that is open.
+pub const OUTPUT_POPUP_WIDTH: f32 = 340.;
+pub const OUTPUT_POPUP_HEIGHT: f32 = 136.;
+pub const OUTPUT_POPUP_PADDING: f32 = 16.;
+pub const OUTPUT_POPUP_ABOVE_MINI: f32 = 8.;
+pub const OUTPUT_POPUP_MARK: f32 = 20.;
 pub const GRID_CARD: f32 = 168.;
 pub const GRID_GAP: f32 = 18.;
 

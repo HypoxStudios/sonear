@@ -8,6 +8,7 @@ use tokio_tungstenite::tungstenite::Message;
 
 use super::*;
 
+const FAKE_PID: u32 = 4242;
 const KEY: &str = "sk-very-secret-key-123";
 
 #[derive(Clone)]
@@ -114,6 +115,7 @@ impl Spawner for FakeSpawner {
                 script,
                 killed: Arc::new(Notify::new()),
             }),
+            pid: Some(FAKE_PID),
             output,
         })
     }
@@ -357,6 +359,22 @@ async fn stop_kills_the_child_and_reports_stopped() {
     fx.supervisor.stop().await;
 
     assert_eq!(fx.supervisor.status(), Status::Stopped);
+}
+
+#[tokio::test(start_paused = true)]
+async fn process_id_is_known_only_while_the_child_runs() {
+    let fx = fixture(vec![Script::hangs()], true);
+
+    assert_eq!(fx.supervisor.process_id(), None);
+
+    fx.supervisor.start(params()).await;
+    sleep(Duration::from_secs(1)).await;
+
+    assert_eq!(fx.supervisor.process_id(), Some(FAKE_PID));
+
+    fx.supervisor.stop().await;
+
+    assert_eq!(fx.supervisor.process_id(), None);
 }
 
 async fn serve_auth(logged_in: bool) -> u16 {

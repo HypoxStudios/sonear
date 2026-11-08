@@ -32,8 +32,10 @@ use crate::theme;
 use crate::ui::{mini_player, widgets};
 use crate::{platform_window, tray};
 
+mod output;
 mod updates;
 
+pub use output::OutputChoice;
 pub use updates::UpdateState;
 use updates::UpdateTask;
 
@@ -267,6 +269,7 @@ pub struct AppStore {
     pub language_version: u64,
     main_window_hidden: bool,
     mini_player: Option<AnyWindowHandle>,
+    output: output::OutputState,
     main_window: Option<AnyWindowHandle>,
     pub ai_hint_dismissed: bool,
     pub account: AccountState,
@@ -343,6 +346,7 @@ impl AppStore {
             language_version: 0,
             main_window_hidden: false,
             mini_player: None,
+            output: output::OutputState::default(),
             main_window: None,
             ai_hint_dismissed: config.ui.ai_hint_dismissed,
             profile: Slot::default(),
@@ -751,6 +755,7 @@ impl AppStore {
                     != self.playback.item.as_ref().map(|item| &item.uri);
 
                 self.playback = *model;
+                self.track_disconnect_pause();
                 self.clear_released_holds(now_ms());
                 self.resolve_queue(cx);
 
@@ -1528,9 +1533,15 @@ impl AppStore {
         let previous = keymap::effective(&core.config.get().shortcuts);
         let (done, mut inbox) = mpsc::unbounded_channel();
 
+        let clear_route = self.clear_output_route();
+
         self.route = Route::Home;
         self.back_stack.clear();
         self.runtime.spawn(async move {
+            if let Some(clear_route) = clear_route {
+                clear_route.await;
+            }
+
             let problems = core.delete_all_data().await;
 
             let _ = done.send(problems);

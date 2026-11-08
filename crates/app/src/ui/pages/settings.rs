@@ -1,5 +1,7 @@
 use gpui_kit::assets::IconName;
+use gpui_kit::component::IndexPath;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
+use gpui_kit::component::select::{Select, SelectEvent, SelectItem, SelectState};
 use gpui_kit::component::switch::Switch;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
@@ -18,7 +20,7 @@ use crate::format::megabytes;
 use crate::legal::LegalDoc;
 use crate::protocol::{self, Registration};
 use crate::site;
-use crate::store::{AppStore, Confirm, DEVICE_NAME_MAX, InstallState, UpdateState};
+use crate::store::{AppStore, Confirm, DEVICE_NAME_MAX, InstallState, OutputChoice, UpdateState};
 use crate::theme;
 use crate::ui::widgets::{accent_button, danger_button, ghost_button, icon, label_caps};
 
@@ -30,9 +32,47 @@ const SUPPORT_EMAIL: &str = "support@hypox.studio";
 const SUPPORT_MAILTO: &str = "mailto:support@hypox.studio";
 const CLIENT_ID_SHOWN: usize = 6;
 
+/// One entry of the output device dropdown; `None` is the Windows default.
+#[derive(Clone)]
+struct OutputItem {
+    id: Option<String>,
+    label: SharedString,
+}
+
+impl SelectItem for OutputItem {
+    type Value = Option<String>;
+
+    fn title(&self) -> SharedString {
+        self.label.clone()
+    }
+
+    fn value(&self) -> &Option<String> {
+        &self.id
+    }
+}
+
+fn output_items(choices: &[OutputChoice]) -> (Vec<OutputItem>, Option<IndexPath>) {
+    let items = choices
+        .iter()
+        .map(|choice| OutputItem {
+            id: choice.id.clone(),
+            label: choice.label.clone().into(),
+        })
+        .collect();
+    let selected = choices
+        .iter()
+        .position(|choice| choice.selected)
+        .map(IndexPath::new);
+
+    (items, selected)
+}
+
 pub struct SettingsPage {
     store: Entity<AppStore>,
     device_input: Entity<InputState>,
+    output_select: Entity<SelectState<Vec<OutputItem>>>,
+    /// What the dropdown shows, so it is only rebuilt when devices change.
+    output_choices: Vec<OutputChoice>,
     key_input: Entity<InputState>,
     key_open: bool,
     language_seen: u64,
@@ -57,9 +97,28 @@ impl SettingsPage {
                 .masked(true)
                 .placeholder(t!("common.key_placeholder"))
         });
+        let output_choices = store.read(cx).output_choices();
+        let output_select = cx.new(|cx| {
+            let (items, selected) = output_items(&output_choices);
+
+            SelectState::new(items, selected, window, cx)
+        });
         let language_seen = store.read(cx).language_version;
         let subscriptions = vec![
-            cx.observe(&store, |_, _, cx| cx.notify()),
+            cx.observe_in(&store, window, |page, _, window, cx| {
+                page.sync_output_choices(window, cx);
+                cx.notify();
+            }),
+            cx.subscribe(
+                &output_select,
+                |page, _, event: &SelectEvent<Vec<OutputItem>>, cx| {
+                    let SelectEvent::Confirm(Some(device)) = event else {
+                        return;
+                    };
+
+                    page.choose_output(device.clone(), cx);
+                },
+            ),
             cx.subscribe(
                 &device_input,
                 |page, _, event: &InputEvent, cx| match event {
@@ -73,6 +132,8 @@ impl SettingsPage {
         Self {
             store,
             device_input,
+            output_select,
+            output_choices,
             key_input,
             key_open: false,
             language_seen,
@@ -200,6 +261,56 @@ impl SettingsPage {
         )
     }
 
+    /// Rebuilds the dropdown when devices come and go or the saved one changes.
+    fn sync_output_choices(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let choices = self.store.read(cx).output_choices();
+
+        if choices == self.output_choices {
+            return;
+        }
+
+        let (items, selected) = output_items(&choices);
+
+        self.output_select.update(cx, |select, cx| {
+            select.set_items(items, window, cx);
+            select.set_selected_index(selected, window, cx);
+        });
+        self.output_choices = choices;
+    }
+
+    fn choose_output(&mut self, device: Option<String>, cx: &mut Context<Self>) {
+        let saved = self.store.read(cx).core.config.get().output_device;
+
+        if saved == device {
+            return;
+        }
+
+        self.store
+            .update(cx, |state, cx| state.switch_output(device, cx));
+    }
+
+    fn output_row(&self, cx: &Context<Self>) -> AnyElement {
+        let state = self.store.read(cx);
+        let available = state.output_routing_available();
+        let select = div().w(theme::SETTINGS_CONTROL_WIDTH).child(
+            Select::new(&self.output_select)
+                .id("output-device")
+                .disabled(!available || state.output_switching()),
+        );
+
+        row(
+            t!("settings.output.title"),
+            t!("settings.output.body"),
+            (!available).then(|| {
+                (
+                    t!("settings.output.unavailable").into_owned(),
+                    theme::text_tertiary(),
+                )
+            }),
+            select,
+        )
+    }
+
     fn lyrics_row(&self, cx: &Context<Self>) -> AnyElement {
         let store = self.store.clone();
 
@@ -313,6 +424,8 @@ impl SettingsPage {
                 div(),
             ),
         ];
+
+        rows.insert(1, self.output_row(cx));
 
         if !self.store.read(cx).is_demo() {
             rows.push(self.links_row(cx));

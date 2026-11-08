@@ -2,7 +2,7 @@
 
 mod app_identity;
 mod assets;
-mod audio_session;
+mod audio;
 mod cover_accent;
 mod cover_cache;
 mod data;
@@ -161,9 +161,10 @@ fn run_app(link: Option<SpotifyLink>, ignored: Option<String>) {
             cx.set_app_identity(app_identity::APP_ID, app_identity::APP_NAME);
             app_identity::install();
 
-            if let Some(soloist) = &core.soloist {
-                audio_session::start(soloist.supervisor().dirs().exe());
-            }
+            let audio = core
+                .soloist
+                .as_ref()
+                .and_then(|soloist| audio::start(soloist.supervisor().dirs().exe()));
 
             cx.set_http_client(http::ReqwestClient::new(handle.clone(), covers));
             gpui_kit::init(cx);
@@ -206,6 +207,7 @@ fn run_app(link: Option<SpotifyLink>, ignored: Option<String>) {
 
             store.update(cx, |store, _| store.set_main_window(window));
             platform_window::focus(window, cx);
+            store.update(cx, |store, cx| store.attach_audio(audio, cx));
 
             let close_store = store.clone();
             let _ = window.update(cx, |_, window, cx| {
