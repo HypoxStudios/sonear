@@ -50,7 +50,7 @@ Sonear no usa cookies ni permite que terceros coloquen cookies o rastreen tu nav
 
 ## Este sitio web
 
-sonear.hypox.studio es un sitio estático servido por Cloudflare. Cloudflare atiende cada visita y ve tu dirección IP y los datos de tu navegador, que procesa por nosotros según su [política de privacidad](https://www.cloudflare.com/es-es/privacypolicy/). No guardamos registros de visitas, y el sitio no usa cookies, analíticas ni scripts de terceros. Las descargas vienen de GitHub.
+sonear.hypox.studio es un sitio estático servido por Cloudflare. Cloudflare atiende cada visita y ve tu dirección IP y los datos de tu navegador, que procesa por nosotros según su [política de privacidad](https://www.cloudflare.com/privacypolicy/). No guardamos registros de visitas, y el sitio no usa cookies, analíticas ni scripts de terceros. Las descargas vienen de GitHub.
 
 ## Funciones de IA
 
