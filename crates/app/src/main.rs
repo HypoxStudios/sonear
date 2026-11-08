@@ -15,6 +15,7 @@ mod instance;
 mod keymap;
 mod launch;
 mod legal;
+mod logging;
 mod media_controls;
 mod platform_window;
 mod protocol;
@@ -36,7 +37,7 @@ use gpui_kit::{
 use instance::Handoff;
 use launch::Launch;
 use media_controls::{MediaCommand, MediaControls};
-use sonear_core::{AppPaths, Core, SpotifyLink};
+use sonear_core::{AppPaths, Config, Core, SpotifyLink};
 use store::AppStore;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
@@ -73,18 +74,22 @@ fn attach_parent_console() {}
 fn main() {
     attach_parent_console();
 
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                "sonear=info,sonear_core=info,sonear_soloist=info,sonear_spotify=info".into()
-            }),
-        )
-        .init();
-
-    i18n::apply_saved();
-
     let exe = std::env::current_exe().unwrap_or_default();
     let parsed = launch::parse(std::env::args_os().skip(1), &exe);
+
+    // Read once for the language and the logs. With no file the system
+    // language wins, which is what a fresh install should follow.
+    let paths = AppPaths::discover();
+    let config = paths
+        .as_ref()
+        .and_then(|paths| Config::peek(&paths.config_dir().join(i18n::CONFIG_FILE)))
+        .unwrap_or_default();
+
+    i18n::apply(i18n::initial(&config));
+    logging::init(logging::Options {
+        dir: log_dir(&parsed.launch, paths.as_ref()),
+        detailed: config.detailed_logs,
+    });
 
     if let Some(pid) = parsed.after_pid
         && !matches!(parsed.launch, Launch::MoveData(_) | Launch::ApplyUpdate(_))
@@ -106,6 +111,23 @@ fn main() {
     }
 }
 
+/// Where to write log files. The installer, uninstaller and data mover create,
+/// delete or move the data folder, and a missing folder must stay missing so
+/// the app can offer to move it back.
+fn log_dir(launch: &Launch, paths: Option<&AppPaths>) -> Option<std::path::PathBuf> {
+    if !matches!(launch, Launch::App { .. } | Launch::ApplyUpdate(_)) {
+        return None;
+    }
+
+    let paths = paths?;
+
+    if !DEMO && data_folder_missing(paths) {
+        return None;
+    }
+
+    Some(paths.logs_dir())
+}
+
 fn run_app(link: Option<SpotifyLink>, ignored: Option<String>) {
     if let Some(shown) = ignored {
         info!(argument = %shown, "ignored a launch argument that isn't a Spotify link");
@@ -121,6 +143,10 @@ fn run_app(link: Option<SpotifyLink>, ignored: Option<String>) {
         error!("could not locate the user profile directories");
         return;
     };
+
+    logging::mark_running();
+
+    let crashed = logging::take_crash_marker();
 
     if !DEMO && data_folder_missing(&paths) {
         warn!(folder = %paths.local_root().display(), "the configured data folder is missing");
@@ -209,6 +235,25 @@ fn run_app(link: Option<SpotifyLink>, ignored: Option<String>) {
             platform_window::focus(window, cx);
             store.update(cx, |store, cx| store.attach_audio(audio, cx));
 
+            if crashed {
+                store.update(cx, |store, cx| store.show_crash_notice(cx));
+            }
+
+            cx.on_app_quit(|_| async { logging::clear_running() })
+                .detach();
+
+            #[cfg(feature = "demo")]
+            if std::env::var_os("SONEAR_DEMO_PANIC").is_some() {
+                cx.spawn(async move |cx| {
+                    cx.background_executor()
+                        .timer(std::time::Duration::from_secs(5))
+                        .await;
+
+                    panic!("SONEAR_DEMO_PANIC");
+                })
+                .detach();
+            }
+
             let close_store = store.clone();
             let minimize_store = store.clone();
             let _ = window.update(cx, |_, window, cx| {
@@ -266,6 +311,7 @@ fn run_app(link: Option<SpotifyLink>, ignored: Option<String>) {
             cx.activate(true);
         });
 
+    logging::clear_running();
     drop(runtime);
 }
 

@@ -682,6 +682,9 @@ fn read_port(path: &Path) -> Option<u16> {
 
 async fn pump_log(shared: Arc<Shared>, mut output: mpsc::UnboundedReceiver<String>, key: String) {
     while let Some(line) = output.recv().await {
-        shared.push_log(redact(&line, &key));
+        let redacted = redact(&line, &key);
+
+        tracing::info!(target: "soloist_output", "{redacted}");
+        shared.push_log(redacted);
     }
 }

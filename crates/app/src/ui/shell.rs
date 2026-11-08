@@ -1,5 +1,6 @@
 use gpui_kit::assets::IconName;
 use gpui_kit::component::TitleBar;
+use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
     AnyElement, AnyView, AppContext as _, Context, DismissEvent, Div, Entity, FocusHandle,
     FontWeight, InteractiveElement as _, IntoElement, ParentElement as _, Render, SharedString,
@@ -203,6 +204,8 @@ impl Shell {
     fn toast(&self, cx: &Context<Self>) -> Option<Div> {
         let toast = self.store.read(cx).toast.clone()?;
         let store = self.store.clone();
+        let action_store = self.store.clone();
+        let action = toast.action;
 
         Some(
             div()
@@ -231,6 +234,24 @@ impl Shell {
                         .text_size(px(13.))
                         .text_color(theme::text_primary())
                         .child(div().flex_1().child(toast.text))
+                        .when_some(action, |this, action| {
+                            this.child(
+                                div()
+                                    .id("toast-action")
+                                    .flex_none()
+                                    .cursor_pointer()
+                                    .font_weight(FontWeight::MEDIUM)
+                                    .text_color(theme::accent())
+                                    .hover(|style| style.text_color(theme::text_primary()))
+                                    .child(action.label())
+                                    .on_click(move |_, _, cx| {
+                                        cx.stop_propagation();
+                                        action_store.update(cx, |state, cx| {
+                                            state.run_toast_action(action, cx);
+                                        });
+                                    }),
+                            )
+                        })
                         .child(icon(IconName::X, 14., theme::text_tertiary()))
                         .on_click(move |_, _, cx| {
                             store.update(cx, |state, cx| state.dismiss_toast(cx));

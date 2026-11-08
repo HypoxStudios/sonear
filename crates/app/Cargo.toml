@@ -29,6 +29,7 @@ reqwest.workspace = true
 rust-i18n.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+tracing-appender.workspace = true
 tracing-subscriber.workspace = true
 windows = { workspace = true, features = [
     "Foundation",

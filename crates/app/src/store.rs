@@ -5,7 +5,9 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
-use gpui_kit::{AnyWindowHandle, AppContext as _, Context, Entity, SharedString, Task, Window};
+use gpui_kit::{
+    AnyWindowHandle, App, AppContext as _, Context, Entity, SharedString, Task, Window,
+};
 use rust_i18n::t;
 use sonear_core::config::{LEGAL_VERSION, Language};
 use sonear_core::data_dir::check_target;
@@ -193,9 +195,43 @@ pub enum Confirm {
     MoveData,
 }
 
+/// Opens the logs folder in Explorer, creating it first so there is always
+/// something to open.
+pub fn open_logs_folder(cx: &App) {
+    let Some(dir) =
+        crate::logging::dir().or_else(|| AppPaths::discover().map(|paths| paths.logs_dir()))
+    else {
+        return;
+    };
+
+    if let Err(error) = std::fs::create_dir_all(&dir) {
+        warn!(%error, "could not create the logs folder");
+
+        return;
+    }
+
+    cx.open_with_system(&dir);
+}
+
+/// What a toast's button does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToastAction {
+    OpenLogs,
+}
+
+impl ToastAction {
+    pub fn label(self) -> String {
+        match self {
+            Self::OpenLogs => t!("store.toast.open_logs").into_owned(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Toast {
     pub text: SharedString,
+    /// A toast with an action stays until it is dismissed or the action is used.
+    pub action: Option<ToastAction>,
     serial: u64,
 }
 
@@ -996,6 +1032,7 @@ impl AppStore {
 
         self.toast = Some(Toast {
             text: text.into(),
+            action: None,
             serial,
         });
         cx.spawn(async move |this, cx| {
@@ -1014,6 +1051,25 @@ impl AppStore {
         })
         .detach();
         cx.notify();
+    }
+
+    /// Tells the user the last session ended in a panic.
+    pub fn show_crash_notice(&mut self, cx: &mut Context<Self>) {
+        self.serial += 1;
+        self.toast = Some(Toast {
+            text: t!("store.toast.crashed").into_owned().into(),
+            action: Some(ToastAction::OpenLogs),
+            serial: self.serial,
+        });
+        cx.notify();
+    }
+
+    pub fn run_toast_action(&mut self, action: ToastAction, cx: &mut Context<Self>) {
+        match action {
+            ToastAction::OpenLogs => open_logs_folder(cx),
+        }
+
+        self.dismiss_toast(cx);
     }
 
     pub fn dismiss_toast(&mut self, cx: &mut Context<Self>) {
@@ -1661,7 +1717,10 @@ impl AppStore {
         });
 
         match started {
-            Ok(child) => platform_window::quit_after_handing_focus_to(child.id(), cx),
+            Ok(child) => {
+                crate::logging::close_files();
+                platform_window::quit_after_handing_focus_to(child.id(), cx);
+            }
             Err(error) => {
                 warn!(%error, "could not start the data move");
                 self.show_toast(t!("store.toast.move_failed", error = error.to_string()), cx);
@@ -1727,6 +1786,10 @@ impl AppStore {
 
             let _ = this.update(cx, |store, cx| {
                 let config = store.core.config.get();
+
+                if !store.is_demo() {
+                    crate::logging::delete_files();
+                }
 
                 if !store.is_demo()
                     && let Err(error) = crate::protocol::unregister()

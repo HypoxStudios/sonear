@@ -1,7 +1,6 @@
 //! The interface language. Text comes from `locales/app.yml` through `t!`.
 
 use rust_i18n::t;
-use sonear_core::AppPaths;
 use sonear_core::config::{Config, Language};
 
 /// The demo build keeps its own settings and never reads the real ones.
@@ -22,17 +21,6 @@ pub fn plural(count: u64, one: &str, other: &str) -> String {
     let key = if count == 1 { one } else { other };
 
     t!(key, count = count).into_owned()
-}
-
-/// Sets the language for a process that opens windows before the app owns the config,
-/// such as the installer. Reads the saved choice without writing anything. With no
-/// file the system language wins, which is what a fresh install should follow.
-pub fn apply_saved() {
-    let config = AppPaths::discover()
-        .and_then(|paths| Config::peek(&paths.config_dir().join(CONFIG_FILE)))
-        .unwrap_or_default();
-
-    apply(initial(&config));
 }
 
 /// The language to start in. A demo build takes `SONEAR_DEMO_LANG` over the config, without saving it.

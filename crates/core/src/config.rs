@@ -110,6 +110,8 @@ pub struct Config {
     pub tray_hint_shown: bool,
     /// Top-left corner of the mini player in logical pixels, once the user has placed it.
     pub mini_player_position: Option<[f32; 2]>,
+    /// Whether the log files keep debug detail. Applies after a restart.
+    pub detailed_logs: bool,
     /// Windows ID of the output device Soloist plays on; unset means the Windows default.
     pub output_device: Option<String>,
     /// Last known name of `output_device`, to show it while it isn't connected.
@@ -154,6 +156,7 @@ impl Default for Config {
             check_for_updates: true,
             tray_hint_shown: false,
             mini_player_position: None,
+            detailed_logs: false,
             output_device: None,
             output_device_name: None,
             right_panel: RightPanelConfig::default(),
@@ -367,6 +370,7 @@ mod tests {
         assert!(!config.minimize_to_tray);
         assert!(!config.tray_hint_shown);
         assert_eq!(config.mini_player_position, None);
+        assert!(!config.detailed_logs);
         assert!(!config.right_panel.lyrics);
     }
 
@@ -427,6 +431,7 @@ open = false
         assert!(!config.minimize_to_tray);
         assert!(!config.tray_hint_shown);
         assert_eq!(config.mini_player_position, None);
+        assert!(!config.detailed_logs);
     }
 
     #[test]
@@ -437,6 +442,7 @@ open = false
             close_to_tray: false,
             tray_hint_shown: true,
             mini_player_position: Some([120.5, 48.]),
+            detailed_logs: true,
             ..Config::default()
         };
 

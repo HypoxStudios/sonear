@@ -31,6 +31,7 @@ Everything stays on your computer:
 | Cover art | `%LOCALAPPDATA%\Sonear\cache\covers` by default | Up to 30 days, at most 200 MB |
 | Soloist's own data, including its pairing | `%LOCALAPPDATA%\Sonear\soloist` by default | Until you delete your data |
 | A downloaded Sonear update, waiting for you to restart | `%LOCALAPPDATA%\Sonear\updates` by default | Until you restart into it, or a newer one replaces it |
+| Logs of what Sonear and Soloist did, with no login details or keys | `%LOCALAPPDATA%\Sonear\logs` by default | The last 7 days |
 
 You can move the data folder in Settings; the table shows the default location. Sonear builds no listening statistics or profile of you. The history is a plain list of plays.
 
@@ -59,7 +60,7 @@ This version of Sonear has no AI features. If later versions add them, they will
 ## Your choices
 
 - **Log out** (Settings or the account menu) removes your Spotify login, cached details, cover art, history and queue from this computer at once. Your Soloist key and pairing stay.
-- **Delete all Sonear data** (Settings) also removes your Soloist key, Soloist's pairing and data, and your settings. Only the Soloist program itself stays, and you can delete the data folder to remove it. Uninstalling Sonear offers to delete all of it, including your login.
+- **Delete all Sonear data** (Settings) also removes your Soloist key, Soloist's pairing and data, your logs, and your settings. Only the Soloist program itself stays, and you can delete the data folder to remove it. Uninstalling Sonear offers to delete all of it, including your login.
 - **Revoke access** at any time on your Spotify account's [Manage apps](https://www.spotify.com/account/apps/) page, or delete your developer app in the [Spotify dashboard](https://developer.spotify.com/dashboard).
 
 Because Sonear stores nothing outside your computer, we hold no data about you to access, correct or delete.

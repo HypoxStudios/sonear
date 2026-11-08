@@ -20,7 +20,9 @@ use crate::format::megabytes;
 use crate::legal::LegalDoc;
 use crate::protocol::{self, Registration};
 use crate::site;
-use crate::store::{AppStore, Confirm, DEVICE_NAME_MAX, InstallState, OutputChoice, UpdateState};
+use crate::store::{
+    AppStore, Confirm, DEVICE_NAME_MAX, InstallState, OutputChoice, UpdateState, open_logs_folder,
+};
 use crate::theme;
 use crate::ui::widgets::{accent_button, danger_button, ghost_button, icon, label_caps};
 
@@ -379,6 +381,29 @@ impl SettingsPage {
         )
     }
 
+    fn detailed_logs_row(&self, cx: &Context<Self>) -> AnyElement {
+        let store = self.store.clone();
+
+        row(
+            t!("settings.detailed_logs.title"),
+            t!("settings.detailed_logs.body"),
+            None,
+            Switch::new("settings-detailed-logs")
+                .checked(self.store.read(cx).core.config.get().detailed_logs)
+                .color(theme::accent())
+                .accessibility_label(t!("settings.detailed_logs.title"))
+                .on_change(move |enabled, _, cx| {
+                    store.update(cx, |state, cx| {
+                        state
+                            .core
+                            .config
+                            .update(|config| config.detailed_logs = *enabled);
+                        cx.notify();
+                    });
+                }),
+        )
+    }
+
     fn general_section(&self, cx: &Context<Self>) -> Div {
         let current = self.store.read(cx).language();
         let chips =
@@ -685,14 +710,26 @@ impl SettingsPage {
                 )
             });
 
+        let logs = ghost_button("logs-open", t!("settings.logs.open"), true)
+            .on_click(|_, _, cx| open_logs_folder(cx));
+
         section(
             t!("settings.section.storage"),
-            vec![row(
-                t!("settings.storage.title"),
-                t!("settings.storage.body"),
-                Some((shown.display().to_string(), theme::text_tertiary())),
-                controls,
-            )],
+            vec![
+                row(
+                    t!("settings.storage.title"),
+                    t!("settings.storage.body"),
+                    Some((shown.display().to_string(), theme::text_tertiary())),
+                    controls,
+                ),
+                row(
+                    t!("settings.logs.title"),
+                    t!("settings.logs.body"),
+                    None,
+                    logs,
+                ),
+                self.detailed_logs_row(cx),
+            ],
         )
     }
 

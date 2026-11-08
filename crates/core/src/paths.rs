@@ -70,6 +70,10 @@ impl AppPaths {
         self.local_root.join("updates")
     }
 
+    pub fn logs_dir(&self) -> PathBuf {
+        self.local_root.join("logs")
+    }
+
     pub fn queue_file(&self) -> PathBuf {
         self.local_root.join("queue.json")
     }

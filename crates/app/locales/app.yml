@@ -921,6 +921,12 @@ settings.crossfade.body:
 settings.crossfade.title:
   en: "Crossfade"
   es: "Transiciones entre canciones"
+settings.detailed_logs.body:
+  en: "Saves more detail for troubleshooting. Takes effect after a restart."
+  es: "Guarda más detalles para resolver problemas. Se aplica al reiniciar Sonear."
+settings.detailed_logs.title:
+  en: "Detailed logs"
+  es: "Registros detallados"
 settings.device.body:
   en: "The name Spotify apps show for this computer."
   es: "El nombre que las apps de Spotify muestran para esta computadora."
@@ -990,6 +996,15 @@ settings.links.title:
 settings.links.update:
   en: "Update"
   es: "Actualizar"
+settings.logs.body:
+  en: "Kept on this computer for 7 days and never sent anywhere. Attach them when you report a problem."
+  es: "Se guardan en esta computadora durante 7 días y nunca se envían. Adjúntalos cuando reportes un problema."
+settings.logs.open:
+  en: "Open folder"
+  es: "Abrir carpeta"
+settings.logs.title:
+  en: "Logs"
+  es: "Registros"
 settings.lyrics.body:
   en: "Shows lyrics from LRCLIB. While the panel is open, the song's title, artist, album and length are sent to lrclib.net."
   es: "Muestra letras de LRCLIB. Mientras el panel está abierto, el título, el artista, el álbum y la duración de la canción se envían a lrclib.net."
@@ -1456,6 +1471,9 @@ store.problem.start_menu:
 store.toast.added_to_queue:
   en: "Added to queue"
   es: "Se agregó a la fila"
+store.toast.crashed:
+  en: "Sonear ran into a problem last time. The logs have the details."
+  es: "Sonear tuvo un problema la última vez. Los registros tienen los detalles."
 store.toast.default_folder_missing:
   en: "Could not find the default folder."
   es: "No se encontró la carpeta predeterminada."
@@ -1483,6 +1501,9 @@ store.toast.move_demo:
 store.toast.move_failed:
   en: "Could not start moving your data: %{error}"
   es: "No se pudo iniciar el traslado de tus datos: %{error}"
+store.toast.open_logs:
+  en: "Open logs"
+  es: "Abrir registros"
 store.toast.output_disconnected:
   en: "%{name} disconnected. Playback paused."
   es: "Se desconectó %{name}. La música está en pausa."

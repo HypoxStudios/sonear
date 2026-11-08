@@ -31,6 +31,7 @@ Todo se queda en tu computadora:
 | Portadas | `%LOCALAPPDATA%\Sonear\cache\covers` de forma predeterminada | Hasta 30 días, como máximo 200 MB |
 | Los datos propios de Soloist, incluida su vinculación | `%LOCALAPPDATA%\Sonear\soloist` de forma predeterminada | Hasta que elimines tus datos |
 | Una actualización de Sonear descargada, a la espera de que reinicies | `%LOCALAPPDATA%\Sonear\updates` de forma predeterminada | Hasta que reinicies con ella, o hasta que la reemplace una más nueva |
+| Registros de lo que hicieron Sonear y Soloist, sin datos de inicio de sesión ni claves | `%LOCALAPPDATA%\Sonear\logs` de forma predeterminada | Los últimos 7 días |
 
 Puedes mover la carpeta de datos en Configuración; la tabla muestra la ubicación predeterminada. Sonear no crea estadísticas de escucha ni un perfil tuyo. El historial es una lista simple de reproducciones.
 
@@ -59,7 +60,7 @@ Esta versión de Sonear no tiene funciones de IA. Si versiones futuras las inclu
 ## Tus opciones
 
 - **Cerrar sesión** (Configuración o el menú de la cuenta) quita de esta computadora, de inmediato, tu sesión de Spotify, los detalles en caché, las portadas, el historial y la fila. Tu clave y tu vinculación de Soloist se conservan.
-- **Eliminar todos los datos de Sonear** (Configuración) también quita tu clave de Soloist, la vinculación y los datos de Soloist, y tu configuración. Solo se conserva el programa Soloist, y puedes eliminar la carpeta de datos para quitarlo. Al desinstalar Sonear se ofrece eliminar todo eso, incluida tu sesión.
+- **Eliminar todos los datos de Sonear** (Configuración) también quita tu clave de Soloist, la vinculación y los datos de Soloist, tus registros y tu configuración. Solo se conserva el programa Soloist, y puedes eliminar la carpeta de datos para quitarlo. Al desinstalar Sonear se ofrece eliminar todo eso, incluida tu sesión.
 - **Revocar el acceso** en cualquier momento en la página [Administrar apps](https://www.spotify.com/account/apps/) de tu cuenta de Spotify, o eliminar tu app de desarrollador en el [panel de Spotify](https://developer.spotify.com/dashboard).
 
 Como Sonear no guarda nada fuera de tu computadora, no tenemos datos tuyos a los que dar acceso, que corregir o que eliminar.
