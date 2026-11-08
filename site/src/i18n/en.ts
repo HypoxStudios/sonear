@@ -94,6 +94,7 @@ export const en = {
 		littleTitle: "The little things",
 		little: [
 			"Drag songs around the queue, or pull them out of it",
+			"Start a radio from any song or artist, beginning with that song",
 			"Close the window and the music keeps going from the tray",
 			"Media keys and the Windows media overlay work like they should",
 			"A plain list of everything you've played",

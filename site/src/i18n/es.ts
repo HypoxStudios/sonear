@@ -94,6 +94,7 @@ export const es: Dict = {
 		littleTitle: "Los detalles",
 		little: [
 			"Arrastra canciones por la fila o sácalas de ella",
+			"Inicia una radio desde cualquier canción o artista, empezando por esa canción",
 			"Cierra la ventana y la música sigue desde la bandeja",
 			"Las teclas multimedia y los controles de Windows funcionan como deben",
 			"Una lista simple de todo lo que escuchaste",

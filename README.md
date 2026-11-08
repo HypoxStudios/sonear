@@ -31,6 +31,7 @@
 
 <table>
 <tr><td><strong>Queue</strong></td><td>Drag, drop, remove, reorder.</td></tr>
+<tr><td><strong>Radio</strong></td><td>Start Spotify's radio from any song or artist. The song you picked plays first.</td></tr>
 <tr><td><strong>Ctrl+K</strong></td><td>Search, playback, navigation and Spotify links, all from one box. Every shortcut can be rebound.</td></tr>
 <tr><td><strong>Synced lyrics</strong></td><td>Line by line, from <a href="https://lrclib.net">LRCLIB</a>. Click a line to jump to it.</td></tr>
 <tr><td><strong>Color from the cover</strong></td><td>The whole app takes its accent from what's playing.</td></tr>
