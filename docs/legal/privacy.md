@@ -38,7 +38,7 @@ You can move the data folder in Settings; the table shows the default location. 
 ## What Sonear sends, and to whom
 
 - **Spotify.** Sonear talks to the Spotify Web API, and Soloist talks to Spotify to play music. Spotify's [privacy policy](https://www.spotify.com/legal/privacy-policy/) covers what Spotify does with this.
-- **LRCLIB.** While the lyrics panel is open, Sonear sends the playing track's title, artist, album and length to [lrclib.net](https://lrclib.net) to fetch lyrics. Lyrics are kept in memory only and never saved to disk. You can turn lyrics off in Settings.
+- **LRCLIB.** While lyrics are showing, in the lyrics panel or the mini player, Sonear sends the playing track's title, artist, album and length to [lrclib.net](https://lrclib.net) to fetch lyrics. Lyrics are kept in memory only and never saved to disk. You can turn lyrics off in Settings.
 - **GitHub.** Unless you turn it off in Settings, Sonear asks GitHub for the latest release when it starts and every few hours, and downloads new versions from it. GitHub sees your IP address like any website, and [GitHub's privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement) covers it. Nothing about your account or your music is sent.
 - **Spotify's download server.** When you install or update Soloist, Sonear downloads it from Spotify.
 - **Windows.** Sonear shows the playing song's title, artist, album and cover in Windows' media controls, where other apps on your computer can read them.

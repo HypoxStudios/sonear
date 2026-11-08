@@ -76,6 +76,10 @@ where
     Ok(value.try_into().ok())
 }
 
+/// The range the mini player's opacity can take, in percent.
+pub const MINI_OPACITY_MIN: u8 = 40;
+pub const MINI_OPACITY_MAX: u8 = 100;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
@@ -110,6 +114,14 @@ pub struct Config {
     pub tray_hint_shown: bool,
     /// Top-left corner of the mini player in logical pixels, once the user has placed it.
     pub mini_player_position: Option<[f32; 2]>,
+    /// How opaque the mini player is, in percent.
+    pub mini_player_opacity: u8,
+    /// Whether the mini player shows the lyrics.
+    pub mini_player_lyrics: bool,
+    /// Size of the compact mini player in logical pixels, once the user has resized it.
+    pub mini_player_size: Option<[f32; 2]>,
+    /// Size of the mini player with the lyrics, once the user has resized it.
+    pub mini_player_lyrics_size: Option<[f32; 2]>,
     /// Whether the log files keep debug detail. Applies after a restart.
     pub detailed_logs: bool,
     /// Windows ID of the output device Soloist plays on; unset means the Windows default.
@@ -156,6 +168,10 @@ impl Default for Config {
             check_for_updates: true,
             tray_hint_shown: false,
             mini_player_position: None,
+            mini_player_opacity: MINI_OPACITY_MAX,
+            mini_player_lyrics: false,
+            mini_player_size: None,
+            mini_player_lyrics_size: None,
             detailed_logs: false,
             output_device: None,
             output_device_name: None,
@@ -191,6 +207,9 @@ impl Config {
 
         self.last_volume = self.last_volume.min(100);
         self.history_retention_months = self.history_retention_months.clamp(1, 120);
+        self.mini_player_opacity = self
+            .mini_player_opacity
+            .clamp(MINI_OPACITY_MIN, MINI_OPACITY_MAX);
         self.spotify_client_id = self.spotify_client_id.trim().to_owned();
 
         if self
@@ -198,6 +217,15 @@ impl Config {
             .is_some_and(|position| !position.iter().all(|axis| axis.is_finite()))
         {
             self.mini_player_position = None;
+        }
+
+        for size in [
+            &mut self.mini_player_size,
+            &mut self.mini_player_lyrics_size,
+        ] {
+            if size.is_some_and(|size| !size.iter().all(|axis| axis.is_finite() && *axis > 0.)) {
+                *size = None;
+            }
         }
 
         self
@@ -370,6 +398,10 @@ mod tests {
         assert!(!config.minimize_to_tray);
         assert!(!config.tray_hint_shown);
         assert_eq!(config.mini_player_position, None);
+        assert_eq!(config.mini_player_opacity, 100);
+        assert!(!config.mini_player_lyrics);
+        assert_eq!(config.mini_player_size, None);
+        assert_eq!(config.mini_player_lyrics_size, None);
         assert!(!config.detailed_logs);
         assert!(!config.right_panel.lyrics);
     }
@@ -431,6 +463,10 @@ open = false
         assert!(!config.minimize_to_tray);
         assert!(!config.tray_hint_shown);
         assert_eq!(config.mini_player_position, None);
+        assert_eq!(config.mini_player_opacity, 100);
+        assert!(!config.mini_player_lyrics);
+        assert_eq!(config.mini_player_size, None);
+        assert_eq!(config.mini_player_lyrics_size, None);
         assert!(!config.detailed_logs);
     }
 
@@ -442,6 +478,10 @@ open = false
             close_to_tray: false,
             tray_hint_shown: true,
             mini_player_position: Some([120.5, 48.]),
+            mini_player_opacity: 65,
+            mini_player_lyrics: true,
+            mini_player_size: Some([420., 110.]),
+            mini_player_lyrics_size: Some([380.5, 340.]),
             detailed_logs: true,
             ..Config::default()
         };
@@ -449,6 +489,39 @@ open = false
         config.save(&path).unwrap();
 
         assert_eq!(Config::load(&path), config);
+    }
+
+    #[test]
+    fn a_broken_mini_player_size_is_dropped() {
+        let config = Config {
+            mini_player_size: Some([f32::NAN, 100.]),
+            mini_player_lyrics_size: Some([300., -5.]),
+            ..Config::default()
+        }
+        .sanitised();
+
+        assert_eq!(config.mini_player_size, None);
+        assert_eq!(config.mini_player_lyrics_size, None);
+    }
+
+    #[test]
+    fn the_mini_player_opacity_is_kept_in_range() {
+        let low = Config {
+            mini_player_opacity: 0,
+            ..Config::default()
+        };
+        let high = Config {
+            mini_player_opacity: 250,
+            ..Config::default()
+        };
+        let fine = Config {
+            mini_player_opacity: 70,
+            ..Config::default()
+        };
+
+        assert_eq!(low.sanitised().mini_player_opacity, 40);
+        assert_eq!(high.sanitised().mini_player_opacity, 100);
+        assert_eq!(fine.sanitised().mini_player_opacity, 70);
     }
 
     #[test]

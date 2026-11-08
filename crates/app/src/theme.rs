@@ -33,18 +33,41 @@ pub const SIDEBAR_WIDTH: Pixels = px(216.);
 pub const RAIL_WIDTH: Pixels = px(64.);
 pub const RIGHT_PANEL_WIDTH: Pixels = px(240.);
 pub const PLAYER_HEIGHT: Pixels = px(84.);
-/// The mini player window, its cover, the gap kept from the screen edge and the progress line.
-pub const MINI_WIDTH: f32 = 340.;
+/// The mini player's default size in compact mode and with the lyrics, the smallest it can be
+/// resized to in each, the gap kept from the screen edge and the progress line.
+pub const MINI_WIDTH: f32 = 360.;
 pub const MINI_HEIGHT: f32 = 96.;
-pub const MINI_COVER: f32 = 72.;
+pub const MINI_LYRICS_HEIGHT: f32 = 300.;
+pub const MINI_MIN_WIDTH: f32 = 300.;
+pub const MINI_MIN_HEIGHT: f32 = 88.;
+pub const MINI_LYRICS_MIN_HEIGHT: f32 = 200.;
 pub const MINI_MARGIN: f32 = 16.;
 pub const MINI_PROGRESS_HEIGHT: f32 = 2.;
+/// How far inside the window edge a drag starts a resize.
+pub const MINI_RESIZE_BAND: f32 = 6.;
+/// The compact cover follows the window height up to this size; the lyrics header uses the small one.
+pub const MINI_COVER_MAX: f32 = 120.;
+pub const MINI_COVER_SMALL: f32 = 44.;
 /// Space around the cover, and from the buttons to the window edge.
 pub const MINI_PADDING: f32 = 12.;
-/// Empty margin inside the 28 px previous button around its 16 px glyph.
-pub const MINI_PREVIOUS_INSET: f32 = 6.;
-/// Empty margin inside the 22 px close button around its 12 px glyph.
-pub const MINI_CLOSE_INSET: f32 = 5.;
+/// Header buttons: one glyph size in one box size.
+pub const MINI_HEADER_GLYPH: f32 = 14.;
+pub const MINI_HEADER_BOX: f32 = 24.;
+/// Transport buttons and the volume icon share the glyph size; the play button is a bit larger.
+pub const MINI_TRANSPORT_GLYPH: f32 = 18.;
+pub const MINI_TRANSPORT_BOX: f32 = 30.;
+pub const MINI_PLAY_SIZE: f32 = 32.;
+/// Empty margin inside the transport box around its glyph, so the left edge of previous lines up.
+pub const MINI_PREVIOUS_INSET: f32 = (MINI_TRANSPORT_BOX - MINI_TRANSPORT_GLYPH) / 2.;
+/// Empty margin inside the header box around its glyph, so the close glyph lines up with the slider.
+pub const MINI_CLOSE_INSET: f32 = (MINI_HEADER_BOX - MINI_HEADER_GLYPH) / 2.;
+/// The volume slider in the mini player's bottom row: its least width and how far it may grow.
+pub const MINI_VOLUME_WIDTH: f32 = 64.;
+pub const MINI_VOLUME_MAX_WIDTH: f32 = 140.;
+/// The lyrics in the mini player.
+pub const MINI_LYRICS_SIZE: f32 = 16.;
+pub const MINI_LYRICS_GAP: f32 = 8.;
+pub const MINI_LYRICS_END_PADDING: f32 = 96.;
 /// The new output device popup: its window, the padding inside it, the gap between its
 /// buttons and the gap kept above the mini player when that is open.
 pub const OUTPUT_POPUP_WIDTH: f32 = 340.;

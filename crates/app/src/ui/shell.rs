@@ -519,9 +519,10 @@ impl Shell {
         let right = show_right.then(|| {
             if lyrics_showing {
                 let store = self.store.clone();
+                let feed = store.read(cx).lyrics_feed.clone();
                 let panel = self
                     .lyrics_panel
-                    .get_or_insert_with(|| cx.new(|cx| LyricsPanel::new(store, cx)));
+                    .get_or_insert_with(|| cx.new(|cx| LyricsPanel::new(store, feed, cx)));
 
                 panel.clone().cached(right_style).into_any_element()
             } else {

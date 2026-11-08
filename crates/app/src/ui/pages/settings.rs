@@ -2,6 +2,7 @@ use gpui_kit::assets::IconName;
 use gpui_kit::component::IndexPath;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::select::{Select, SelectEvent, SelectItem, SelectState};
+use gpui_kit::component::slider::{Slider, SliderEvent, SliderState};
 use gpui_kit::component::switch::Switch;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
@@ -13,7 +14,7 @@ use gpui_kit::{
 use rust_i18n::t;
 
 use sonear_core::AppPaths;
-use sonear_core::config::Language;
+use sonear_core::config::{Language, MINI_OPACITY_MAX, MINI_OPACITY_MIN};
 use sonear_core::data_dir::resolve_target;
 
 use crate::format::megabytes;
@@ -24,9 +25,12 @@ use crate::store::{
     AppStore, Confirm, DEVICE_NAME_MAX, InstallState, OutputChoice, UpdateState, open_logs_folder,
 };
 use crate::theme;
-use crate::ui::widgets::{accent_button, danger_button, ghost_button, icon, label_caps};
+use crate::ui::widgets::{
+    accent_button, danger_button, ghost_button, icon, label_caps, set_if_changed,
+};
 
 const RETENTION_CHOICES: [u32; 5] = [1, 3, 6, 12, 24];
+const OPACITY_STEP: f32 = 5.;
 const SPOTIFY_APPS_URL: &str = "https://www.spotify.com/account/apps/";
 const SOURCE_URL: &str = "https://github.com/HypoxStudios/sonear";
 const LICENSE_URL: &str = "https://github.com/HypoxStudios/sonear/blob/main/LICENSE";
@@ -77,6 +81,8 @@ pub struct SettingsPage {
     output_choices: Vec<OutputChoice>,
     key_input: Entity<InputState>,
     key_open: bool,
+    opacity: Entity<SliderState>,
+    dragging_opacity: bool,
     language_seen: u64,
     /// Read once and after each change: the page redraws on every playback event.
     links: Registration,
@@ -106,9 +112,25 @@ impl SettingsPage {
             SelectState::new(items, selected, window, cx)
         });
         let language_seen = store.read(cx).language_version;
+        let opacity = cx.new(|_| {
+            SliderState::new()
+                .min(f32::from(MINI_OPACITY_MIN))
+                .max(f32::from(MINI_OPACITY_MAX))
+                .step(OPACITY_STEP)
+        });
+
+        set_if_changed(
+            &opacity,
+            f32::from(store.read(cx).mini_player_opacity),
+            0.5,
+            window,
+            cx,
+        );
+
         let subscriptions = vec![
             cx.observe_in(&store, window, |page, _, window, cx| {
                 page.sync_output_choices(window, cx);
+                page.sync_opacity(window, cx);
                 cx.notify();
             }),
             cx.subscribe(
@@ -121,6 +143,20 @@ impl SettingsPage {
                     page.choose_output(device.clone(), cx);
                 },
             ),
+            cx.subscribe(&opacity, |page, _, event: &SliderEvent, cx| match event {
+                SliderEvent::Change(value) => {
+                    page.dragging_opacity = true;
+                    page.store.update(cx, |store, cx| {
+                        store.preview_mini_player_opacity(value.end().round() as u8, cx);
+                    });
+                }
+                SliderEvent::Release(value) => {
+                    page.dragging_opacity = false;
+                    page.store.update(cx, |store, cx| {
+                        store.set_mini_player_opacity(value.end().round() as u8, cx);
+                    });
+                }
+            }),
             cx.subscribe(
                 &device_input,
                 |page, _, event: &InputEvent, cx| match event {
@@ -138,10 +174,22 @@ impl SettingsPage {
             output_choices,
             key_input,
             key_open: false,
+            opacity,
+            dragging_opacity: false,
             language_seen,
             links: protocol::status(),
             _subscriptions: subscriptions,
         }
+    }
+
+    fn sync_opacity(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.dragging_opacity {
+            return;
+        }
+
+        let target = f32::from(self.store.read(cx).mini_player_opacity);
+
+        set_if_changed(&self.opacity, target, 0.5, window, cx);
     }
 
     fn typed_device_name(&self, cx: &Context<Self>) -> String {
@@ -381,6 +429,32 @@ impl SettingsPage {
         )
     }
 
+    fn mini_opacity_row(&self, cx: &Context<Self>) -> AnyElement {
+        let percent = self.store.read(cx).mini_player_opacity;
+
+        row(
+            t!("settings.mini_opacity.title"),
+            t!("settings.mini_opacity.body"),
+            None,
+            div()
+                .flex()
+                .items_center()
+                .gap_3()
+                .child(
+                    div()
+                        .w(theme::SETTINGS_CONTROL_WIDTH)
+                        .child(Slider::new(&self.opacity)),
+                )
+                .child(
+                    div()
+                        .w(px(40.))
+                        .text_size(px(12.))
+                        .text_color(theme::text_secondary())
+                        .child(format!("{percent}%")),
+                ),
+        )
+    }
+
     fn detailed_logs_row(&self, cx: &Context<Self>) -> AnyElement {
         let store = self.store.clone();
 
@@ -477,6 +551,7 @@ impl SettingsPage {
         rows.push(self.accent_row(cx));
         rows.push(self.tray_row(cx));
         rows.push(self.minimize_tray_row(cx));
+        rows.push(self.mini_opacity_row(cx));
 
         section(t!("settings.section.playback"), rows)
     }

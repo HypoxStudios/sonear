@@ -601,6 +601,12 @@ menu.start_radio:
   en: "Start radio"
   es: "Iniciar radio"
 
+mini.lyrics.hide:
+  en: "Hide lyrics"
+  es: "Ocultar letra"
+mini.lyrics.show:
+  en: "Show lyrics"
+  es: "Mostrar letra"
 mini.show:
   en: "Show Sonear"
   es: "Mostrar Sonear"
@@ -1011,6 +1017,12 @@ settings.lyrics.body:
 settings.lyrics.title:
   en: "Lyrics"
   es: "Letra"
+settings.mini_opacity.body:
+  en: "Lower it to see what's behind the mini player."
+  es: "Bájala para ver lo que hay detrás del reproductor en miniatura."
+settings.mini_opacity.title:
+  en: "Mini player opacity"
+  es: "Opacidad del reproductor en miniatura"
 settings.minimize_tray.body:
   en: "Minimizing the window hides it in the tray instead of the taskbar."
   es: "Al minimizar la ventana, se oculta en la bandeja en vez de la barra de tareas."

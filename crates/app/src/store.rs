@@ -32,6 +32,7 @@ use crate::i18n;
 use crate::keymap;
 use crate::legal::LegalDoc;
 use crate::theme;
+use crate::ui::lyrics_feed::LyricsFeed;
 use crate::ui::{mini_player, widgets};
 use crate::{platform_window, tray};
 
@@ -302,6 +303,12 @@ pub struct AppStore {
     pub cover_accent: bool,
     pub close_to_tray: bool,
     pub minimize_to_tray: bool,
+    /// The mini player's opacity in percent.
+    pub mini_player_opacity: u8,
+    /// Whether the mini player shows the lyrics instead of just the song.
+    pub mini_player_lyrics: bool,
+    /// The one loader of the playing track's lyrics, shared by every view that shows them.
+    pub lyrics_feed: Entity<LyricsFeed>,
     /// The language the interface shows.
     language: Language,
     /// Bumped on every language change, so views holding text they built earlier rebuild it.
@@ -361,7 +368,9 @@ impl AppStore {
             .soloist
             .as_ref()
             .map_or(Status::Stopped, |manager| manager.status());
+        let this = cx.entity();
         let mut store = Self {
+            lyrics_feed: cx.new(|cx| LyricsFeed::new(this, cx)),
             playback: core.player.snapshot(),
             pending_seek: None,
             pending_volume: None,
@@ -388,6 +397,8 @@ impl AppStore {
             cover_accent: config.cover_accent,
             close_to_tray: config.close_to_tray,
             minimize_to_tray: config.minimize_to_tray,
+            mini_player_opacity: config.mini_player_opacity,
+            mini_player_lyrics: config.mini_player_lyrics,
             language: i18n::initial(&config),
             language_version: 0,
             main_window_hidden: false,
@@ -667,6 +678,31 @@ impl AppStore {
         cx.notify();
     }
 
+    /// Previews the mini player's opacity without saving it, while a slider is dragged.
+    pub fn preview_mini_player_opacity(&mut self, percent: u8, cx: &mut Context<Self>) {
+        self.mini_player_opacity = percent;
+        cx.notify();
+    }
+
+    pub fn set_mini_player_opacity(&mut self, percent: u8, cx: &mut Context<Self>) {
+        self.mini_player_opacity = percent;
+        self.core
+            .config
+            .update(|config| config.mini_player_opacity = percent);
+        cx.notify();
+    }
+
+    pub fn toggle_mini_player_lyrics(&mut self, cx: &mut Context<Self>) {
+        self.mini_player_lyrics = !self.mini_player_lyrics;
+
+        let lyrics = self.mini_player_lyrics;
+
+        self.core
+            .config
+            .update(|config| config.mini_player_lyrics = lyrics);
+        cx.notify();
+    }
+
     /// Handles a request to close the main window. Hides it into the tray when
     /// that is on and the tray icon exists, and quits the app otherwise. The
     /// return value says whether the window may close.
@@ -751,12 +787,13 @@ impl AppStore {
 
         let store = cx.entity();
         let saved = self.core.config.get().mini_player_position;
+        let lyrics = self.mini_lyrics_on();
         let core = self.core.clone();
 
         // The new window draws straight away and reads this store, which can't
         // happen while the store is being updated.
         cx.defer(move |cx| {
-            let opened = mini_player::open(store.clone(), saved, core, cx);
+            let opened = mini_player::open(store.clone(), saved, lyrics, core, cx);
 
             store.update(cx, |state, cx| match opened {
                 Ok(handle) => {
@@ -1124,6 +1161,21 @@ impl AppStore {
     /// Whether the right slot is open on the lyrics.
     pub fn lyrics_showing(&self) -> bool {
         self.right_panel_open && self.lyrics_enabled && self.right_panel_lyrics
+    }
+
+    /// Whether the mini player is set to show the lyrics, which needs them enabled.
+    pub fn mini_lyrics_on(&self) -> bool {
+        self.lyrics_enabled && self.mini_player_lyrics
+    }
+
+    /// Whether the mini player is open and showing the lyrics.
+    pub fn mini_lyrics_showing(&self) -> bool {
+        self.mini_player.is_some() && self.mini_lyrics_on()
+    }
+
+    /// Whether any view needs the lyrics loaded.
+    pub fn lyrics_wanted(&self) -> bool {
+        self.lyrics_visible() || self.mini_lyrics_showing()
     }
 
     /// Whether the lyrics are on screen: showing, and in a window that is not hidden.
@@ -1818,6 +1870,8 @@ impl AppStore {
                 store.cover_accent = config.cover_accent;
                 store.close_to_tray = config.close_to_tray;
                 store.minimize_to_tray = config.minimize_to_tray;
+                store.mini_player_opacity = config.mini_player_opacity;
+                store.mini_player_lyrics = config.mini_player_lyrics;
                 store.sync_accent(cx);
                 store.ai_hint_dismissed = config.ui.ai_hint_dismissed;
                 store.editing_key = false;

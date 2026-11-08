@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Sizable as _;
-use gpui_kit::component::slider::{Slider, SliderEvent, SliderState, SliderValue};
+use gpui_kit::component::slider::{Slider, SliderEvent, SliderState};
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
@@ -17,7 +17,8 @@ use sonear_soloist::Status;
 use sonear_soloist::protocol::{PlayStatus, RepeatMode};
 
 use super::widgets::{
-    cover_for, heart_button, icon, icon_button, round_play_button, spotify_icon, text_tooltip,
+    cover_for, heart_button, icon, icon_button, round_play_button, set_if_changed, spotify_icon,
+    text_tooltip,
 };
 use crate::format::clock;
 use crate::store::AppStore;
@@ -156,22 +157,6 @@ impl PlayerBar {
             set_if_changed(&self.volume, f32::from(shown_volume), 0.5, window, cx);
         }
     }
-}
-
-fn set_if_changed(
-    slider: &Entity<SliderState>,
-    target: f32,
-    tolerance: f32,
-    window: &mut Window,
-    cx: &mut Context<PlayerBar>,
-) {
-    if (slider.read(cx).value().end() - target).abs() <= tolerance {
-        return;
-    }
-
-    slider.update(cx, |state, cx| {
-        state.set_value(SliderValue::Single(target), window, cx);
-    });
 }
 
 /// `spotify:track:abc` as `https://open.spotify.com/track/abc`.

@@ -3,13 +3,15 @@ use std::cell::RefCell;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
 use gpui_kit::component::Sizable as _;
+use gpui_kit::component::slider::{SliderState, SliderValue};
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
-    AnyElement, AnyView, App, Div, ElementId, Entity as UiEntity, Hsla, InteractiveElement as _,
-    IntoElement, ObjectFit, ParentElement as _, Pixels, SharedString, Stateful, Styled as _,
-    StyledImage as _, Svg, Window, div, img, linear_color_stop, linear_gradient, px, svg,
+    AnyElement, AnyView, App, Context, Div, ElementId, Entity as UiEntity, Hsla,
+    InteractiveElement as _, IntoElement, ObjectFit, ParentElement as _, Pixels, SharedString,
+    Stateful, Styled as _, StyledImage as _, Svg, Window, div, img, linear_color_stop,
+    linear_gradient, px, svg,
 };
 use sonear_core::model::Artwork;
 use sonear_soloist::protocol::Entity;
@@ -404,4 +406,22 @@ pub fn panel() -> Div {
         .border_1()
         .border_color(theme::hairline())
         .bg(theme::panel())
+}
+
+/// Moves a slider to `target` unless it is already within `tolerance`, so
+/// syncing it from the model does not notify on every render.
+pub fn set_if_changed<T: 'static>(
+    slider: &UiEntity<SliderState>,
+    target: f32,
+    tolerance: f32,
+    window: &mut Window,
+    cx: &mut Context<T>,
+) {
+    if (slider.read(cx).value().end() - target).abs() <= tolerance {
+        return;
+    }
+
+    slider.update(cx, |state, cx| {
+        state.set_value(SliderValue::Single(target), window, cx);
+    });
 }

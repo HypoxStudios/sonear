@@ -1,6 +1,7 @@
 pub mod common;
 pub mod legal;
 pub mod lyrics;
+pub mod lyrics_feed;
 pub mod mini_player;
 pub mod output_popup;
 pub mod pages;
