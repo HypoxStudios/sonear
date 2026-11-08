@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://sonear.hypox.studio">Website</a> ·
   <a href="#install">Install</a> ·
   <a href="#features">Features</a> ·
   <a href="#faq">FAQ</a> ·
@@ -48,10 +49,9 @@
 
 | | CPU | Memory |
 |---|---|---|
-| Idle | **0.17%** | **90 MB** |
-| Playing | **0.25%** | **91 MB** |
-| In use | **0.57%** | **91 MB** |
-| Playing from the tray | **0.06%** | **91 MB** |
+| Idle | **0.14%** | **39 MB** |
+| Playing | **0.25%** | **41 MB** |
+| In use | **0.87%** | **72 MB** |
 
 <sub>Two-minute averages from a release build with a real Spotify account, on one Windows 11 machine with an i5-12500H and a 144 Hz display, as a share of the whole CPU, without Soloist. The app is 36 MB.</sub>
 
