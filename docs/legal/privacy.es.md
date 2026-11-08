@@ -4,7 +4,7 @@
 
 Sonear está a cargo de Hypox Studios (“nosotros”). Esta política explica qué recopila Sonear, dónde lo guarda y qué envía. La recopilación y el uso de tus datos en Sonear están sujetos a esta política.
 
-En resumen: Sonear funciona por completo en tu computadora. No tenemos servidores y Sonear no nos envía nada.
+En resumen: Sonear funciona por completo en tu computadora y no nos envía nada. No necesita servidores nuestros.
 
 ## Qué recopila Sonear
 
@@ -47,6 +47,10 @@ Sonear no envía nada más. No tiene analíticas, telemetría, informes de fallo
 ## Cookies
 
 Sonear no usa cookies ni permite que terceros coloquen cookies o rastreen tu navegación. La página de inicio de sesión de Spotify se abre en tu navegador, donde se aplica la política de cookies de Spotify; tú administras esas cookies en tu navegador.
+
+## Este sitio web
+
+sonear.hypox.studio es un sitio estático servido por Cloudflare. Cloudflare atiende cada visita y ve tu dirección IP y los datos de tu navegador, que procesa por nosotros según su [política de privacidad](https://www.cloudflare.com/es-es/privacypolicy/). No guardamos registros de visitas, y el sitio no usa cookies, analíticas ni scripts de terceros. Las descargas vienen de GitHub.
 
 ## Funciones de IA
 

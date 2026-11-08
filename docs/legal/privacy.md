@@ -4,7 +4,7 @@ Last updated: 7 November 2026
 
 Sonear is maintained by Hypox Studios ("we"). This policy explains what Sonear collects, where it keeps it, and what it sends. Collecting and using your data in Sonear is subject to this policy.
 
-The short version: Sonear runs entirely on your computer. We run no servers, and Sonear sends nothing to us.
+The short version: Sonear runs entirely on your computer and sends nothing to us. It needs no servers of ours.
 
 ## What Sonear collects
 
@@ -47,6 +47,10 @@ Sonear sends nothing else. It has no analytics, telemetry, crash reporting or ad
 ## Cookies
 
 Sonear uses no cookies and lets no third party place cookies or track your browsing. The Spotify login page opens in your browser, where Spotify's own cookie policy applies; you manage those cookies in your browser.
+
+## This website
+
+sonear.hypox.studio is a static site served by Cloudflare. Cloudflare handles each request and sees your IP address and browser details, which it processes for us under [Cloudflare's privacy policy](https://www.cloudflare.com/privacypolicy/). We keep no logs of visits, and the site sets no cookies and has no analytics or third-party scripts. Downloads come from GitHub.
 
 ## AI features
 
