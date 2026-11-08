@@ -362,6 +362,23 @@ impl SettingsPage {
         )
     }
 
+    fn minimize_tray_row(&self, cx: &Context<Self>) -> AnyElement {
+        let store = self.store.clone();
+
+        row(
+            t!("settings.minimize_tray.title"),
+            t!("settings.minimize_tray.body"),
+            None,
+            Switch::new("settings-minimize-tray")
+                .checked(self.store.read(cx).minimize_to_tray)
+                .color(theme::accent())
+                .accessibility_label(t!("settings.minimize_tray.title"))
+                .on_change(move |enabled, _, cx| {
+                    store.update(cx, |state, cx| state.set_minimize_to_tray(*enabled, cx));
+                }),
+        )
+    }
+
     fn general_section(&self, cx: &Context<Self>) -> Div {
         let current = self.store.read(cx).language();
         let chips =
@@ -434,6 +451,7 @@ impl SettingsPage {
         rows.push(self.lyrics_row(cx));
         rows.push(self.accent_row(cx));
         rows.push(self.tray_row(cx));
+        rows.push(self.minimize_tray_row(cx));
 
         section(t!("settings.section.playback"), rows)
     }

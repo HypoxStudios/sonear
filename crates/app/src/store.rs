@@ -265,6 +265,7 @@ pub struct AppStore {
     pub lyrics_enabled: bool,
     pub cover_accent: bool,
     pub close_to_tray: bool,
+    pub minimize_to_tray: bool,
     /// The language the interface shows.
     language: Language,
     /// Bumped on every language change, so views holding text they built earlier rebuild it.
@@ -350,6 +351,7 @@ impl AppStore {
             lyrics_enabled: config.lyrics_enabled,
             cover_accent: config.cover_accent,
             close_to_tray: config.close_to_tray,
+            minimize_to_tray: config.minimize_to_tray,
             language: i18n::initial(&config),
             language_version: 0,
             main_window_hidden: false,
@@ -621,35 +623,60 @@ impl AppStore {
         cx.notify();
     }
 
+    pub fn set_minimize_to_tray(&mut self, enabled: bool, cx: &mut Context<Self>) {
+        self.minimize_to_tray = enabled;
+        self.core
+            .config
+            .update(|config| config.minimize_to_tray = enabled);
+        cx.notify();
+    }
+
     /// Handles a request to close the main window. Hides it into the tray when
     /// that is on and the tray icon exists, and quits the app otherwise. The
     /// return value says whether the window may close.
     pub fn request_close(&mut self, window: &Window, cx: &mut Context<Self>) -> bool {
-        if self.close_to_tray
-            && !self.needs_setup()
-            && tray::installed()
-            && let Some(hwnd) = platform_window::hwnd(window)
-        {
-            platform_window::hide(hwnd);
-            self.set_main_window_hidden(true, cx);
-            self.show_tray_hint();
-
-            let mini = self.mini_player;
-
-            // The main window is leased while it handles this request, and
-            // dropping an image skips leased windows.
-            cx.defer(move |cx| {
-                widgets::release_images(cx);
-
-                if let Some(handle) = mini {
-                    let _ = handle.update(cx, |_, window, _| window.refresh());
-                }
-            });
-
+        if self.close_to_tray && self.hide_to_tray(window, cx) {
             return false;
         }
 
         cx.quit();
+
+        true
+    }
+
+    /// Hides the main window into the tray after it was minimized, when that is on.
+    pub fn window_minimized(&mut self, window: &Window, cx: &mut Context<Self>) {
+        if self.minimize_to_tray {
+            self.hide_to_tray(window, cx);
+        }
+    }
+
+    /// Hides the main window into the tray. Returns false, leaving the window
+    /// alone, when there is no tray icon to bring it back from.
+    fn hide_to_tray(&mut self, window: &Window, cx: &mut Context<Self>) -> bool {
+        if self.needs_setup() || !tray::installed() {
+            return false;
+        }
+
+        let Some(hwnd) = platform_window::hwnd(window) else {
+            return false;
+        };
+
+        platform_window::hide(hwnd);
+        self.set_main_window_hidden(true, cx);
+        self.show_tray_hint();
+
+        let mini = self.mini_player;
+
+        // The main window is leased while it handles this request, and
+        // dropping an image skips leased windows.
+        cx.defer(move |cx| {
+            widgets::release_images(cx);
+
+            if let Some(handle) = mini {
+                let _ = handle.update(cx, |_, window, _| window.refresh());
+            }
+        });
 
         true
     }
@@ -1727,6 +1754,7 @@ impl AppStore {
                 store.lyrics_enabled = config.lyrics_enabled;
                 store.cover_accent = config.cover_accent;
                 store.close_to_tray = config.close_to_tray;
+                store.minimize_to_tray = config.minimize_to_tray;
                 store.sync_accent(cx);
                 store.ai_hint_dismissed = config.ui.ai_hint_dismissed;
                 store.editing_key = false;

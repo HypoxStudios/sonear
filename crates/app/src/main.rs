@@ -210,10 +210,29 @@ fn run_app(link: Option<SpotifyLink>, ignored: Option<String>) {
             store.update(cx, |store, cx| store.attach_audio(audio, cx));
 
             let close_store = store.clone();
+            let minimize_store = store.clone();
             let _ = window.update(cx, |_, window, cx| {
                 window.on_window_should_close(cx, move |window, cx| {
                     close_store.update(cx, |store, cx| store.request_close(window, cx))
                 });
+
+                // Minimizing is reported as the window turning hidden. Covering or
+                // hiding it reports the same, so only an iconic window counts.
+                window
+                    .observe_window_visibility(move |visibility, window, cx| {
+                        if visibility.is_visible() {
+                            return;
+                        }
+
+                        let minimized = platform_window::hwnd(window)
+                            .is_some_and(platform_window::is_minimized);
+
+                        if minimized {
+                            minimize_store
+                                .update(cx, |store, cx| store.window_minimized(window, cx));
+                        }
+                    })
+                    .detach();
             });
 
             start_tray(&store, cx);

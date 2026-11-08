@@ -102,6 +102,8 @@ pub struct Config {
     pub cover_accent: bool,
     /// Whether closing the window keeps Sonear running in the tray.
     pub close_to_tray: bool,
+    /// Whether minimizing the window hides it in the tray.
+    pub minimize_to_tray: bool,
     /// Whether Sonear asks GitHub for new versions and downloads them.
     pub check_for_updates: bool,
     /// Whether the one-time note about the tray icon was shown.
@@ -148,6 +150,7 @@ impl Default for Config {
             lyrics_enabled: true,
             cover_accent: true,
             close_to_tray: true,
+            minimize_to_tray: false,
             check_for_updates: true,
             tray_hint_shown: false,
             mini_player_position: None,
@@ -353,6 +356,7 @@ mod tests {
         assert_eq!(config.output_device_name, None);
         assert!(config.cover_accent);
         assert!(config.close_to_tray);
+        assert!(!config.minimize_to_tray);
         assert!(!config.tray_hint_shown);
         assert_eq!(config.mini_player_position, None);
         assert!(!config.right_panel.lyrics);
@@ -412,6 +416,7 @@ open = false
         assert!(config.lyrics_enabled);
         assert!(config.cover_accent);
         assert!(config.close_to_tray);
+        assert!(!config.minimize_to_tray);
         assert!(!config.tray_hint_shown);
         assert_eq!(config.mini_player_position, None);
     }

@@ -38,6 +38,11 @@ pub fn hide(hwnd: HWND) {
     }
 }
 
+pub fn is_minimized(hwnd: HWND) -> bool {
+    // SAFETY: `hwnd` belongs to a live window of this process and the call is made on its thread.
+    unsafe { IsIconic(hwnd).as_bool() }
+}
+
 /// Shows the window again, restores it if it was minimized, and brings it to the front.
 pub fn show(hwnd: HWND) {
     // SAFETY: `hwnd` belongs to a live window of this process and the calls are made on its thread.

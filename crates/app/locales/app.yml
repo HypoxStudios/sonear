@@ -981,6 +981,12 @@ settings.lyrics.body:
 settings.lyrics.title:
   en: "Lyrics"
   es: "Letra"
+settings.minimize_tray.body:
+  en: "Minimizing the window hides it in the tray instead of the taskbar."
+  es: "Al minimizar la ventana, se oculta en la bandeja en vez de la barra de tareas."
+settings.minimize_tray.title:
+  en: "Minimize to the tray"
+  es: "Minimizar a la bandeja"
 settings.open:
   en: "Open"
   es: "Abrir"
