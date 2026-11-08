@@ -514,8 +514,15 @@ impl Sim {
                 .iter()
                 .filter_map(|uri| catalog.track(uri).map(|track| track.index))
                 .collect();
+            let start = match &request.offset {
+                Some(PlayOffset::Position(position)) => *position as usize,
+                Some(PlayOffset::Uri(uri)) => {
+                    uris.iter().position(|other| other == uri).unwrap_or(0)
+                }
+                None => 0,
+            };
 
-            self.load(indices, 0, None);
+            self.load(indices, start, None);
         }
     }
 

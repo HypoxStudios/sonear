@@ -326,17 +326,26 @@ fn web_request(request: &PlaybackRequest) -> Option<WebPlayRequest> {
             offset: Some(offset.clone()),
         }),
         PlaybackRequest::Tracks { uris, start } => {
+            if *start >= uris.len() {
+                return None;
+            }
+
+            // Without an offset, Spotify starts a random track of the list
+            // when shuffle is on. The window keeps as many tracks after the
+            // clicked one as the cap allows.
+            let first = (*start).min(uris.len().saturating_sub(MAX_PLAY_URIS));
             let slice: Vec<String> = uris
                 .iter()
-                .skip(*start)
+                .skip(first)
                 .take(MAX_PLAY_URIS)
                 .cloned()
                 .collect();
+            let position = u32::try_from(start - first).unwrap_or(0);
 
-            (!slice.is_empty()).then_some(WebPlayRequest {
+            Some(WebPlayRequest {
                 context_uri: None,
                 uris: Some(slice),
-                offset: None,
+                offset: Some(PlayOffset::Position(position)),
             })
         }
         PlaybackRequest::LikedSongs {

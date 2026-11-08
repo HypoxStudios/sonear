@@ -279,13 +279,40 @@ async fn liked_songs_play_by_uris_from_the_clicked_row_capped_at_100() {
     let request = &plays[0].0;
 
     assert_eq!(request.context_uri, None);
-    assert_eq!(request.offset, None);
+    assert_eq!(request.offset, Some(PlayOffset::Position(0)));
 
     let sent = request.uris.as_ref().unwrap();
 
     assert_eq!(sent.len(), MAX_PLAY_URIS);
     assert_eq!(sent[0], "spotify:track:20");
     assert_eq!(sent[99], "spotify:track:119");
+}
+
+#[tokio::test(start_paused = true)]
+async fn track_lists_send_the_clicked_row_as_the_offset() {
+    let web = Web {
+        device_lists: Mutex::new(vec![vec![soloist("s1")]]),
+        ..Web::default()
+    };
+    let fx = fixture(web);
+    let short: Vec<String> = (0..10).map(|n| format!("spotify:track:{n}")).collect();
+    let long: Vec<String> = (0..250).map(|n| format!("spotify:track:{n}")).collect();
+
+    fx.player.play_tracks(short.clone(), 4);
+    settle().await;
+    fx.player.play_tracks(long, 200);
+    settle().await;
+
+    let plays = lock(&fx.web.plays).clone();
+
+    assert_eq!(plays[0].0.uris.as_ref(), Some(&short));
+    assert_eq!(plays[0].0.offset, Some(PlayOffset::Position(4)));
+
+    let sent = plays[1].0.uris.as_ref().unwrap();
+
+    assert_eq!(sent.len(), MAX_PLAY_URIS);
+    assert_eq!(sent[0], "spotify:track:150");
+    assert_eq!(plays[1].0.offset, Some(PlayOffset::Position(50)));
 }
 
 #[tokio::test(start_paused = true)]
@@ -398,7 +425,8 @@ async fn a_rejected_collection_falls_back_to_the_uris_and_is_remembered() {
 
     assert_eq!(plays.len(), 1);
     assert_eq!(plays[0].0.context_uri, None);
-    assert_eq!(plays[0].0.uris.as_ref().unwrap()[0], "spotify:track:2");
+    assert_eq!(plays[0].0.uris.as_ref().unwrap()[0], "spotify:track:0");
+    assert_eq!(plays[0].0.offset, Some(PlayOffset::Position(2)));
     assert_eq!(fx.web.device_calls.load(Ordering::SeqCst), 1);
     assert_eq!(fx.inner_support(), LIKED_NO);
     assert!(fx.events.try_recv().is_err());
