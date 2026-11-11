@@ -8,12 +8,18 @@ Sonear is independent. It is not made, sponsored or endorsed by Spotify.
 
 Spotify marks
 -------------
-The files crates/app/assets/spotify-logo.svg and
-crates/app/assets/spotify-icon.svg are Spotify's logo and icon, from Spotify's
-Design & Branding Guidelines. They are trademarks of Spotify AB and are not
-covered by the Apache License. They are included only to attribute Spotify
-content as Spotify's guidelines require, and their use is subject to those
+The file crates/app/assets/spotify-icon.svg is Spotify's icon, from Spotify's
+Design & Branding Guidelines. It is a trademark of Spotify AB and is not
+covered by the Apache License. It is included only to attribute Spotify
+content as Spotify's guidelines require, and its use is subject to those
 guidelines: https://developer.spotify.com/documentation/design
+
+YouTube marks
+-------------
+Sonear is not made, sponsored or endorsed by Google or YouTube. The file
+crates/app/assets/ytm-icon.svg is a simplified drawing of the YouTube Music
+icon, used only to label that source. YouTube Music is a trademark of
+Google LLC and the icon is not covered by the Apache License.
 
 Spotify Soloist
 ---------------
