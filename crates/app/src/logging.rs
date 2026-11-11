@@ -220,7 +220,30 @@ pub fn close_files() {
 
     files.sonear.close();
     files.soloist.close();
-    let _ = std::fs::remove_file(running_marker(&files.dir));
+    remove_marker_if_ours(&running_marker(&files.dir), std::process::id());
+}
+
+/// Opens the log files again and marks this session as running, after
+/// `close_files` for a hand-over that did not happen.
+pub fn reopen_files() {
+    let Some(files) = FILES.get() else {
+        return;
+    };
+
+    files.sonear.replace(appender(&files.dir, SONEAR_PREFIX));
+    files.soloist.replace(appender(&files.dir, SOLOIST_PREFIX));
+    mark_running();
+}
+
+/// After a source switch the new process owns the marker, and this one must
+/// not delete it on its way out.
+fn remove_marker_if_ours(marker: &Path, pid: u32) {
+    let ours =
+        std::fs::read_to_string(marker).is_ok_and(|text| text.starts_with(&format!("pid={pid} ")));
+
+    if ours {
+        let _ = std::fs::remove_file(marker);
+    }
 }
 
 /// Deletes every log file and starts new ones, for "Delete all Sonear data".
@@ -288,6 +311,31 @@ pub fn mark_running() {
 /// Removes the running marker. Safe to call more than once.
 pub fn clear_running() {
     if let Some(files) = FILES.get() {
-        let _ = std::fs::remove_file(running_marker(&files.dir));
+        remove_marker_if_ours(&running_marker(&files.dir), std::process::id());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_the_owner_removes_the_running_marker() {
+        let dir = tempfile::tempdir().unwrap();
+        let marker = dir.path().join("running");
+
+        std::fs::write(&marker, "pid=42 started=now").unwrap();
+        remove_marker_if_ours(&marker, 43);
+
+        assert!(marker.exists());
+
+        remove_marker_if_ours(&marker, 4);
+
+        assert!(marker.exists());
+
+        remove_marker_if_ours(&marker, 42);
+
+        assert!(!marker.exists());
+        remove_marker_if_ours(&marker, 42);
     }
 }

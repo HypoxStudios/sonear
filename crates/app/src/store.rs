@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use gpui_kit::{
     AnyWindowHandle, App, AppContext as _, Context, Entity, SharedString, Task, Window,
+    WindowBounds,
 };
 use rust_i18n::t;
 use sonear_core::config::{LEGAL_VERSION, Language};
@@ -30,7 +31,9 @@ use tracing::warn;
 use crate::cover_accent::{self, Accent};
 use crate::data::{self, Env, Load, Slot};
 use crate::i18n;
+use crate::instance::{self, HandoffControl, InstanceGuard};
 use crate::keymap;
+use crate::launch::{WindowMode, WindowPlacement};
 use crate::legal::LegalDoc;
 use crate::theme;
 use crate::ui::lyrics_feed::LyricsFeed;
@@ -300,6 +303,8 @@ pub struct AppStore {
     youtube_account: YtAccountState,
     /// The service the user just chose, while the switch animates and the app restarts.
     switching_to: Option<Source>,
+    instance_guard: Option<InstanceGuard>,
+    handoff: Option<HandoffControl>,
     pub expiry_days: Option<i64>,
     pub route: Route,
     back_stack: Vec<Route>,
@@ -405,6 +410,8 @@ impl AppStore {
                 .as_ref()
                 .map_or(YtAccountState::SignedOut, |account| account.state()),
             switching_to: None,
+            instance_guard: None,
+            handoff: None,
             expiry_days: None,
             route: initial_route(),
             back_stack: Vec::new(),
@@ -663,6 +670,13 @@ impl AppStore {
 
     pub fn set_main_window(&mut self, handle: AnyWindowHandle) {
         self.main_window = Some(handle);
+    }
+
+    /// Keeps the single-instance lock and the hand-off pipe, so a source switch
+    /// can give both to the next process before it starts.
+    pub fn set_instance(&mut self, guard: InstanceGuard, handoff: Option<HandoffControl>) {
+        self.instance_guard = Some(guard);
+        self.handoff = handoff;
     }
 
     /// Brings the main window back from the tray, the taskbar or behind other windows.
@@ -1861,22 +1875,41 @@ impl AppStore {
         .detach();
     }
 
+    /// Hands over in the opposite order of a plain restart: this process lets go
+    /// of the logs, the single-instance lock and the hand-off pipe first, so the
+    /// new one starts at once and takes the focus, and this window closes then.
     fn finish_switch(&mut self, target: Source, previous: Source, cx: &mut Context<Self>) {
         self.core.config.update(|config| config.source = target);
+        self.core.player.pause();
+
+        let placement = self.main_window_placement(cx);
+
+        crate::logging::close_files();
+
+        let guard = self.instance_guard.take();
+
+        if let Some(handoff) = self.handoff.as_mut() {
+            handoff.stop();
+        }
+
+        drop(guard);
 
         let started = std::env::current_exe().and_then(|exe| {
-            std::process::Command::new(exe)
-                .arg("--after")
-                .arg(std::process::id().to_string())
-                .spawn()
+            let mut command = std::process::Command::new(exe);
+
+            command.arg("--switched");
+
+            if let Some(placement) = placement {
+                command.arg("--window").arg(placement.encode());
+            }
+
+            command.spawn()
         });
 
         match started {
-            Ok(child) => {
-                crate::logging::close_files();
-                platform_window::quit_after_handing_focus_to(child.id(), cx);
-            }
+            Ok(child) => platform_window::quit_after_handing_focus_to(child.id(), cx),
             Err(error) => {
+                self.reclaim_instance();
                 warn!(%error, "could not restart to switch source");
                 self.core.config.update(|config| config.source = previous);
                 self.switching_to = None;
@@ -1886,6 +1919,40 @@ impl AppStore {
                 );
                 cx.notify();
             }
+        }
+    }
+
+    fn main_window_placement(&self, cx: &mut Context<Self>) -> Option<WindowPlacement> {
+        let handle = self.main_window?;
+        let bounds = handle
+            .update(cx, |_, window, _| window.window_bounds())
+            .ok()?;
+        let (bounds, mode) = match bounds {
+            WindowBounds::Windowed(bounds) => (bounds, WindowMode::Windowed),
+            WindowBounds::Maximized(bounds) => (bounds, WindowMode::Maximized),
+            WindowBounds::Fullscreen(bounds) => (bounds, WindowMode::Fullscreen),
+        };
+
+        Some(WindowPlacement {
+            x: bounds.origin.x.into(),
+            y: bounds.origin.y.into(),
+            width: bounds.size.width.into(),
+            height: bounds.size.height.into(),
+            mode,
+        })
+    }
+
+    /// Takes back what a switch gave away when the next process could not start.
+    fn reclaim_instance(&mut self) {
+        crate::logging::reopen_files();
+
+        match instance::acquire(self.is_demo()) {
+            Some(guard) => self.instance_guard = Some(guard),
+            None => warn!("could not take the single-instance lock back"),
+        }
+
+        if let Some(handoff) = self.handoff.as_mut() {
+            handoff.restart();
         }
     }
 

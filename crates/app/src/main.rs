@@ -33,7 +33,7 @@ use std::sync::Arc;
 use gpui_kit::component::TitleBar;
 use gpui_kit::{
     AppContext as _, AsyncApp, Bounds, Entity, SharedString, TitlebarOptions, WindowBounds,
-    WindowOptions, px, size,
+    WindowOptions, point, px, size,
 };
 use instance::Handoff;
 use launch::Launch;
@@ -46,6 +46,8 @@ use tray::TrayCommand;
 
 const DEMO: bool = cfg!(feature = "demo");
 const WINDOW_TITLE: &str = "Sonear";
+const MIN_WINDOW: (f32, f32) = (900., 600.);
+const DEFAULT_WINDOW: (f32, f32) = (1280., 800.);
 /// Decoded cover images kept in memory at once.
 const IMAGE_CACHE_CAPACITY: usize = 160;
 
@@ -115,7 +117,7 @@ fn main() {
         Launch::DataMissing => {
             data_mover::run_missing(std::path::PathBuf::from(r"D:\Sonear"), None)
         }
-        Launch::App { link, ignored } => run_app(link, ignored),
+        Launch::App { link, ignored } => run_app(link, ignored, parsed.window),
     }
 }
 
@@ -147,7 +149,11 @@ fn log_dir(launch: &Launch, paths: Option<&AppPaths>) -> Option<std::path::PathB
     Some(paths.logs_dir())
 }
 
-fn run_app(link: Option<SpotifyLink>, ignored: Option<String>) {
+fn run_app(
+    link: Option<SpotifyLink>,
+    ignored: Option<String>,
+    placement: Option<launch::WindowPlacement>,
+) {
     if let Some(shown) = ignored {
         info!(argument = %shown, "ignored a launch argument that isn't a Spotify link");
     }
@@ -187,7 +193,10 @@ fn run_app(link: Option<SpotifyLink>, ignored: Option<String>) {
         }
     };
     let handle = runtime.handle().clone();
-    let handoffs = instance::serve(&handle, DEMO);
+    let (handoffs, handoff_control) = match instance::serve(&handle, DEMO) {
+        Some(server) => (Some(server.inbox), Some(server.control)),
+        None => (None, None),
+    };
     let core = Arc::new(start_core(&handle, &paths));
 
     i18n::apply(i18n::initial(&core.config.get()));
@@ -221,13 +230,12 @@ fn run_app(link: Option<SpotifyLink>, ignored: Option<String>) {
             );
 
             let store = store::new_entity(core.clone(), handle.clone(), cx);
+
+            store.update(cx, |store, _| store.set_instance(guard, handoff_control));
+
             let options = WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
-                    None,
-                    size(px(1280.), px(800.)),
-                    cx,
-                ))),
-                window_min_size: Some(size(px(900.), px(600.))),
+                window_bounds: Some(window_bounds(placement, cx)),
+                window_min_size: Some(size(px(MIN_WINDOW.0), px(MIN_WINDOW.1))),
                 titlebar: Some(TitlebarOptions {
                     title: Some(SharedString::new_static(WINDOW_TITLE)),
                     ..TitleBar::title_bar_options()
@@ -332,6 +340,31 @@ fn run_app(link: Option<SpotifyLink>, ignored: Option<String>) {
 
     logging::clear_running();
     drop(runtime);
+}
+
+/// Where the main window opens: where the previous process had it after a
+/// source switch, centred otherwise.
+fn window_bounds(placement: Option<launch::WindowPlacement>, cx: &gpui_kit::App) -> WindowBounds {
+    let Some(placement) = placement else {
+        return WindowBounds::Windowed(Bounds::centered(
+            None,
+            size(px(DEFAULT_WINDOW.0), px(DEFAULT_WINDOW.1)),
+            cx,
+        ));
+    };
+    let bounds = Bounds::new(
+        point(px(placement.x), px(placement.y)),
+        size(
+            px(placement.width.max(MIN_WINDOW.0)),
+            px(placement.height.max(MIN_WINDOW.1)),
+        ),
+    );
+
+    match placement.mode {
+        launch::WindowMode::Windowed => WindowBounds::Windowed(bounds),
+        launch::WindowMode::Maximized => WindowBounds::Maximized(bounds),
+        launch::WindowMode::Fullscreen => WindowBounds::Fullscreen(bounds),
+    }
 }
 
 /// Whether the data folder was moved off the default and is no longer there.

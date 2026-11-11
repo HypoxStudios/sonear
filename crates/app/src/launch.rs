@@ -11,6 +11,12 @@ use windows::Win32::Foundation::CloseHandle;
 use windows::Win32::System::Threading::{OpenProcess, PROCESS_SYNCHRONIZE, WaitForSingleObject};
 
 const AFTER: &str = "--after";
+const SWITCHED: &str = "--switched";
+const WINDOW: &str = "--window";
+/// Largest window side, in logical pixels, that a placement may ask for.
+const MAX_SIDE: f32 = 20_000.;
+/// Furthest a window corner may sit from the origin.
+const MAX_OFFSET: f32 = 100_000.;
 const WAIT_FOR_EXIT: Duration = Duration::from_secs(15);
 /// Longest argument the "ignored argument" log shows.
 const SHOWN_ARGUMENT: usize = 200;
@@ -37,11 +43,78 @@ pub enum Launch {
     DataMissing,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WindowMode {
+    Windowed,
+    Maximized,
+    Fullscreen,
+}
+
+/// Where the previous process had its main window, in logical pixels. For a
+/// maximized or fullscreen window these are the restore bounds.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WindowPlacement {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+    pub mode: WindowMode,
+}
+
+impl WindowPlacement {
+    pub fn encode(&self) -> String {
+        let mode = match self.mode {
+            WindowMode::Windowed => "windowed",
+            WindowMode::Maximized => "maximized",
+            WindowMode::Fullscreen => "fullscreen",
+        };
+
+        format!(
+            "{},{},{},{},{mode}",
+            self.x, self.y, self.width, self.height
+        )
+    }
+
+    /// `None` for anything malformed, non-finite or out of range.
+    pub fn decode(text: &str) -> Option<Self> {
+        let mut parts = text.split(',');
+        let mut number = || parts.next()?.parse::<f32>().ok().filter(|n| n.is_finite());
+        let (x, y, width, height) = (number()?, number()?, number()?, number()?);
+        let mode = match parts.next()? {
+            "windowed" => WindowMode::Windowed,
+            "maximized" => WindowMode::Maximized,
+            "fullscreen" => WindowMode::Fullscreen,
+            _ => return None,
+        };
+
+        let sane = parts.next().is_none()
+            && x.abs() <= MAX_OFFSET
+            && y.abs() <= MAX_OFFSET
+            && width > 0.
+            && height > 0.
+            && width <= MAX_SIDE
+            && height <= MAX_SIDE;
+
+        sane.then_some(Self {
+            x,
+            y,
+            width,
+            height,
+            mode,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Parsed {
     pub launch: Launch,
     /// A process to wait for before doing anything.
     pub after_pid: Option<u32>,
+    /// Started by a source switch, which already released the single-instance
+    /// lock, so there is nothing to wait for.
+    pub switched: bool,
+    /// Where the previous main window was, for a switch.
+    pub window: Option<WindowPlacement>,
 }
 
 /// Reads the command line without the program name. `spotify:` launches pass a
@@ -55,6 +128,21 @@ pub fn parse(mut args: impl Iterator<Item = OsString>, exe: &Path) -> Parsed {
             .next()
             .and_then(|pid| pid.to_str().and_then(|pid| pid.parse().ok()));
         first = args.next();
+    }
+
+    let mut switched = false;
+    let mut window = None;
+
+    if first.as_deref().is_some_and(|arg| arg == SWITCHED) {
+        switched = true;
+        first = args.next();
+
+        if first.as_deref().is_some_and(|arg| arg == WINDOW) {
+            window = args
+                .next()
+                .and_then(|text| text.to_str().and_then(WindowPlacement::decode));
+            first = args.next();
+        }
     }
 
     let launch = match first.as_ref().and_then(|arg| arg.to_str()) {
@@ -81,7 +169,12 @@ pub fn parse(mut args: impl Iterator<Item = OsString>, exe: &Path) -> Parsed {
         _ => app(first.as_deref()),
     };
 
-    Parsed { launch, after_pid }
+    Parsed {
+        launch,
+        after_pid,
+        switched,
+        window,
+    }
 }
 
 fn app(arg: Option<&std::ffi::OsStr>) -> Launch {
@@ -239,6 +332,79 @@ mod tests {
                 ignored: None
             }
         ));
+    }
+
+    #[test]
+    fn a_switch_carries_the_window_placement() {
+        let parsed = parse_args(
+            &["--switched", "--window", "-20,35.5,1280,800,maximized"],
+            r"C:\Apps\sonear.exe",
+        );
+
+        assert!(parsed.switched);
+        assert_eq!(parsed.after_pid, None);
+        assert_eq!(
+            parsed.window,
+            Some(WindowPlacement {
+                x: -20.,
+                y: 35.5,
+                width: 1280.,
+                height: 800.,
+                mode: WindowMode::Maximized,
+            })
+        );
+        assert!(matches!(
+            parsed.launch,
+            Launch::App {
+                link: None,
+                ignored: None
+            }
+        ));
+
+        let bare = parse_args(&["--switched"], r"C:\Apps\sonear.exe");
+
+        assert!(bare.switched);
+        assert_eq!(bare.window, None);
+    }
+
+    #[test]
+    fn a_bad_placement_is_ignored() {
+        for bad in [
+            "1,2,3",
+            "1,2,3,4",
+            "1,2,3,4,floating",
+            "1,2,3,4,windowed,5",
+            "a,2,3,4,windowed",
+            "NaN,2,3,4,windowed",
+            "1,2,inf,4,windowed",
+            "1,2,0,4,windowed",
+            "1,2,3,-4,windowed",
+            "1,2,20001,4,windowed",
+            "1e9,2,3,4,windowed",
+            "",
+        ] {
+            let parsed = parse_args(&["--switched", "--window", bad], r"C:\Apps\sonear.exe");
+
+            assert!(parsed.switched, "{bad}");
+            assert_eq!(parsed.window, None, "{bad}");
+            assert!(matches!(parsed.launch, Launch::App { ignored: None, .. }));
+        }
+    }
+
+    #[test]
+    fn a_placement_round_trips() {
+        let placement = WindowPlacement {
+            x: 10.5,
+            y: -3.,
+            width: 1280.,
+            height: 800.25,
+            mode: WindowMode::Fullscreen,
+        };
+
+        assert_eq!(
+            WindowPlacement::decode(&placement.encode()),
+            Some(placement)
+        );
     }
 
     #[test]

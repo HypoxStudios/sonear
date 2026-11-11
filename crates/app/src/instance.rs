@@ -6,6 +6,7 @@ use tokio::io::AsyncReadExt as _;
 use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 use tokio::runtime::Handle;
 use tokio::sync::mpsc;
+use tokio::task::AbortHandle;
 use tracing::{info, warn};
 use windows::Win32::Foundation::{CloseHandle, ERROR_ALREADY_EXISTS, GetLastError, HANDLE};
 use windows::Win32::System::RemoteDesktop::ProcessIdToSessionId;
@@ -19,6 +20,7 @@ const MAX_MESSAGE: usize = 1024;
 const CONNECT_FOR: Duration = Duration::from_secs(2);
 const READ_FOR: Duration = Duration::from_secs(2);
 const RETRY_EVERY: Duration = Duration::from_millis(50);
+const SERVE_RETRIES: u32 = 6;
 const ERROR_FILE_NOT_FOUND: i32 = 2;
 const ERROR_PIPE_BUSY: i32 = 231;
 
@@ -167,35 +169,93 @@ fn send(name: &str, handoff: &Handoff, wait: Duration) -> std::io::Result<()> {
     }
 }
 
+/// The hand-off pipe: the messages that arrive, and the way to close it.
+pub struct HandoffServer {
+    pub inbox: mpsc::UnboundedReceiver<Handoff>,
+    pub control: HandoffControl,
+}
+
+/// Closes and reopens the hand-off pipe, for a restart that gives the pipe name
+/// to the next process.
+pub struct HandoffControl {
+    runtime: Handle,
+    name: String,
+    sender: mpsc::UnboundedSender<Handoff>,
+    task: Option<AbortHandle>,
+}
+
+impl HandoffControl {
+    /// Stops accepting. The pipe name is free again once the accept task has
+    /// dropped its listening instance, which happens right after.
+    pub fn stop(&mut self) {
+        if let Some(task) = self.task.take() {
+            task.abort();
+        }
+    }
+
+    pub fn restart(&mut self) {
+        if self.task.is_some() {
+            return;
+        }
+
+        let _entered = self.runtime.enter();
+
+        match listen(self.name.clone(), self.sender.clone()) {
+            Ok(task) => self.task = Some(task),
+            Err(error) => warn!(%error, "could not listen for other launches again"),
+        }
+    }
+}
+
 /// Listens for hand-offs from later launches. `None` if the pipe could not be
-/// created; Sonear then runs without hand-off.
-pub fn serve(runtime: &Handle, demo: bool) -> Option<mpsc::UnboundedReceiver<Handoff>> {
+/// created; Sonear then runs without hand-off. A source switch hands the pipe
+/// over just before this starts, so it tries a few times.
+pub fn serve(runtime: &Handle, demo: bool) -> Option<HandoffServer> {
     let name = pipe_name(demo);
     let _entered = runtime.enter();
+    let mut tries = 0;
 
-    match serve_on(name.clone()) {
-        Ok(inbox) => Some(inbox),
-        Err(error) => {
-            warn!(%error, "could not listen for other launches");
+    loop {
+        match serve_on(name.clone(), runtime) {
+            Ok(server) => return Some(server),
+            Err(_) if tries < SERVE_RETRIES => {
+                tries += 1;
+                std::thread::sleep(RETRY_EVERY);
+            }
+            Err(error) => {
+                warn!(%error, "could not listen for other launches");
 
-            None
+                return None;
+            }
         }
     }
 }
 
 /// The default DACL only lets the creating user, administrators and SYSTEM
 /// write to the pipe, which is what is wanted. Must run inside the runtime.
-fn serve_on(name: String) -> std::io::Result<mpsc::UnboundedReceiver<Handoff>> {
+fn serve_on(name: String, runtime: &Handle) -> std::io::Result<HandoffServer> {
+    let (sender, inbox) = mpsc::unbounded_channel();
+    let task = listen(name.clone(), sender.clone())?;
+
+    Ok(HandoffServer {
+        inbox,
+        control: HandoffControl {
+            runtime: runtime.clone(),
+            name,
+            sender,
+            task: Some(task),
+        },
+    })
+}
+
+fn listen(name: String, sender: mpsc::UnboundedSender<Handoff>) -> std::io::Result<AbortHandle> {
     let first = ServerOptions::new()
         .first_pipe_instance(true)
         .reject_remote_clients(true)
         .access_inbound(true)
         .create(&name)?;
-    let (sender, inbox) = mpsc::unbounded_channel();
 
-    tokio::spawn(accept(first, name, sender));
-
-    Ok(inbox)
+    Ok(tokio::spawn(accept(first, name, sender)).abort_handle())
 }
 
 async fn accept(mut server: NamedPipeServer, name: String, sender: mpsc::UnboundedSender<Handoff>) {
@@ -288,7 +348,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_message_crosses_a_real_pipe() {
         let name = format!(r"\\.\pipe\sonear-test-{}-{}", std::process::id(), line!());
-        let mut inbox = serve_on(name.clone()).unwrap();
+        let mut inbox = serve_on(name.clone(), &Handle::current()).unwrap().inbox;
 
         for handoff in [Handoff::Open(link()), Handoff::Show] {
             let (name, sent) = (name.clone(), handoff.clone());
@@ -305,9 +365,30 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_second_server_cannot_take_the_name() {
         let name = format!(r"\\.\pipe\sonear-test-{}-{}", std::process::id(), line!());
-        let _first = serve_on(name.clone()).unwrap();
+        let _first = serve_on(name.clone(), &Handle::current()).unwrap();
 
-        assert!(serve_on(name).is_err());
+        assert!(serve_on(name, &Handle::current()).is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_stopped_server_frees_the_name() {
+        let name = format!(r"\\.\pipe\sonear-test-{}-{}", std::process::id(), line!());
+        let mut first = serve_on(name.clone(), &Handle::current()).unwrap();
+
+        first.control.stop();
+
+        let started = Instant::now();
+        let second = loop {
+            match serve_on(name.clone(), &Handle::current()) {
+                Ok(second) => break second,
+                Err(error) => {
+                    assert!(started.elapsed() < Duration::from_secs(2), "{error}");
+                    tokio::time::sleep(RETRY_EVERY).await;
+                }
+            }
+        };
+
+        drop(second);
     }
 
     #[test]
