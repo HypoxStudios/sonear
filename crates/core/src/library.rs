@@ -12,10 +12,11 @@ use sonear_spotify::{RateLimit, SpotifyClient, SpotifyError};
 use thiserror::Error;
 use tokio::sync::{Notify, watch};
 
+use crate::config::{Source, active_source};
 use crate::convert;
 use crate::model::{
     Album, Artist, Device, Episode, Page, PlayOffset, PlayRecord, Playlist, Profile, SearchKind,
-    SearchResults, Show, Track, WebPlayRequest,
+    SearchResults, Shelf, Show, Track, WebPlayRequest,
 };
 
 pub const PAGE_SIZE: u32 = 50;
@@ -51,15 +52,20 @@ pub enum LibraryError {
 impl LibraryError {
     /// The error in the interface language. `Display` stays English for logs.
     pub fn user_message(&self) -> String {
+        let service = match active_source() {
+            Source::Spotify => "Spotify",
+            Source::Youtube => "YouTube Music",
+        };
+
         match self {
-            Self::NeedsLogin => t!("library.needs_login"),
-            Self::Forbidden => t!("library.forbidden"),
-            Self::NotFound => t!("library.not_found"),
-            Self::RateLimited => t!("library.rate_limited"),
-            Self::QuotaExceeded => t!("library.quota"),
-            Self::Network(_) => t!("library.network"),
-            Self::Api(detail) => t!("library.api", detail = detail),
-            Self::Decode(_) => t!("library.decode"),
+            Self::NeedsLogin => t!("library.needs_login", service = service),
+            Self::Forbidden => t!("library.forbidden", service = service),
+            Self::NotFound => t!("library.not_found", service = service),
+            Self::RateLimited => t!("library.rate_limited", service = service),
+            Self::QuotaExceeded => t!("library.quota", service = service),
+            Self::Network(_) => t!("library.network", service = service),
+            Self::Api(detail) => t!("library.api", service = service, detail = detail),
+            Self::Decode(_) => t!("library.decode", service = service),
             Self::Unsupported => t!("library.unsupported"),
         }
         .into_owned()
@@ -77,6 +83,20 @@ impl From<SpotifyError> for LibraryError {
             SpotifyError::Network(reason) => Self::Network(reason),
             SpotifyError::Api { status, message } => Self::Api(format!("{status}: {message}")),
             SpotifyError::Decode(reason) => Self::Decode(reason),
+        }
+    }
+}
+
+impl From<sonear_youtube::YoutubeError> for LibraryError {
+    fn from(error: sonear_youtube::YoutubeError) -> Self {
+        use sonear_youtube::YoutubeError;
+
+        match error {
+            YoutubeError::Network(reason) => Self::Network(reason),
+            YoutubeError::NotFound => Self::NotFound,
+            YoutubeError::NeedsLogin => Self::NeedsLogin,
+            YoutubeError::Api { status, message } => Self::Api(format!("{status}: {message}")),
+            YoutubeError::Decode(reason) => Self::Decode(reason),
         }
     }
 }
@@ -194,6 +214,11 @@ pub trait LibraryBackend: Send + Sync {
         _device_id: &str,
     ) -> LibraryResult<()> {
         Err(LibraryError::Unsupported)
+    }
+
+    /// Home page shelves. Empty when the backend has nothing to suggest.
+    async fn discover(&self) -> LibraryResult<Vec<Shelf>> {
+        Ok(Vec::new())
     }
 
     /// Spotify's current pause state, if this backend has one.

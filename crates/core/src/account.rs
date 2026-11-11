@@ -11,7 +11,7 @@ use tokio::sync::{Notify, broadcast};
 use tokio::task::JoinHandle;
 use tracing::{info, warn};
 
-use crate::config::ConfigHandle;
+use crate::config::{ConfigHandle, Source, active_source};
 use crate::events::AppEvent;
 use crate::history::History;
 use crate::library::{LibraryBackend, SpotifyLibrary};
@@ -356,6 +356,10 @@ impl Account {
     pub async fn disconnect(self: &Arc<Self>) -> Vec<String> {
         let mut problems = Vec::new();
 
+        if self.library.is_none() && active_source() == Source::Youtube {
+            return problems;
+        }
+
         if self.library.is_none() {
             let _ = self
                 .events
@@ -394,7 +398,7 @@ impl Account {
     }
 
     /// Deletes everything cached for the account and tells the UI to drop its copies.
-    async fn wipe_account_data(&self) -> Vec<String> {
+    pub(crate) async fn wipe_account_data(&self) -> Vec<String> {
         let mut problems = Vec::new();
 
         self.meta.clear();

@@ -193,9 +193,7 @@ pub fn entity_track(entity: &Entity) -> Track {
         uri: album.uri.clone(),
         name: album.name().to_owned(),
     });
-    let open_url = kind
-        .zip(id)
-        .map(|(kind, id)| format!("https://open.spotify.com/{kind}/{id}"));
+    let open_url = crate::model::open_url(&entity.uri);
 
     Track {
         uri: entity.uri.clone(),

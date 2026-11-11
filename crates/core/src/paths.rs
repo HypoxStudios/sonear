@@ -77,6 +77,41 @@ impl AppPaths {
     pub fn queue_file(&self) -> PathBuf {
         self.local_root.join("queue.json")
     }
+
+    /// Everything the YouTube Music source keeps.
+    pub fn youtube_root(&self) -> PathBuf {
+        self.local_root.join("youtube")
+    }
+
+    /// Where mpv and yt-dlp are downloaded.
+    pub fn youtube_tools_dir(&self) -> PathBuf {
+        self.youtube_root().join("tools")
+    }
+
+    /// The WebView2 profile of the YT Music sign-in. It holds the only copy of the cookies.
+    pub fn youtube_webview_dir(&self) -> PathBuf {
+        self.youtube_root().join("webview")
+    }
+
+    pub fn youtube_meta_cache_dir(&self) -> PathBuf {
+        self.youtube_root().join("cache").join("meta")
+    }
+
+    pub fn youtube_history_db(&self) -> PathBuf {
+        self.youtube_root().join("history.db")
+    }
+
+    pub fn youtube_queue_file(&self) -> PathBuf {
+        self.youtube_root().join("queue.json")
+    }
+
+    pub fn youtube_library_file(&self) -> PathBuf {
+        self.youtube_root().join("library.json")
+    }
+
+    pub fn youtube_plays_file(&self) -> PathBuf {
+        self.youtube_root().join("plays.json")
+    }
 }
 
 #[derive(Deserialize, Default)]
@@ -103,6 +138,24 @@ mod tests {
         std::fs::write(&path, text).unwrap();
 
         (dir, path)
+    }
+
+    #[test]
+    fn youtube_files_live_under_their_own_folder() {
+        let paths = AppPaths::new("cfg", "root");
+        let root = Path::new("root").join("youtube");
+
+        assert_eq!(paths.youtube_root(), root);
+        assert_eq!(paths.youtube_tools_dir(), root.join("tools"));
+        assert_eq!(paths.youtube_webview_dir(), root.join("webview"));
+        assert_eq!(
+            paths.youtube_meta_cache_dir(),
+            root.join("cache").join("meta")
+        );
+        assert_eq!(paths.youtube_history_db(), root.join("history.db"));
+        assert_eq!(paths.youtube_queue_file(), root.join("queue.json"));
+        assert_eq!(paths.youtube_library_file(), root.join("library.json"));
+        assert_eq!(paths.youtube_plays_file(), root.join("plays.json"));
     }
 
     #[test]

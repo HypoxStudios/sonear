@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::config::Source;
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArtImage {
     pub url: String,
@@ -179,6 +181,20 @@ impl From<Episode> for Track {
     }
 }
 
+/// A named row of tracks or albums on the home page.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Shelf {
+    pub id: String,
+    pub title: String,
+    pub items: ShelfItems,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ShelfItems {
+    Tracks(Vec<Track>),
+    Albums(Vec<Album>),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Page<T> {
     pub items: Vec<T>,
@@ -305,16 +321,37 @@ pub const MAX_PLAY_URIS: usize = 100;
 /// Whether `uri` is something that can play as a queue entry: a track, an
 /// episode or a local file. Soloist also sends internal placeholders.
 pub fn is_playable_uri(uri: &str) -> bool {
-    ["spotify:track:", "spotify:episode:", "spotify:local:"]
-        .iter()
-        .any(|prefix| uri.starts_with(prefix))
+    [
+        "spotify:track:",
+        "spotify:episode:",
+        "spotify:local:",
+        "ytm:track:",
+    ]
+    .iter()
+    .any(|prefix| uri.starts_with(prefix))
 }
 
-/// `spotify:album:abc` becomes `("album", "abc")`.
+/// Which service a URI belongs to, going by its scheme.
+pub fn uri_source(uri: &str) -> Option<Source> {
+    if uri.starts_with("spotify:") {
+        Some(Source::Spotify)
+    } else if uri.starts_with("ytm:") {
+        Some(Source::Youtube)
+    } else {
+        None
+    }
+}
+
+/// Whether `uri` names a single track on either service.
+pub fn is_track_uri(uri: &str) -> bool {
+    uri.starts_with("spotify:track:") || uri.starts_with("ytm:track:")
+}
+
+/// `spotify:album:abc` becomes `("album", "abc")`. Accepts `ytm:` URIs too.
 pub fn split_uri(uri: &str) -> Option<(&str, &str)> {
     let mut parts = uri.split(':');
 
-    if parts.next()? != "spotify" {
+    if !matches!(parts.next()?, "spotify" | "ytm") {
         return None;
     }
 
@@ -322,6 +359,22 @@ pub fn split_uri(uri: &str) -> Option<(&str, &str)> {
     let id = parts.next_back()?;
 
     Some((kind, id))
+}
+
+/// The web page that shows what `uri` names, for "open in the service".
+pub fn open_url(uri: &str) -> Option<String> {
+    let (kind, id) = split_uri(uri)?;
+
+    match uri_source(uri)? {
+        Source::Spotify => Some(format!("https://open.spotify.com/{kind}/{id}")),
+        Source::Youtube => match kind {
+            "track" => Some(format!("https://music.youtube.com/watch?v={id}")),
+            "album" => Some(format!("https://music.youtube.com/browse/{id}")),
+            "artist" => Some(format!("https://music.youtube.com/channel/{id}")),
+            "playlist" => Some(format!("https://music.youtube.com/playlist?list={id}")),
+            _ => None,
+        },
+    }
 }
 
 /// Folds `observed`, a contiguous run of a playlist seen in the queue, into
@@ -531,6 +584,46 @@ mod tests {
     #[test]
     fn uris_split_into_kind_and_id() {
         assert_eq!(split_uri("spotify:album:abc"), Some(("album", "abc")));
+        assert_eq!(split_uri("ytm:track:ab_-c"), Some(("track", "ab_-c")));
+        assert_eq!(split_uri("ytm:station:track:abc"), Some(("station", "abc")));
         assert_eq!(split_uri("https://x"), None);
+        assert_eq!(split_uri("tidal:track:1"), None);
+    }
+
+    #[test]
+    fn uris_know_their_service() {
+        assert_eq!(uri_source("spotify:track:a"), Some(Source::Spotify));
+        assert_eq!(uri_source("ytm:album:MPREb_x"), Some(Source::Youtube));
+        assert_eq!(uri_source("http://x"), None);
+        assert!(is_track_uri("ytm:track:a") && is_track_uri("spotify:track:a"));
+        assert!(!is_track_uri("ytm:album:a") && !is_track_uri("spotify:episode:a"));
+        assert!(is_playable_uri("ytm:track:a"));
+        assert!(!is_playable_uri("ytm:album:a"));
+    }
+
+    #[test]
+    fn open_urls_follow_each_service() {
+        assert_eq!(
+            open_url("spotify:track:t1").as_deref(),
+            Some("https://open.spotify.com/track/t1")
+        );
+        assert_eq!(
+            open_url("ytm:track:IluRBvnYMoY").as_deref(),
+            Some("https://music.youtube.com/watch?v=IluRBvnYMoY")
+        );
+        assert_eq!(
+            open_url("ytm:album:MPREb_x").as_deref(),
+            Some("https://music.youtube.com/browse/MPREb_x")
+        );
+        assert_eq!(
+            open_url("ytm:artist:UCx").as_deref(),
+            Some("https://music.youtube.com/channel/UCx")
+        );
+        assert_eq!(
+            open_url("ytm:playlist:PLx").as_deref(),
+            Some("https://music.youtube.com/playlist?list=PLx")
+        );
+        assert_eq!(open_url("ytm:station:track:abc"), None);
+        assert_eq!(open_url("nope"), None);
     }
 }

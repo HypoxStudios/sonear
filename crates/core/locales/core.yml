@@ -24,29 +24,29 @@ history.task:
   es: "Falló una tarea del historial: %{detail}"
 
 library.api:
-  en: "Spotify answered with an error (%{detail})."
-  es: "Spotify respondió con un error (%{detail})."
+  en: "%{service} answered with an error (%{detail})."
+  es: "%{service} respondió con un error (%{detail})."
 library.decode:
-  en: "Spotify sent something Sonear couldn't read."
-  es: "Spotify envió algo que Sonear no pudo leer."
+  en: "%{service} sent something Sonear couldn't read."
+  es: "%{service} envió algo que Sonear no pudo leer."
 library.forbidden:
-  en: "Spotify doesn't allow this for your account."
-  es: "Spotify no permite esto en tu cuenta."
+  en: "%{service} doesn't allow this for your account."
+  es: "%{service} no permite esto en tu cuenta."
 library.needs_login:
-  en: "Spotify needs you to log in again."
-  es: "Spotify necesita que vuelvas a iniciar sesión."
+  en: "%{service} needs you to log in again."
+  es: "%{service} necesita que vuelvas a iniciar sesión."
 library.network:
-  en: "Couldn't reach Spotify. Check your connection."
-  es: "No se pudo conectar con Spotify. Revisa tu conexión."
+  en: "Couldn't reach %{service}. Check your connection."
+  es: "No se pudo conectar con %{service}. Revisa tu conexión."
 library.not_found:
-  en: "Spotify couldn't find that."
-  es: "Spotify no encontró eso."
+  en: "%{service} couldn't find that."
+  es: "%{service} no encontró eso."
 library.quota:
-  en: "The Spotify request quota for this developer account is used up. It resets later and is shared by everything using your Client ID."
-  es: "Se agotó la cuota de solicitudes de Spotify de esta cuenta de desarrollador. Se restablece más tarde y la comparte todo lo que use tu Client ID."
+  en: "The %{service} request quota for this developer account is used up. It resets later and is shared by everything using your Client ID."
+  es: "Se agotó la cuota de solicitudes de %{service} de esta cuenta de desarrollador. Se restablece más tarde y la comparte todo lo que use tu Client ID."
 library.rate_limited:
-  en: "Spotify asked Sonear to slow down. Try again in a moment."
-  es: "Spotify pidió a Sonear que vaya más despacio. Inténtalo de nuevo en un momento."
+  en: "%{service} asked Sonear to slow down. Try again in a moment."
+  es: "%{service} pidió a Sonear que vaya más despacio. Inténtalo de nuevo en un momento."
 library.unsupported:
   en: "This isn't available in the current mode."
   es: "Esto no está disponible en el modo actual."
@@ -134,3 +134,10 @@ update.too_large:
 update.wrong_version:
   en: "the file is signed as `%{found}`, not as `sonear %{expected}`"
   es: "El archivo está firmado como `%{found}`, no como `sonear %{expected}`"
+
+youtube.session_ended:
+  en: "Your YT Music session ended. Sign in again."
+  es: "Tu sesión de YT Music terminó. Inicia sesión de nuevo."
+youtube.signout_profile:
+  en: "Could not delete the sign-in data: %{error}"
+  es: "No se pudieron eliminar los datos del inicio de sesión: %{error}"

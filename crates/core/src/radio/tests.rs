@@ -50,3 +50,20 @@ fn non_stations_have_no_seed() {
     assert_eq!(station_seed("spotify:station:track:"), None);
     assert!(!is_station(""));
 }
+
+#[test]
+fn youtube_tracks_make_song_radio_only() {
+    assert_eq!(
+        station_uri("ytm:track:IluRBvnY_-Y").as_deref(),
+        Some("ytm:station:track:IluRBvnY_-Y")
+    );
+    assert_eq!(
+        station_seed("ytm:station:track:IluRBvnY_-Y").as_deref(),
+        Some("ytm:track:IluRBvnY_-Y")
+    );
+    assert!(is_station("ytm:station:track:IluRBvnYMoY"));
+    assert_eq!(station_uri("ytm:artist:UCRr1xG_2WIDs18a6cIiCxeA"), None);
+    assert_eq!(station_uri("ytm:album:MPREb_x"), None);
+    assert_eq!(station_uri("ytm:track:a/b"), None);
+    assert_eq!(station_seed("ytm:station:artist:UCx"), None);
+}

@@ -180,6 +180,17 @@ fn spanish_messages_keep_their_details() {
     );
     let update = t!("update.status", locale = "es", status = 502);
 
+    let network = t!("library.network", locale = "es", service = "YouTube Music");
+    let english = t!("library.network", locale = "en", service = "YouTube Music");
+
+    assert_eq!(
+        network,
+        "No se pudo conectar con YouTube Music. Revisa tu conexión."
+    );
+    assert_eq!(
+        english,
+        "Couldn't reach YouTube Music. Check your connection."
+    );
     assert!(unwritable.contains("data") && unwritable.contains("denied"));
     assert!(update.contains("502"));
 }

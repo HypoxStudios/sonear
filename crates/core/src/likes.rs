@@ -32,7 +32,14 @@ fn lock(state: &Mutex<State>) -> std::sync::MutexGuard<'_, State> {
 }
 
 fn can_save(uri: &str) -> bool {
-    uri.starts_with("spotify:track:") || uri.starts_with("spotify:album:")
+    [
+        "spotify:track:",
+        "spotify:album:",
+        "ytm:track:",
+        "ytm:album:",
+    ]
+    .iter()
+    .any(|prefix| uri.starts_with(prefix))
 }
 
 impl LikeStore {
@@ -161,3 +168,29 @@ impl LikeStore {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod can_save_tests {
+    use super::can_save;
+
+    #[test]
+    fn tracks_and_albums_of_either_service_can_be_saved() {
+        for uri in [
+            "spotify:track:a",
+            "spotify:album:a",
+            "ytm:track:IluRBvnYMoY",
+            "ytm:album:MPREb_x",
+        ] {
+            assert!(can_save(uri), "{uri}");
+        }
+
+        for uri in [
+            "ytm:artist:UCx",
+            "ytm:playlist:PLx",
+            "spotify:episode:a",
+            "",
+        ] {
+            assert!(!can_save(uri), "{uri}");
+        }
+    }
+}

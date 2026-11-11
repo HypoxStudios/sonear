@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
@@ -65,6 +66,38 @@ impl Language {
     }
 }
 
+/// Which music service Sonear plays from. One is active per process.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Source {
+    #[default]
+    Spotify,
+    Youtube,
+}
+
+fn lenient_source<'de, D>(deserializer: D) -> Result<Source, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = toml::Value::deserialize(deserializer)?;
+
+    Ok(value.try_into().unwrap_or_default())
+}
+
+static ACTIVE_SOURCE: AtomicU8 = AtomicU8::new(0);
+
+/// The source this process runs. Used for wording that names the service.
+pub fn active_source() -> Source {
+    match ACTIVE_SOURCE.load(Ordering::Relaxed) {
+        1 => Source::Youtube,
+        _ => Source::Spotify,
+    }
+}
+
+pub(crate) fn set_active_source(source: Source) {
+    ACTIVE_SOURCE.store(u8::from(source == Source::Youtube), Ordering::Relaxed);
+}
+
 /// An unknown or wrong-typed value reads as unset, so a hand edit cannot make
 /// the whole file count as corrupt.
 fn lenient_language<'de, D>(deserializer: D) -> Result<Option<Language>, D::Error>
@@ -87,6 +120,12 @@ pub struct Config {
     #[serde(deserialize_with = "lenient_language")]
     pub language: Option<Language>,
     pub device_name: String,
+    /// The music service to play from. Changing it needs a restart.
+    #[serde(deserialize_with = "lenient_source")]
+    pub source: Source,
+    /// Whether the user signed in to YT Music. The cookies themselves live in
+    /// the sign-in profile, never here.
+    pub youtube_signed_in: bool,
     /// Where the data folder lives, when the user moved it from the default.
     pub data_dir: Option<PathBuf>,
     pub last_volume: u8,
@@ -153,6 +192,8 @@ impl Default for Config {
         Self {
             language: None,
             device_name: "Sonear".to_owned(),
+            source: Source::default(),
+            youtube_signed_in: false,
             data_dir: None,
             last_volume: 40,
             sidebar_collapsed: false,
@@ -242,12 +283,14 @@ impl Config {
     }
 
     /// Defaults for everything except where the data folder is, because the
-    /// Soloist program stays there.
+    /// Soloist program stays there, and which service is in use.
     pub fn reset_keeping_data_dir(&mut self) {
         let data_dir = self.data_dir.take();
+        let source = self.source;
 
         *self = Self::default();
         self.data_dir = data_dir;
+        self.source = source;
     }
 
     /// Reads the file, falling back to defaults. A file that cannot be parsed
@@ -773,5 +816,53 @@ open = false
 
         assert!(handle.get().ui.ai_hint_dismissed);
         assert!(Config::load(&path).ui.ai_hint_dismissed);
+    }
+
+    #[test]
+    fn the_source_round_trips_and_a_bad_value_reads_as_the_default() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+
+        fs::write(
+            &path,
+            "source = 'youtube'
+",
+        )
+        .unwrap();
+        assert_eq!(Config::load(&path).source, Source::Youtube);
+
+        for text in [
+            "source = 'tidal'
+",
+            "source = 3
+",
+            "last_volume = 5
+",
+        ] {
+            fs::write(&path, text).unwrap();
+            assert_eq!(Config::load(&path).source, Source::Spotify, "{text}");
+        }
+
+        let text = toml::to_string(&Config {
+            source: Source::Youtube,
+            ..Config::default()
+        })
+        .unwrap();
+
+        assert!(text.contains("source = \"youtube\""));
+    }
+
+    #[test]
+    fn a_reset_keeps_the_source() {
+        let mut config = Config {
+            source: Source::Youtube,
+            last_volume: 9,
+            ..Config::default()
+        };
+
+        config.reset_keeping_data_dir();
+
+        assert_eq!(config.source, Source::Youtube);
+        assert_eq!(config.last_volume, 40);
     }
 }

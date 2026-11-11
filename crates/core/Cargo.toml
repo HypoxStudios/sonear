@@ -15,6 +15,7 @@ demo = []
 [dependencies]
 sonear-soloist.workspace = true
 sonear-spotify.workspace = true
+sonear-youtube.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
 dirs.workspace = true
@@ -35,6 +36,8 @@ url.workspace = true
 
 [dev-dependencies]
 minisign.workspace = true
+sha2.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["test-util"] }
 wiremock.workspace = true
+zip.workspace = true

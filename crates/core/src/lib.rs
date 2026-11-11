@@ -24,6 +24,7 @@ pub mod secrets;
 pub mod seen;
 pub mod soloist_backend;
 pub mod update;
+pub mod youtube;
 
 rust_i18n::i18n!("locales", fallback = "en");
 
@@ -34,7 +35,7 @@ use tokio::runtime::Handle;
 use tokio::sync::broadcast;
 
 pub use account::{Account, AccountState};
-pub use config::{Config, ConfigHandle, Language};
+pub use config::{Config, ConfigHandle, Language, Source, active_source};
 pub use data_dir::{MoveError, delete_local_data};
 pub use events::AppEvent;
 pub use history::{History, HistoryRow, HistoryStore};
@@ -50,6 +51,9 @@ pub use player::{Player, PlayerBackend, PlayerError};
 pub use queue::{QueueManager, QueueSnapshot, QueueSource, QueuedTrack};
 pub use secrets::{KeyringStore, Secret, SecretStore};
 pub use seen::SeenCollector;
+pub use youtube::{
+    SessionOutcome, SessionProvider, ToolsStatus, YoutubeAccount, YoutubeTools, YtAccountState,
+};
 
 const EVENT_BUFFER: usize = 256;
 
@@ -60,6 +64,12 @@ pub struct Core {
     pub player: Player,
     pub config: ConfigHandle,
     pub soloist: Option<Arc<SoloistManager>>,
+    /// Which music service this process runs.
+    pub source: Source,
+    /// The YouTube Music playback tools; only with the YouTube source.
+    pub tools: Option<Arc<YoutubeTools>>,
+    /// The optional YT Music sign-in; only with the YouTube source.
+    pub youtube_account: Option<Arc<YoutubeAccount>>,
     pub library: Arc<dyn LibraryBackend>,
     pub meta: Arc<MetaCache>,
     pub history: Arc<History>,
@@ -69,6 +79,8 @@ pub struct Core {
     pub lyrics: Arc<LyricsStore>,
     secrets: Arc<dyn SecretStore>,
     events: broadcast::Sender<AppEvent>,
+    demo: bool,
+    youtube: Option<Arc<youtube::YoutubeCatalog>>,
 }
 
 impl Core {
@@ -77,7 +89,7 @@ impl Core {
     }
 
     pub fn is_demo(&self) -> bool {
-        self.soloist.is_none()
+        self.demo
     }
 
     /// Deletes everything Sonear stored: the Spotify login and its cached data,
@@ -85,6 +97,10 @@ impl Core {
     /// program stays so it isn't downloaded again. Returns what could not be deleted.
     pub async fn delete_all_data(&self) -> Vec<String> {
         let mut problems = Vec::new();
+
+        if self.source == Source::Youtube && !self.demo {
+            return self.delete_youtube_data().await;
+        }
 
         let Some(soloist) = &self.soloist else {
             let _ = self
@@ -117,9 +133,56 @@ impl Core {
         problems
     }
 
-    /// Starts the real stack: config, key store, supervisor, player and Spotify.
-    pub fn start(runtime: &Handle, paths: &AppPaths) -> Self {
+    /// Deletes what the YouTube source stored: the local library and plays,
+    /// caches, likes, lyrics, history, queue and covers, and the settings.
+    /// The downloaded tools stay so they are not fetched again.
+    async fn delete_youtube_data(&self) -> Vec<String> {
+        let mut problems = Vec::new();
+
+        if let Some(account) = &self.youtube_account {
+            problems.extend(account.sign_out().await);
+        }
+
+        if let Some(catalog) = &self.youtube {
+            catalog.local().wipe();
+            catalog.clear();
+        }
+
+        problems.extend(self.account.wipe_account_data().await);
+
+        let backup = self.config.path().with_file_name("config.toml.bak");
+
+        if let Err(error) = std::fs::remove_file(&backup)
+            && error.kind() != std::io::ErrorKind::NotFound
+        {
+            problems.push(format!("{}: {error}", t!("problem.config_backup")));
+        }
+
+        self.config.update(Config::reset_keeping_data_dir);
+
+        problems
+    }
+
+    /// Starts the real stack for the configured source. `session_provider`
+    /// reads the YT Music sign-in; the other sources ignore it.
+    pub fn start(
+        runtime: &Handle,
+        paths: &AppPaths,
+        session_provider: Arc<dyn SessionProvider>,
+    ) -> Self {
         let config = ConfigHandle::load(paths.config_file());
+        let source = config.get().source;
+
+        config::set_active_source(source);
+
+        match source {
+            Source::Spotify => Self::start_spotify(runtime, paths, config),
+            Source::Youtube => Self::start_youtube(runtime, paths, config, session_provider),
+        }
+    }
+
+    /// Config, key store, supervisor, player and Spotify.
+    fn start_spotify(runtime: &Handle, paths: &AppPaths, config: ConfigHandle) -> Self {
         let (events, _) = broadcast::channel(EVENT_BUFFER);
         let secrets: Arc<dyn SecretStore> = Arc::new(KeyringStore);
         let manager = SoloistManager::new(
@@ -174,6 +237,9 @@ impl Core {
             player,
             config,
             soloist: Some(manager),
+            source: Source::Spotify,
+            tools: None,
+            youtube_account: None,
             library,
             meta,
             history,
@@ -183,6 +249,119 @@ impl Core {
             lyrics,
             secrets,
             events,
+            demo: false,
+            youtube: None,
+        }
+    }
+
+    /// The YouTube Music stack: mpv and yt-dlp instead of Soloist, and local
+    /// files instead of an account.
+    fn start_youtube(
+        runtime: &Handle,
+        paths: &AppPaths,
+        config: ConfigHandle,
+        session_provider: Arc<dyn SessionProvider>,
+    ) -> Self {
+        let (events, _) = broadcast::channel(EVENT_BUFFER);
+        let secrets: Arc<dyn SecretStore> = Arc::new(KeyringStore);
+        let settings = config.get();
+        let tool_paths = sonear_youtube::tools::ToolPaths::new(paths.youtube_tools_dir());
+        let tools = YoutubeTools::new(
+            tool_paths.clone(),
+            sonear_youtube::tools::Installer::new(tool_paths.clone()),
+            events.clone(),
+        );
+        let language = match settings.effective_language() {
+            Language::Es => "es-419",
+            Language::En => "en",
+        };
+        let local =
+            youtube::LocalLibrary::new(paths.youtube_library_file(), paths.youtube_plays_file());
+        let catalog = youtube::YoutubeCatalog::new(sonear_youtube::Client::new(language), local);
+        let youtube_account = YoutubeAccount::new(
+            catalog.clone(),
+            session_provider,
+            config.clone(),
+            paths.youtube_webview_dir(),
+            events.clone(),
+        );
+        let backend = youtube::YoutubeBackend::spawn(
+            runtime,
+            Arc::new(youtube::MpvLauncher::new(tool_paths.clone())),
+            Arc::new(youtube::ResolverStreams(sonear_youtube::Resolver::new(
+                tool_paths.ytdlp_exe(),
+            ))),
+            catalog.clone(),
+            config.clone(),
+            events.clone(),
+        );
+        let player = Player::new(
+            backend.clone(),
+            runtime.clone(),
+            config.clone(),
+            events.clone(),
+        );
+        let library: Arc<dyn LibraryBackend> = youtube::YoutubeLibrary::new(
+            catalog.clone(),
+            backend,
+            config.clone(),
+            youtube_account.clone(),
+        );
+        let meta = MetaCache::open(paths.youtube_meta_cache_dir());
+        let history = History::new(
+            HistoryStore::open(paths.youtube_history_db()),
+            library.clone(),
+            TrackResolver::new(library.clone(), meta.clone()),
+            config.clone(),
+            events.clone(),
+        );
+        let likes = LikeStore::new(library.clone(), events.clone());
+        let queue = QueueManager::new(
+            player.clone(),
+            events.clone(),
+            Some(paths.youtube_queue_file()),
+            runtime.clone(),
+        );
+        let lyrics = LyricsStore::new(Arc::new(LrcLibSource::new()));
+        let account = Account::new(
+            runtime.clone(),
+            paths.clone(),
+            config.clone(),
+            secrets.clone(),
+            None,
+            meta.clone(),
+            history.clone(),
+            likes.clone(),
+            queue.clone(),
+            lyrics.clone(),
+            events.clone(),
+        );
+
+        player.attach_library(library.clone());
+        history.spawn_sync_loop(runtime);
+        tools.run(runtime);
+        youtube_account.attach_likes(likes.clone());
+        youtube_account.start(runtime);
+
+        Self {
+            paths: paths.clone(),
+            player,
+            config,
+            soloist: None,
+            source: Source::Youtube,
+            tools: Some(tools),
+            youtube_account: Some(youtube_account),
+            library,
+            meta,
+            history,
+            likes,
+            account,
+            queue,
+            lyrics,
+            secrets,
+            events,
+            demo: false,
+            youtube: Some(catalog),
         }
     }
 
@@ -240,6 +419,9 @@ impl Core {
             player,
             config,
             soloist: None,
+            source: Source::Spotify,
+            tools: None,
+            youtube_account: None,
             library,
             meta,
             history,
@@ -249,6 +431,8 @@ impl Core {
             lyrics,
             secrets,
             events,
+            demo: true,
+            youtube: None,
         }
     }
 }

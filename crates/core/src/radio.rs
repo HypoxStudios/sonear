@@ -1,13 +1,20 @@
 //! Spotify's own radio, reached through the undocumented
-//! `spotify:station:<kind>:<id>` URIs that Soloist accepts in `play`.
+//! `spotify:station:<kind>:<id>` URIs that Soloist accepts in `play`. The
+//! YouTube side has song radio only, as `ytm:station:track:<id>`.
 
 const TRACK_PREFIX: &str = "spotify:track:";
 const ARTIST_PREFIX: &str = "spotify:artist:";
 const STATION_TRACK_PREFIX: &str = "spotify:station:track:";
 const STATION_ARTIST_PREFIX: &str = "spotify:station:artist:";
+const YT_TRACK_PREFIX: &str = "ytm:track:";
+const YT_STATION_TRACK_PREFIX: &str = "ytm:station:track:";
 
 /// The station URI seeded by a track or an artist, `None` for anything else.
 pub fn station_uri(seed_uri: &str) -> Option<String> {
+    if let Some(id) = seed_uri.strip_prefix(YT_TRACK_PREFIX) {
+        return valid_id(id).then(|| format!("{YT_STATION_TRACK_PREFIX}{id}"));
+    }
+
     if let Some(id) = seed_uri.strip_prefix(TRACK_PREFIX) {
         return valid_id(id).then(|| format!("{STATION_TRACK_PREFIX}{id}"));
     }
@@ -19,6 +26,10 @@ pub fn station_uri(seed_uri: &str) -> Option<String> {
 
 /// The seed URI of a station, `None` for anything that is not a station.
 pub fn station_seed(uri: &str) -> Option<String> {
+    if let Some(id) = uri.strip_prefix(YT_STATION_TRACK_PREFIX) {
+        return valid_id(id).then(|| format!("{YT_TRACK_PREFIX}{id}"));
+    }
+
     if let Some(id) = uri.strip_prefix(STATION_TRACK_PREFIX) {
         return valid_id(id).then(|| format!("{TRACK_PREFIX}{id}"));
     }
@@ -33,12 +44,12 @@ pub fn is_station(uri: &str) -> bool {
 }
 
 /// Looser than a real Spotify ID (22 base62 characters) because demo IDs are
-/// short and hyphenated.
+/// short and hyphenated, and YouTube video ids also use underscores.
 fn valid_id(id: &str) -> bool {
     !id.is_empty()
         && id
             .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
 }
 
 #[cfg(test)]
