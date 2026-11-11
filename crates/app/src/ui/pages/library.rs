@@ -20,7 +20,8 @@ use crate::ui::common::{
     CardItem, GRID_ROW, card_row, error_panel, grid_columns, map_page, skeleton_card,
     with_retry_bar,
 };
-use crate::ui::widgets::{icon, spotify_logo};
+use crate::ui::source_switch::source_switch;
+use crate::ui::widgets::icon;
 
 const TABS: [(LibraryTab, &str); 4] = [
     (LibraryTab::Playlists, "library.tab.playlists"),
@@ -192,30 +193,36 @@ impl LibraryPage {
     fn tab_bar(&self, cx: &Context<Self>) -> Div {
         let page = cx.entity();
 
-        div().flex().gap_2().children(TABS.iter().map(|(tab, key)| {
-            let tab = *tab;
-            let page = page.clone();
-            let active = self.active == tab;
+        let youtube = self.store.read(cx).is_youtube();
 
-            div()
-                .id(ElementId::from(SharedString::from(format!(
-                    "library-tab-{key}"
-                ))))
-                .px_4()
-                .h(px(32.))
-                .flex()
-                .items_center()
-                .rounded_full()
-                .cursor_pointer()
-                .tab_index(0)
-                .border_1()
-                .border_color(theme::hairline())
-                .text_size(px(13.))
-                .font_weight(FontWeight::MEDIUM)
-                .when_active(active)
-                .child(t!(*key))
-                .on_click(move |_, _, cx| page.update(cx, |page, cx| page.open(tab, cx)))
-        }))
+        div().flex().gap_2().children(
+            TABS.iter()
+                .filter(|(tab, _)| !(youtube && *tab == LibraryTab::Shows))
+                .map(|(tab, key)| {
+                    let tab = *tab;
+                    let page = page.clone();
+                    let active = self.active == tab;
+
+                    div()
+                        .id(ElementId::from(SharedString::from(format!(
+                            "library-tab-{key}"
+                        ))))
+                        .px_4()
+                        .h(px(32.))
+                        .flex()
+                        .items_center()
+                        .rounded_full()
+                        .cursor_pointer()
+                        .tab_index(0)
+                        .border_1()
+                        .border_color(theme::hairline())
+                        .text_size(px(13.))
+                        .font_weight(FontWeight::MEDIUM)
+                        .when_active(active)
+                        .child(t!(*key))
+                        .on_click(move |_, _, cx| page.update(cx, |page, cx| page.open(tab, cx)))
+                }),
+        )
     }
 
     fn grid(&mut self, cx: &mut Context<Self>) -> AnyElement {
@@ -241,6 +248,46 @@ impl LibraryPage {
                 .into_any_element();
         }
 
+        let invite = {
+            let account = self.store.read(cx);
+
+            account.is_youtube()
+                && !matches!(
+                    account.youtube_account(),
+                    sonear_core::YtAccountState::SignedIn { .. }
+                )
+                && matches!(tab, LibraryTab::Playlists | LibraryTab::Artists)
+        };
+
+        if state.items.items.is_empty() && invite {
+            let store = self.store.clone();
+
+            return div()
+                .flex()
+                .flex_col()
+                .size_full()
+                .items_center()
+                .justify_center()
+                .gap_3()
+                .child(empty_state(
+                    IconName::Library,
+                    t!("library.signin.title"),
+                    t!("library.signin.body"),
+                ))
+                .child(
+                    crate::ui::widgets::accent_button(
+                        "library-ytm-signin",
+                        t!("common.ytm_sign_in"),
+                        None::<gpui_kit::component::Icon>,
+                        true,
+                    )
+                    .on_click(move |_, _, cx| {
+                        store.update(cx, |state, cx| state.sign_in_youtube(cx));
+                    }),
+                )
+                .into_any_element();
+        }
+
         if state.items.items.is_empty() {
             return empty_state(
                 IconName::Library,
@@ -250,7 +297,11 @@ impl LibraryPage {
                     LibraryTab::Artists => t!("library.empty.artists"),
                     LibraryTab::Shows => t!("library.empty.shows"),
                 },
-                t!("library.empty.body"),
+                if self.store.read(cx).is_youtube() {
+                    t!("library.empty.body_ytm")
+                } else {
+                    t!("library.empty.body")
+                },
             );
         }
 
@@ -326,6 +377,8 @@ impl<T: gpui_kit::Styled> ActiveStyle for T {
 impl Render for LibraryPage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let grid = self.grid(cx);
+        let state = self.store.read(cx);
+        let switch = source_switch(&self.store, state.source(), state.switching_to());
 
         div()
             .flex()
@@ -353,7 +406,7 @@ impl Render for LibraryPage {
                                     .text_color(theme::text_primary())
                                     .child(t!("route.library")),
                             )
-                            .child(spotify_logo()),
+                            .child(switch),
                     )
                     .child(
                         div()

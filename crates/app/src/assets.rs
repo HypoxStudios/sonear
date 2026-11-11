@@ -55,12 +55,12 @@ pub const PLAY_FILLED: &str = "sonear/play.svg";
 pub const PAUSE_FILLED: &str = "sonear/pause.svg";
 pub const HEART_FILLED: &str = "sonear/heart.svg";
 
-pub const SPOTIFY_LOGO: &str = "sonear/spotify-logo.svg";
 pub const SPOTIFY_ICON: &str = "sonear/spotify-icon.svg";
+pub const YTM_ICON: &str = "sonear/ytm-icon.svg";
 
 const OWN_ASSETS: [(&str, &[u8]); 7] = [
-    (SPOTIFY_LOGO, include_bytes!("../assets/spotify-logo.svg")),
     (SPOTIFY_ICON, include_bytes!("../assets/spotify-icon.svg")),
+    (YTM_ICON, include_bytes!("../assets/ytm-icon.svg")),
     (MARK, include_bytes!("../assets/mark.svg")),
     (MARK_SMALL, include_bytes!("../assets/mark-small.svg")),
     (PLAY_FILLED, include_bytes!("../assets/play.svg")),

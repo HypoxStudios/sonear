@@ -62,6 +62,9 @@ common.log_out:
 common.open_spotify:
   en: "Open Spotify"
   es: "Abrir Spotify"
+common.open_ytm:
+  en: "Open YT Music"
+  es: "Abrir YT Music"
 common.pause:
   en: "Pause"
   es: "Pausar"
@@ -86,6 +89,18 @@ common.tracks_other:
 common.try_again:
   en: "Try again"
   es: "Intentar de nuevo"
+common.ytm_session_ended:
+  en: "Your session ended."
+  es: "Tu sesión terminó."
+common.ytm_sign_in:
+  en: "Sign in to YT Music"
+  es: "Iniciar sesión en YT Music"
+common.ytm_sign_out:
+  en: "Sign out of YT Music"
+  es: "Cerrar sesión en YT Music"
+common.ytm_signing_in:
+  en: "Signing in..."
+  es: "Iniciando sesión..."
 
 date.mo.apr:
   en: "Apr"
@@ -206,6 +221,9 @@ history.clear:
 history.empty.body:
   en: "Plays from Spotify show up here after the first sync, and new ones every 15 minutes."
   es: "Las reproducciones de Spotify aparecen aquí después de la primera sincronización, y las nuevas cada 15 minutos."
+history.empty.body_ytm:
+  en: "Plays from YT Music show up here as you listen."
+  es: "Las reproducciones de YT Music aparecen aquí mientras escuchas."
 history.empty.title:
   en: "No history yet"
   es: "Todavía no hay historial"
@@ -541,12 +559,21 @@ library.empty.artists:
 library.empty.body:
   en: "What you save or follow in Spotify shows up here."
   es: "Lo que guardes o sigas en Spotify aparecerá aquí."
+library.empty.body_ytm:
+  en: "Songs and albums you save show up here."
+  es: "Las canciones y álbumes que guardes aparecerán aquí."
 library.empty.playlists:
   en: "No playlists yet"
   es: "Todavía no tienes playlists"
 library.empty.shows:
   en: "No saved shows"
   es: "No hay podcasts guardados"
+library.signin.body:
+  en: "Sign in to YT Music to see your playlists and the artists you follow. Your liked songs and albums come along too."
+  es: "Inicia sesión en YT Music para ver tus listas y los artistas que sigues. Tus canciones y álbumes guardados también aparecen."
+library.signin.title:
+  en: "Sign in to see your library"
+  es: "Inicia sesión para ver tu biblioteca"
 library.tab.albums:
   en: "Albums"
   es: "Álbumes"
@@ -597,6 +624,9 @@ menu.go_to_artist:
 menu.open_spotify:
   en: "Open in Spotify"
   es: "Abrir en Spotify"
+menu.open_ytm:
+  en: "Open in YT Music"
+  es: "Abrir en YT Music"
 menu.start_radio:
   en: "Start radio"
   es: "Iniciar radio"
@@ -694,6 +724,9 @@ palette.open_show:
 palette.placeholder:
   en: "Type a command or search Spotify"
   es: "Escribe un comando o busca en Spotify"
+palette.placeholder_ytm:
+  en: "Type a command or search YT Music"
+  es: "Escribe un comando o busca en YT Music"
 palette.play_episode:
   en: "Play episode"
   es: "Reproducir episodio"
@@ -719,6 +752,9 @@ palette.your_playlists:
 player.choose_sonear:
   en: "Choose Sonear in Spotify"
   es: "Elige Sonear en Spotify"
+player.choose_ytm:
+  en: "Pick something to play"
+  es: "Elige algo para reproducir"
 player.mini_player:
   en: "Mini player"
   es: "Reproductor en miniatura"
@@ -752,6 +788,15 @@ player.status.stopped:
 player.status.update_needed:
   en: "Update needed"
   es: "Falta actualizar"
+player.status.ytm_installing:
+  en: "Installing tools"
+  es: "Instalando herramientas"
+player.status.ytm_ready:
+  en: "YT Music"
+  es: "YT Music"
+player.status.ytm_tools:
+  en: "Tools needed"
+  es: "Faltan herramientas"
 
 right.ai_hint:
   en: "AI controls available"
@@ -765,6 +810,9 @@ right.empty:
 right.from_spotify:
   en: "From Spotify"
   es: "De Spotify"
+right.from_ytm:
+  en: "From YT Music"
+  es: "De YT Music"
 right.in_queue:
   en: "In queue"
   es: "En la fila"
@@ -827,6 +875,9 @@ search.empty.body:
 search.empty.title:
   en: "Search Spotify"
   es: "Buscar en Spotify"
+search.empty.title_ytm:
+  en: "Search YT Music"
+  es: "Buscar en YT Music"
 search.kind.albums:
   en: "Albums"
   es: "Álbumes"
@@ -858,6 +909,9 @@ search.show_more:
 settings.about.independent:
   en: "Sonear is independent and isn't affiliated with or endorsed by Spotify."
   es: "Sonear es independiente y no está afiliado ni respaldado por Spotify."
+settings.about.independent_ytm:
+  en: "Sonear is independent and isn't affiliated with or endorsed by YouTube or Google."
+  es: "Sonear es independiente y no está afiliado ni respaldado por YouTube ni Google."
 settings.about.license:
   en: "License: Apache-2.0"
   es: "Licencia: Apache-2.0"
@@ -945,6 +999,9 @@ settings.device.title:
 settings.history.clear.body:
   en: "Deletes the list of plays Sonear keeps. Nothing changes in your Spotify account."
   es: "Elimina la lista de reproducciones que guarda Sonear. No cambia nada en tu cuenta de Spotify."
+settings.history.clear.body_ytm:
+  en: "Deletes the list of plays Sonear keeps."
+  es: "Elimina la lista de reproducciones que guarda Sonear."
 settings.history.clear.title:
   en: "Clear history"
   es: "Eliminar historial"
@@ -1074,6 +1131,12 @@ settings.section.soloist:
 settings.section.storage:
   en: "Storage"
   es: "Almacenamiento"
+settings.section.tools:
+  en: "Playback tools"
+  es: "Herramientas de reproducción"
+settings.section.ytm_account:
+  en: "YT Music account"
+  es: "Cuenta de YT Music"
 settings.soloist.built:
   en: "%{version} · built %{date}"
   es: "%{version} · del %{date}"
@@ -1122,12 +1185,39 @@ settings.storage.default:
 settings.storage.title:
   en: "Data folder"
   es: "Carpeta de datos"
+settings.tools.check:
+  en: "Check for yt-dlp update"
+  es: "Buscar actualización de yt-dlp"
+settings.tools.mpv.body:
+  en: "Plays the audio."
+  es: "Reproduce el audio."
+settings.tools.mpv.title:
+  en: "mpv"
+  es: "mpv"
+settings.tools.not_installed:
+  en: "Not installed"
+  es: "No instalado"
+settings.tools.ytdlp.body:
+  en: "Finds the audio of each song. YouTube changes often, so Sonear keeps it up to date."
+  es: "Encuentra el audio de cada canción. YouTube cambia seguido, así que Sonear lo mantiene actualizado."
+settings.tools.ytdlp.title:
+  en: "yt-dlp"
+  es: "yt-dlp"
 settings.tray.body:
   en: "Closing the window keeps Sonear and the music running. Quit from the tray icon."
   es: "Al cerrar la ventana, Sonear y la música siguen reproduciéndose. Sal desde el ícono de la bandeja."
 settings.tray.title:
   en: "Keep running in the tray"
   es: "Mantener en la bandeja del sistema"
+settings.ytm_account.body:
+  en: "Signing in is optional. It shows your library and saves hearts to your account. The login is kept by the sign-in window, not by Sonear."
+  es: "Iniciar sesión es opcional. Muestra tu biblioteca y guarda los corazones en tu cuenta. El inicio de sesión lo guarda la ventana de acceso, no Sonear."
+settings.ytm_account.signed_out:
+  en: "Not signed in"
+  es: "Sin iniciar sesión"
+settings.ytm_account.title:
+  en: "Account"
+  es: "Cuenta"
 
 setup.connect.body:
   en: "Spotify requires every app that reads your library to use your own free developer app. It takes about two minutes and Sonear never sees your password."
@@ -1228,12 +1318,18 @@ setup.legal.changes:
 setup.legal.independent:
   en: "Sonear is independent. It isn't made or endorsed by Spotify."
   es: "Sonear es independiente. No lo crea ni lo respalda Spotify."
+setup.legal.independent_ytm:
+  en: "Sonear is independent. It isn't made or endorsed by YouTube or Google."
+  es: "Sonear es independiente. No lo crean ni lo respaldan YouTube ni Google."
 setup.legal.local:
   en: "Everything stays on this computer. Sonear sends nothing to its makers."
   es: "Todo se queda en esta computadora. Sonear no envía nada a sus creadores."
 setup.legal.needs:
   en: "You need Spotify Premium, your own Spotify developer app and a Soloist key."
   es: "Necesitas Spotify Premium, tu propia app de desarrollador de Spotify y una clave de Soloist."
+setup.legal.needs_ytm:
+  en: "You need an internet connection. Sonear downloads the playback tools mpv and yt-dlp for you."
+  es: "Necesitas conexión a internet. Sonear descarga por ti las herramientas de reproducción mpv y yt-dlp."
 setup.legal.title:
   en: "Before you start"
   es: "Antes de empezar"
@@ -1273,12 +1369,33 @@ setup.rail.pair:
 setup.rail.spotify:
   en: "Spotify account"
   es: "Cuenta de Spotify"
+setup.rail.tools:
+  en: "Playback tools"
+  es: "Herramientas de reproducción"
 setup.starting.spinner:
   en: "One moment"
   es: "Un momento"
 setup.starting.title:
   en: "Starting Soloist"
   es: "Iniciando Soloist"
+setup.tools.body:
+  en: "YT Music playback needs two free tools, mpv and yt-dlp. Sonear downloads them from their GitHub releases (about 100 MB) and keeps yt-dlp up to date."
+  es: "La reproducción de YT Music necesita dos herramientas gratuitas, mpv y yt-dlp. Sonear las descarga de sus versiones en GitHub (unos 100 MB) y mantiene yt-dlp actualizado."
+setup.tools.button:
+  en: "Download"
+  es: "Descargar"
+setup.tools.downloading:
+  en: "Downloading %{tool}: %{received}"
+  es: "Descargando %{tool}: %{received}"
+setup.tools.downloading_of:
+  en: "Downloading %{tool}: %{received} of %{total}"
+  es: "Descargando %{tool}: %{received} de %{total}"
+setup.tools.failed:
+  en: "The tools were not installed: %{reason}"
+  es: "Las herramientas no se instalaron: %{reason}"
+setup.tools.title:
+  en: "Get the playback tools"
+  es: "Descarga las herramientas de reproducción"
 setup.waiting.body:
   en: "Sonear opened Spotify in your browser. Approve access there and this screen moves on by itself."
   es: "Sonear abrió Spotify en tu navegador. Aprueba el acceso allí y esta pantalla avanzará sola."
@@ -1319,6 +1436,9 @@ shell.confirm.delete_all.action:
 shell.confirm.delete_all.body:
   en: "This removes your Spotify login, Soloist key and pairing, history, queue, cached data, cover art and settings from this computer. The Soloist program stays, so you won't download it again. Setup starts again from the beginning."
   es: "Esto elimina de esta computadora tu sesión de Spotify, la clave y la vinculación de Soloist, el historial, la fila, los datos en caché, las portadas y la configuración. El programa Soloist se conserva, así que no tendrás que descargarlo de nuevo. Tendrás que configurar Sonear desde el principio."
+shell.confirm.delete_all.body_youtube:
+  en: "This removes your saved songs and albums, play history, queue, cached data, cover art and settings from this computer. The playback tools stay, so you won't download them again. Setup starts again from the beginning."
+  es: "Esto elimina de esta computadora tus canciones y álbumes guardados, el historial, la fila, los datos en caché, las portadas y la configuración. Las herramientas de reproducción se conservan, así que no tendrás que descargarlas de nuevo. Tendrás que configurar Sonear desde el principio."
 shell.confirm.delete_all.title:
   en: "Delete all Sonear data?"
   es: "¿Eliminar todos los datos de Sonear?"
@@ -1340,6 +1460,15 @@ shell.confirm.move_data.body:
 shell.confirm.move_data.title:
   en: "Move your data?"
   es: "¿Mover tus datos?"
+shell.confirm.yt_signout.action:
+  en: "Sign out"
+  es: "Cerrar sesión"
+shell.confirm.yt_signout.body:
+  en: "Sonear signs out and deletes the sign-in data from this computer. Your likes on this computer come back, and your listening history stays."
+  es: "Sonear cierra la sesión y elimina de esta computadora los datos de acceso. Vuelven tus favoritos locales, y el historial de reproducción se conserva."
+shell.confirm.yt_signout.title:
+  en: "Sign out of YT Music?"
+  es: "¿Cerrar sesión en YT Music?"
 shell.rate.quota:
   en: "Spotify's request quota is used up. It resets later and is shared by your whole developer account."
   es: "Se agotó la cuota de solicitudes de Spotify. Se restablece más tarde y la comparte toda tu cuenta de desarrollador."
@@ -1468,6 +1597,19 @@ sidebar.your_music:
   en: "Your music"
   es: "Tu música"
 
+source.name.spotify:
+  en: "Spotify"
+  es: "Spotify"
+source.name.youtube:
+  en: "YT Music"
+  es: "YT Music"
+source.switch_to_spotify:
+  en: "Switch to Spotify"
+  es: "Cambiar a Spotify"
+source.switch_to_youtube:
+  en: "Switch to YT Music"
+  es: "Cambiar a YT Music"
+
 store.demo.client_id_rejected:
   en: "Spotify did not accept that Client ID."
   es: "Spotify no aceptó ese Client ID."
@@ -1534,6 +1676,24 @@ store.toast.radio_unavailable:
 store.toast.soloist_restarted:
   en: "Soloist restarted as “%{name}”."
   es: "Soloist se reinició como “%{name}”."
+store.toast.spotify_link_elsewhere:
+  en: "Switch to Spotify to open this link."
+  es: "Cambia a Spotify para abrir este enlace."
+store.toast.switch_demo:
+  en: "Switching isn't available in demo mode."
+  es: "Cambiar de servicio no está disponible en el modo demo."
+store.toast.switch_failed:
+  en: "Could not restart Sonear to switch: %{error}"
+  es: "No se pudo reiniciar Sonear para cambiar: %{error}"
+store.toast.ytdlp_current:
+  en: "yt-dlp is up to date."
+  es: "yt-dlp está actualizado."
+store.toast.ytdlp_updated:
+  en: "yt-dlp was updated."
+  es: "Se actualizó yt-dlp."
+store.toast.ytm_signed_out:
+  en: "Signed out of YT Music."
+  es: "Se cerró la sesión de YT Music."
 store.update.check_failed:
   en: "The update could not be checked, so it was not used."
   es: "No se pudo comprobar la actualización, así que no se usó."
@@ -1568,3 +1728,7 @@ tray.quit:
 tray.show:
   en: "Show Sonear"
   es: "Mostrar Sonear"
+
+yt_session.title:
+  en: "Sign in to YT Music"
+  es: "Inicia sesión en YT Music"

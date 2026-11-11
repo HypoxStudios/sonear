@@ -18,7 +18,7 @@ const COVER_FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(
 const COVER_MAX_BYTES: usize = 4 * 1024 * 1024;
 
 /// A cover's bytes, from the disk cache or else downloaded and stored. Only
-/// Spotify's cover hosts are contacted; anything else gives `None`.
+/// Spotify's and YouTube Music's cover hosts are contacted; anything else gives `None`.
 pub async fn fetch_cover(url: &str) -> Option<Vec<u8>> {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 

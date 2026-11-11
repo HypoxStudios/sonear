@@ -546,7 +546,7 @@ impl Render for MiniPlayer {
         };
         let open_url = item
             .as_ref()
-            .and_then(|item| super::player_bar::spotify_url(&item.uri));
+            .and_then(|item| super::player_bar::item_url(&item.uri));
         let title = item.as_ref().map_or_else(
             || t!("player.nothing_playing").into_owned(),
             |item| item.name().to_owned(),
@@ -572,8 +572,8 @@ impl Render for MiniPlayer {
         let show_store = self.store.clone();
         let close_store = self.store.clone();
 
-        let title_tip: SharedString = if open_url.is_some() {
-            t!("common.open_spotify").into_owned().into()
+        let title_tip: SharedString = if let Some(url) = &open_url {
+            super::common::open_label(url).into()
         } else {
             title.clone().into()
         };

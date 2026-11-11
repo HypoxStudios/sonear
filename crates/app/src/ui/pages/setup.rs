@@ -9,10 +9,11 @@ use gpui_kit::{
     StatefulInteractiveElement as _, Styled as _, Subscription, Window, div, px,
 };
 use rust_i18n::t;
-use sonear_core::AccountState;
 use sonear_core::config::Language;
+use sonear_core::{AccountState, Source, ToolsStatus};
 use sonear_soloist::Status;
 use sonear_spotify::REDIRECT_URI;
+use sonear_youtube::tools::Tool;
 
 use crate::format::megabytes;
 use crate::installer::chrome;
@@ -20,6 +21,7 @@ use crate::legal::LegalDoc;
 use crate::site;
 use crate::store::{AppStore, InstallState, SetupState, SetupStep};
 use crate::theme;
+use crate::ui::source_switch::source_switch;
 use crate::ui::widgets::{accent_button, ghost_button, icon, panel};
 
 pub const DOWNLOADS_URL: &str =
@@ -36,9 +38,17 @@ const RAIL_STEPS: [&str; 6] = [
     "setup.rail.pair",
 ];
 
-/// The `RAIL_STEPS` entry a step belongs to.
+/// The rail on the YouTube source.
+const YOUTUBE_RAIL_STEPS: [&str; 3] = [
+    "setup.rail.language",
+    "setup.rail.agreement",
+    "setup.rail.tools",
+];
+
+/// The rail entry a step belongs to, on the rail of `source`.
 fn rail_index(step: SetupStep) -> usize {
     match step {
+        SetupStep::Tools => 2,
         SetupStep::Language => 0,
         SetupStep::Agreement => 1,
         SetupStep::Spotify => 2,
@@ -252,7 +262,7 @@ impl SetupView {
             .into_any_element()
     }
 
-    fn legal_step(&self, updated: bool) -> AnyElement {
+    fn legal_step(&self, updated: bool, youtube: bool) -> AnyElement {
         let agreement = self.store.clone();
         let policy = self.store.clone();
         let accept = self.store.clone();
@@ -264,9 +274,17 @@ impl SetupView {
         } else {
             column()
                 .child(title(t!("setup.legal.title")))
-                .child(point(t!("setup.legal.independent")))
+                .child(point(if youtube {
+                    t!("setup.legal.independent_ytm")
+                } else {
+                    t!("setup.legal.independent")
+                }))
                 .child(point(t!("setup.legal.local")))
-                .child(point(t!("setup.legal.needs")))
+                .child(point(if youtube {
+                    t!("setup.legal.needs_ytm")
+                } else {
+                    t!("setup.legal.needs")
+                }))
         };
 
         heading
@@ -732,8 +750,11 @@ impl Render for SetupView {
 
         let content: AnyElement = match (step, &setup.status) {
             (SetupStep::Language, _) => self.language_step(cx),
-            (SetupStep::Agreement, _) => self.legal_step(setup.legal_updated),
+            (SetupStep::Agreement, _) => {
+                self.legal_step(setup.legal_updated, setup.source == Source::Youtube)
+            }
             (SetupStep::Spotify, _) => self.spotify_step(&setup, cx),
+            (SetupStep::Tools, _) => tools_step(&self.store, &setup.tools),
             (SetupStep::Key, _) => self.key_step(&setup, cx),
             (SetupStep::Download, Status::Expired) => download_step(
                 &self.store,
@@ -759,11 +780,21 @@ impl Render for SetupView {
                 .into_any_element(),
         };
 
-        let rail_labels: Vec<SharedString> = RAIL_STEPS
+        let rail: &[&str] = match setup.source {
+            Source::Spotify => &RAIL_STEPS,
+            Source::Youtube => &YOUTUBE_RAIL_STEPS,
+        };
+        let rail_labels: Vec<SharedString> = rail
             .iter()
             .map(|key| SharedString::from(t!(*key).into_owned()))
             .collect();
 
+        let switching = self.store.read(cx).switching_to();
+        let switch = div()
+            .absolute()
+            .top(px(theme::SETUP_SWITCH_INSET))
+            .right(px(theme::SETUP_SWITCH_INSET))
+            .child(source_switch(&self.store, setup.source, switching));
         let scroll = div().id("setup").size_full().overflow_y_scroll().child(
             div()
                 .flex()
@@ -791,8 +822,87 @@ impl Render for SetupView {
                             .child(chrome::step_list(&rail_labels, rail_index(step))),
                     ),
             )
-            .child(panel().flex_1().min_w_0().child(scroll))
+            .child(
+                panel()
+                    .flex_1()
+                    .min_w_0()
+                    .relative()
+                    .child(scroll)
+                    .child(switch),
+            )
     }
+}
+
+/// The YouTube source's last step: downloading mpv and yt-dlp.
+fn tools_step(store: &Entity<AppStore>, status: &ToolsStatus) -> AnyElement {
+    let store = store.clone();
+    let mut column = column()
+        .child(title(t!("setup.tools.title")))
+        .child(body(t!("setup.tools.body")));
+
+    match status {
+        ToolsStatus::Installing {
+            tool,
+            received,
+            total,
+        } => {
+            let name = match tool {
+                Tool::Mpv => "mpv",
+                Tool::YtDlp => "yt-dlp",
+            };
+            let fraction = total
+                .filter(|total| *total > 0)
+                .map(|total| *received as f32 / total as f32);
+            let label = match total {
+                Some(total) => t!(
+                    "setup.tools.downloading_of",
+                    tool = name,
+                    received = megabytes(*received),
+                    total = megabytes(*total)
+                ),
+                None => t!(
+                    "setup.tools.downloading",
+                    tool = name,
+                    received = megabytes(*received)
+                ),
+            };
+
+            column = column
+                .child(spaced(chrome::progress_bar(fraction.unwrap_or(0.08))))
+                .child(note(label));
+        }
+        ToolsStatus::Ready => {
+            column = column.child(spaced(spinner_row(t!("setup.starting.spinner"))));
+        }
+        ToolsStatus::Missing | ToolsStatus::Failed(_) => {
+            let failed = matches!(status, ToolsStatus::Failed(_));
+
+            if let ToolsStatus::Failed(reason) = status {
+                column = column.child(message(
+                    t!("setup.tools.failed", reason = reason).into_owned(),
+                    13.,
+                ));
+            }
+
+            let label: SharedString = if failed {
+                t!("common.try_again").into()
+            } else {
+                t!("setup.tools.button").into()
+            };
+
+            column = column.child(spaced(
+                accent_button(
+                    "download-tools",
+                    label,
+                    Some(icon(IconName::Download, 15., theme::on_accent())),
+                    true,
+                )
+                .on_click(move |_, _, cx| store.update(cx, |state, cx| state.install_tools(cx))),
+            ));
+        }
+    }
+
+    column.into_any_element()
 }
 
 fn download_step(
@@ -878,6 +988,7 @@ mod tests {
             (SetupStep::Download, 3),
             (SetupStep::Key, 4),
             (SetupStep::Pair, 5),
+            (SetupStep::Tools, 2),
             (SetupStep::Starting, 5),
             (SetupStep::Failed, 5),
         ];

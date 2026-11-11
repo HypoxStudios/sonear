@@ -43,13 +43,19 @@ fn file_name(url: &str) -> String {
     format!("{hash:016x}.img")
 }
 
-/// Whether `host` serves Spotify cover art.
+/// Whether `host` serves cover art from Spotify or YouTube Music.
 pub fn is_cover_host(host: &str) -> bool {
     let host = host.to_ascii_lowercase();
 
-    ["scdn.co", "spotifycdn.com"]
-        .iter()
-        .any(|suffix| host == *suffix || host.ends_with(&format!(".{suffix}")))
+    [
+        "scdn.co",
+        "spotifycdn.com",
+        "googleusercontent.com",
+        "ggpht.com",
+        "ytimg.com",
+    ]
+    .iter()
+    .any(|suffix| host == *suffix || host.ends_with(&format!(".{suffix}")))
 }
 
 /// Cover files on disk. Holds at most `max_bytes`, evicting the oldest
@@ -343,11 +349,16 @@ mod tests {
     }
 
     #[test]
-    fn only_spotify_cover_hosts_are_cached() {
+    fn only_known_cover_hosts_are_cached() {
         assert!(is_cover_host("i.scdn.co"));
         assert!(is_cover_host("mosaic.scdn.co"));
         assert!(is_cover_host("image-cdn-ak.spotifycdn.com"));
+        assert!(is_cover_host("lh3.googleusercontent.com"));
+        assert!(is_cover_host("yt3.ggpht.com"));
+        assert!(is_cover_host("yt3.googleusercontent.com"));
+        assert!(is_cover_host("i.ytimg.com"));
         assert!(!is_cover_host("scdn.co.evil.com"));
+        assert!(!is_cover_host("googleusercontent.com.evil.com"));
         assert!(!is_cover_host("example.com"));
         assert!(!is_cover_host("notscdn.co"));
     }

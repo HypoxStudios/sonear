@@ -11,4 +11,5 @@ pub mod right_panel;
 pub mod shell;
 pub mod shortcuts;
 pub mod sidebar;
+pub mod source_switch;
 pub mod widgets;

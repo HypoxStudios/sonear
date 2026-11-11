@@ -517,6 +517,7 @@ impl SettingsPage {
                 this.on_click(cx.listener(|page, _, _, cx| page.save_device_name(cx)))
             });
 
+        let youtube = self.store.read(cx).is_youtube();
         let mut rows = vec![
             row(
                 t!("settings.device.title"),
@@ -541,9 +542,13 @@ impl SettingsPage {
             ),
         ];
 
-        rows.insert(1, self.output_row(cx));
+        if youtube {
+            rows.remove(0);
+        } else {
+            rows.insert(1, self.output_row(cx));
+        }
 
-        if !self.store.read(cx).is_demo() {
+        if !self.store.read(cx).is_demo() && !youtube {
             rows.push(self.links_row(cx));
         }
 
@@ -589,7 +594,11 @@ impl SettingsPage {
                 ),
                 row(
                     t!("settings.history.clear.title"),
-                    t!("settings.history.clear.body"),
+                    if state.is_youtube() {
+                        t!("settings.history.clear.body_ytm")
+                    } else {
+                        t!("settings.history.clear.body")
+                    },
                     None,
                     danger_button("settings-clear-history", t!("history.clear"), true).on_click(
                         move |_, _, cx| {
@@ -617,6 +626,91 @@ impl SettingsPage {
                 ),
             )],
         )
+    }
+
+    /// The YT Music sign-in, on the YouTube source.
+    fn ytm_account_section(&self, cx: &Context<Self>) -> Option<Div> {
+        let state = self.store.read(cx);
+
+        state.core.youtube_account.as_ref()?;
+
+        let account = {
+            let (note, label, confirm) = match state.youtube_account() {
+                sonear_core::YtAccountState::SignedIn { name, .. } => {
+                    (name.clone(), t!("common.ytm_sign_out"), true)
+                }
+                sonear_core::YtAccountState::SigningIn => (
+                    t!("common.ytm_signing_in").into_owned(),
+                    t!("common.ytm_signing_in"),
+                    false,
+                ),
+                sonear_core::YtAccountState::Expired => (
+                    t!("common.ytm_session_ended").into_owned(),
+                    t!("common.ytm_sign_in"),
+                    false,
+                ),
+                sonear_core::YtAccountState::Failed(reason) => {
+                    (reason.clone(), t!("common.ytm_sign_in"), false)
+                }
+                sonear_core::YtAccountState::SignedOut => (
+                    t!("settings.ytm_account.signed_out").into_owned(),
+                    t!("common.ytm_sign_in"),
+                    false,
+                ),
+            };
+            let busy = *state.youtube_account() == sonear_core::YtAccountState::SigningIn;
+            let store = self.store.clone();
+
+            row(
+                t!("settings.ytm_account.title"),
+                t!("settings.ytm_account.body"),
+                Some((note, theme::text_tertiary())),
+                ghost_button("ytm-account", label, !busy).on_click(move |_, _, cx| {
+                    store.update(cx, |state, cx| {
+                        if confirm {
+                            state.ask(Confirm::YtSignOut, cx);
+                        } else {
+                            state.sign_in_youtube(cx);
+                        }
+                    });
+                }),
+            )
+        };
+
+        Some(section(t!("settings.section.ytm_account"), vec![account]))
+    }
+
+    /// The installed mpv and yt-dlp, on the YouTube source.
+    fn tools_section(&self, cx: &Context<Self>) -> Option<Div> {
+        let state = self.store.read(cx);
+        let versions = state.core.tools.as_ref()?.versions();
+        let shown = |tag: Option<String>| {
+            tag.map_or_else(
+                || t!("settings.tools.not_installed").into_owned(),
+                |tag| tag.trim_start_matches('v').to_owned(),
+            )
+        };
+        let store = self.store.clone();
+        let check = ghost_button("ytdlp-update", t!("settings.tools.check"), true)
+            .on_click(move |_, _, cx| store.update(cx, |state, cx| state.update_ytdlp(cx)));
+
+        Some(section(
+            t!("settings.section.tools"),
+            vec![
+                row(
+                    t!("settings.tools.mpv.title"),
+                    t!("settings.tools.mpv.body"),
+                    Some((shown(versions.mpv), theme::text_tertiary())),
+                    div(),
+                ),
+                row(
+                    t!("settings.tools.ytdlp.title"),
+                    t!("settings.tools.ytdlp.body"),
+                    Some((shown(versions.ytdlp), theme::text_tertiary())),
+                    check,
+                ),
+            ],
+        ))
     }
 
     fn soloist_section(&self, cx: &mut Context<Self>) -> Option<Div> {
@@ -900,7 +994,11 @@ impl SettingsPage {
 
     fn version_row(&self, cx: &mut Context<Self>) -> AnyElement {
         let title = format!("Sonear {}", env!("CARGO_PKG_VERSION"));
-        let description = t!("settings.about.independent");
+        let description = if self.store.read(cx).is_youtube() {
+            t!("settings.about.independent_ytm")
+        } else {
+            t!("settings.about.independent")
+        };
         let UpdateState::Ready { version, .. } = self.store.read(cx).update.clone() else {
             return row(title, description, None, div());
         };
@@ -1156,8 +1254,10 @@ impl Render for SettingsPage {
         let history = self.history_section(cx);
         let keyboard = self.keyboard_section();
         let soloist = self.soloist_section(cx);
+        let tools = self.tools_section(cx);
+        let ytm_account = self.ytm_account_section(cx);
         let storage = self.storage_section(cx);
-        let account = self.account_section(cx);
+        let account = (!self.store.read(cx).is_youtube()).then(|| self.account_section(cx));
         let about = self.about_section(cx);
 
         div()
@@ -1185,8 +1285,10 @@ impl Render for SettingsPage {
                     .child(history)
                     .child(keyboard)
                     .children(soloist)
+                    .children(ytm_account)
+                    .children(tools)
                     .child(storage)
-                    .child(account)
+                    .children(account)
                     .child(about),
             )
     }

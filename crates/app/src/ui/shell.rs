@@ -8,6 +8,7 @@ use gpui_kit::{
     div, px,
 };
 use rust_i18n::t;
+use sonear_core::model::is_track_uri;
 use sonear_core::playback::now_ms;
 use sonear_soloist::Status;
 
@@ -126,6 +127,7 @@ impl Shell {
         let days = state.expiry_days?;
 
         if state.is_demo()
+            || state.is_youtube()
             || days > EXPIRY_WARNING_DAYS
             || matches!(state.soloist, Status::Expired | Status::NotInstalled)
         {
@@ -267,10 +269,24 @@ impl Shell {
             return None;
         }
 
-        let name = state.profile.value().map_or_else(
-            || "Spotify".to_owned(),
-            |profile| profile.display_name.clone(),
-        );
+        let youtube = state.is_youtube();
+        let account = state.youtube_account().clone();
+        let sign_in = self.store.clone();
+        let name = match &account {
+            sonear_core::YtAccountState::SignedIn { name, .. } => name.clone(),
+            _ => String::new(),
+        };
+        let name = if name.is_empty() {
+            state.profile.value().map_or_else(
+                || match state.source() {
+                    sonear_core::Source::Spotify => t!("source.name.spotify").into_owned(),
+                    sonear_core::Source::Youtube => t!("source.name.youtube").into_owned(),
+                },
+                |profile| profile.display_name.clone(),
+            )
+        } else {
+            name
+        };
         let close = self.store.clone();
         let logout = self.store.clone();
         let shortcuts = self.store.clone();
@@ -353,27 +369,111 @@ impl Shell {
                                     shortcuts.update(cx, |state, cx| state.open_shortcuts(cx));
                                 }),
                         )
-                        .child(
-                            div()
-                                .id("menu-logout")
-                                .flex()
-                                .items_center()
-                                .px_3()
-                                .h(px(34.))
-                                .rounded(theme::CONTROL_RADIUS)
-                                .cursor_pointer()
-                                .tab_index(0)
-                                .text_size(px(13.))
-                                .text_color(theme::text_secondary())
-                                .hover(|style| {
-                                    style.bg(theme::hover()).text_color(theme::text_primary())
-                                })
-                                .focus_visible(|style| style.bg(theme::hover()))
-                                .child(t!("common.log_out"))
-                                .on_click(move |_, _, cx| {
-                                    logout.update(cx, |state, cx| state.ask(Confirm::Logout, cx));
+                        .when(youtube, |this| match &account {
+                            sonear_core::YtAccountState::SignedIn { .. } => this.child(
+                                div()
+                                    .id("menu-yt-signout")
+                                    .flex()
+                                    .items_center()
+                                    .px_3()
+                                    .h(px(34.))
+                                    .rounded(theme::CONTROL_RADIUS)
+                                    .cursor_pointer()
+                                    .tab_index(0)
+                                    .text_size(px(13.))
+                                    .text_color(theme::text_secondary())
+                                    .hover(|style| {
+                                        style.bg(theme::hover()).text_color(theme::text_primary())
+                                    })
+                                    .focus_visible(|style| style.bg(theme::hover()))
+                                    .child(t!("common.ytm_sign_out"))
+                                    .on_click({
+                                        let store = self.store.clone();
+
+                                        move |_, _, cx| {
+                                            store.update(cx, |state, cx| {
+                                                state.ask(Confirm::YtSignOut, cx)
+                                            });
+                                        }
+                                    }),
+                            ),
+                            sonear_core::YtAccountState::SigningIn => this.child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .px_3()
+                                    .h(px(34.))
+                                    .opacity(0.5)
+                                    .text_size(px(13.))
+                                    .text_color(theme::text_secondary())
+                                    .child(t!("common.ytm_signing_in")),
+                            ),
+                            other => this
+                                .child(
+                                    div()
+                                        .id("menu-yt-signin")
+                                        .flex()
+                                        .items_center()
+                                        .px_3()
+                                        .h(px(34.))
+                                        .rounded(theme::CONTROL_RADIUS)
+                                        .cursor_pointer()
+                                        .tab_index(0)
+                                        .text_size(px(13.))
+                                        .text_color(theme::text_secondary())
+                                        .hover(|style| {
+                                            style
+                                                .bg(theme::hover())
+                                                .text_color(theme::text_primary())
+                                        })
+                                        .focus_visible(|style| style.bg(theme::hover()))
+                                        .child(t!("common.ytm_sign_in"))
+                                        .on_click({
+                                            let store = sign_in.clone();
+
+                                            move |_, _, cx| {
+                                                store.update(cx, |state, cx| {
+                                                    state.close_avatar_menu(cx);
+                                                    state.sign_in_youtube(cx);
+                                                });
+                                            }
+                                        }),
+                                )
+                                .when(*other == sonear_core::YtAccountState::Expired, |this| {
+                                    this.child(
+                                        div()
+                                            .px_3()
+                                            .pb_1()
+                                            .text_size(px(11.))
+                                            .text_color(theme::text_tertiary())
+                                            .child(t!("common.ytm_session_ended")),
+                                    )
                                 }),
-                        ),
+                        })
+                        .when(!youtube, |this| {
+                            this.child(
+                                div()
+                                    .id("menu-logout")
+                                    .flex()
+                                    .items_center()
+                                    .px_3()
+                                    .h(px(34.))
+                                    .rounded(theme::CONTROL_RADIUS)
+                                    .cursor_pointer()
+                                    .tab_index(0)
+                                    .text_size(px(13.))
+                                    .text_color(theme::text_secondary())
+                                    .hover(|style| {
+                                        style.bg(theme::hover()).text_color(theme::text_primary())
+                                    })
+                                    .focus_visible(|style| style.bg(theme::hover()))
+                                    .child(t!("common.log_out"))
+                                    .on_click(move |_, _, cx| {
+                                        logout
+                                            .update(cx, |state, cx| state.ask(Confirm::Logout, cx));
+                                    }),
+                            )
+                        }),
                 ),
         )
     }
@@ -386,6 +486,11 @@ impl Shell {
                 t!("shell.confirm.logout.body").into(),
                 t!("shell.confirm.logout.action").into(),
             ),
+            Confirm::YtSignOut => (
+                t!("shell.confirm.yt_signout.title").into(),
+                t!("shell.confirm.yt_signout.body").into(),
+                t!("shell.confirm.yt_signout.action").into(),
+            ),
             Confirm::ClearHistory => (
                 t!("shell.confirm.clear_history.title").into(),
                 t!("shell.confirm.clear_history.body").into(),
@@ -393,7 +498,11 @@ impl Shell {
             ),
             Confirm::DeleteAll => (
                 t!("shell.confirm.delete_all.title").into(),
-                t!("shell.confirm.delete_all.body").into(),
+                if self.store.read(cx).is_youtube() {
+                    t!("shell.confirm.delete_all.body_youtube").into()
+                } else {
+                    t!("shell.confirm.delete_all.body").into()
+                },
                 t!("shell.confirm.delete_all.action").into(),
             ),
             Confirm::MoveData => {
@@ -694,7 +803,7 @@ impl Shell {
             .item
             .as_ref()
             .map(|item| item.uri.clone())
-            .filter(|uri| uri.starts_with("spotify:track:"));
+            .filter(|uri| is_track_uri(uri));
 
         if let Some(uri) = uri {
             self.store
@@ -713,7 +822,7 @@ impl Shell {
             .playback
             .item
             .as_ref()
-            .filter(|item| item.uri.starts_with("spotify:track:"))
+            .filter(|item| is_track_uri(&item.uri))
             .map(|item| (item.uri.clone(), item.name().to_owned()));
 
         self.store.update(cx, |state, cx| match seed {

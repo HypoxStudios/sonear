@@ -168,7 +168,11 @@ impl HistoryPage {
             return empty_state(
                 IconName::RefreshCw,
                 t!("history.empty.title"),
-                t!("history.empty.body"),
+                if self.store.read(cx).is_youtube() {
+                    t!("history.empty.body_ytm")
+                } else {
+                    t!("history.empty.body")
+                },
             );
         }
 
@@ -189,7 +193,7 @@ impl HistoryPage {
                 let wanted: Vec<String> = range
                     .clone()
                     .filter_map(|index| this.rows.items.get(index))
-                    .filter(|row| row.track_uri.starts_with("spotify:track:"))
+                    .filter(|row| sonear_core::model::is_track_uri(&row.track_uri))
                     .map(|row| row.track_uri.clone())
                     .collect();
 

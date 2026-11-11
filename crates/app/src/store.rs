@@ -11,13 +11,14 @@ use gpui_kit::{
 use rust_i18n::t;
 use sonear_core::config::{LEGAL_VERSION, Language};
 use sonear_core::data_dir::check_target;
-use sonear_core::model::{ItemKind, is_playable_uri};
+use sonear_core::model::{ItemKind, is_playable_uri, is_track_uri};
 use sonear_core::model::{PlayOffset, PlaybackRequest, Playlist, Profile, Track};
 use sonear_core::playback::{SeekHold, VolumeHold, now_ms};
 use sonear_core::queue::QueueSource;
 use sonear_core::radio;
 use sonear_core::{
-    AccountState, AppEvent, AppPaths, Core, PlaybackModel, QueueSnapshot, SpotifyLink,
+    AccountState, AppEvent, AppPaths, Core, PlaybackModel, QueueSnapshot, Source, SpotifyLink,
+    ToolsStatus, YtAccountState,
 };
 use sonear_soloist::Status;
 use sonear_soloist::install::InstallProgress;
@@ -130,6 +131,8 @@ pub enum SetupStep {
     Language,
     Agreement,
     Spotify,
+    /// Downloading mpv and yt-dlp, on the YouTube source.
+    Tools,
     Download,
     Key,
     Pair,
@@ -140,6 +143,8 @@ pub enum SetupStep {
 /// What decides the setup step, read from the store in one place.
 #[derive(Debug, Clone)]
 pub struct SetupState {
+    pub source: Source,
+    pub tools: ToolsStatus,
     pub account: AccountState,
     pub status: Status,
     pub install: InstallState,
@@ -169,6 +174,10 @@ impl SetupState {
             return SetupStep::Agreement;
         }
 
+        if self.source == Source::Youtube {
+            return SetupStep::Tools;
+        }
+
         if !self.connected {
             return SetupStep::Spotify;
         }
@@ -190,6 +199,8 @@ impl SetupState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Confirm {
     Logout,
+    /// Signs out of YT Music.
+    YtSignOut,
     ClearHistory,
     DeleteAll,
     /// Moves the data folder to `AppStore::pending_data_move`.
@@ -284,6 +295,11 @@ pub struct AppStore {
     /// The user's own queue, which Sonear holds and hands to Soloist one track at a time.
     pub queue: QueueSnapshot,
     pub soloist: Status,
+    /// The YouTube playback tools. `Ready` on the other source.
+    pub tools: ToolsStatus,
+    youtube_account: YtAccountState,
+    /// The service the user just chose, while the switch animates and the app restarts.
+    switching_to: Option<Source>,
     pub expiry_days: Option<i64>,
     pub route: Route,
     back_stack: Vec<Route>,
@@ -380,6 +396,15 @@ impl AppStore {
             core: core.clone(),
             runtime,
             soloist,
+            tools: core
+                .tools
+                .as_ref()
+                .map_or(ToolsStatus::Ready, |tools| tools.status()),
+            youtube_account: core
+                .youtube_account
+                .as_ref()
+                .map_or(YtAccountState::SignedOut, |account| account.state()),
+            switching_to: None,
             expiry_days: None,
             route: initial_route(),
             back_stack: Vec::new(),
@@ -476,21 +501,40 @@ impl AppStore {
         self.core.is_demo()
     }
 
+    /// The service this run plays from.
+    pub fn source(&self) -> Source {
+        self.core.source
+    }
+
+    pub fn is_youtube(&self) -> bool {
+        self.source() == Source::Youtube
+    }
+
+    pub fn switching_to(&self) -> Option<Source> {
+        self.switching_to
+    }
+
     pub fn connected(&self) -> bool {
         self.account == AccountState::Connected
     }
 
     /// Whether the setup screen replaces the pages.
     pub fn needs_setup(&self) -> bool {
-        (!self.is_demo()
-            && (!self.legal_accepted()
-                || !matches!(self.soloist, Status::Ready { .. })
-                || !self.connected()))
-            || (self.is_demo() && std::env::var("SONEAR_DEMO_SETUP").is_ok())
+        if self.is_demo() {
+            return std::env::var("SONEAR_DEMO_SETUP").is_ok();
+        }
+
+        if self.is_youtube() {
+            return !self.legal_accepted() || self.tools != ToolsStatus::Ready;
+        }
+
+        !self.legal_accepted() || !matches!(self.soloist, Status::Ready { .. }) || !self.connected()
     }
 
     pub fn setup_state(&self) -> SetupState {
         let state = SetupState {
+            source: self.source(),
+            tools: self.tools.clone(),
             account: self.account.clone(),
             status: self.soloist.clone(),
             install: self.install.clone(),
@@ -895,6 +939,8 @@ impl AppStore {
             AppEvent::Account(state) => self.apply_account(state, cx),
             AppEvent::AccountDataWiped => self.drop_account_caches(),
             AppEvent::Likes => {}
+            AppEvent::Tools(status) => self.tools = status,
+            AppEvent::YoutubeAccount(state) => self.apply_youtube_account(state),
             AppEvent::HistoryChanged => self.history_version += 1,
             AppEvent::SeenTracks { playlist_id } => {
                 self.seen_version += 1;
@@ -1376,7 +1422,7 @@ impl AppStore {
 
         let resumes = !self.playback.is_playing() && self.playing_station(&station);
 
-        if seed_uri.starts_with("spotify:track:") && !resumes {
+        if seed_uri.starts_with("spotify:track:") && !resumes && !self.is_youtube() {
             self.core.queue.start_radio(seed_uri, &station);
         }
 
@@ -1545,7 +1591,7 @@ impl AppStore {
     /// Checks the heart of the track that is playing now.
     fn ensure_current_like(&self) {
         if let Some(item) = &self.playback.item
-            && item.uri.starts_with("spotify:track:")
+            && is_track_uri(&item.uri)
         {
             self.ensure_likes(vec![item.uri.clone()]);
         }
@@ -1568,6 +1614,53 @@ impl AppStore {
     pub fn cancel_connect(&mut self, cx: &mut Context<Self>) {
         self.core.account.cancel_login();
         cx.notify();
+    }
+
+    /// The state of the YT Music sign-in, signed out when there is none.
+    pub fn youtube_account(&self) -> &YtAccountState {
+        &self.youtube_account
+    }
+
+    fn apply_youtube_account(&mut self, state: YtAccountState) {
+        let library_changes = std::mem::discriminant(&self.youtube_account)
+            != std::mem::discriminant(&state)
+            && !matches!(state, YtAccountState::SigningIn | YtAccountState::Failed(_))
+            && !matches!(self.youtube_account, YtAccountState::SigningIn);
+
+        self.youtube_account = state;
+
+        if library_changes {
+            self.core.meta.clear();
+            self.route = Route::Home;
+            self.back_stack.clear();
+        }
+    }
+
+    /// Opens the YT Music sign-in window.
+    pub fn sign_in_youtube(&mut self, cx: &mut Context<Self>) {
+        let Some(account) = self.core.youtube_account.clone() else {
+            return;
+        };
+
+        if self.youtube_account == YtAccountState::SigningIn {
+            return;
+        }
+
+        self.runtime.spawn(async move {
+            account.sign_in().await;
+        });
+        cx.notify();
+    }
+
+    fn sign_out_youtube(&mut self, cx: &mut Context<Self>) {
+        let Some(account) = self.core.youtube_account.clone() else {
+            return;
+        };
+
+        self.runtime.spawn(async move {
+            account.sign_out().await;
+        });
+        self.show_toast(t!("store.toast.ytm_signed_out"), cx);
     }
 
     pub fn toggle_avatar_menu(&mut self, cx: &mut Context<Self>) {
@@ -1621,6 +1714,12 @@ impl AppStore {
     /// Opens an album, playlist, artist or show, or plays a track or episode.
     /// Waits until the app is logged in and Soloist is ready.
     pub fn open_link(&mut self, link: SpotifyLink, cx: &mut Context<Self>) {
+        if self.is_youtube() {
+            self.show_toast(t!("store.toast.spotify_link_elsewhere"), cx);
+
+            return;
+        }
+
         if !self.can_open_links() {
             self.pending_link = Some(link);
 
@@ -1673,6 +1772,10 @@ impl AppStore {
     }
 
     fn can_open_links(&self) -> bool {
+        if self.is_youtube() {
+            return false;
+        }
+
         self.connected() && (self.is_demo() || matches!(self.soloist, Status::Ready { .. }))
     }
 
@@ -1691,6 +1794,99 @@ impl AppStore {
         self.pending_search = Some(query.to_owned());
         self.navigate(Route::Search, cx);
         cx.notify();
+    }
+
+    /// Downloads mpv and yt-dlp. A failure shows through the tools status.
+    pub fn install_tools(&mut self, cx: &mut Context<Self>) {
+        let Some(tools) = self.core.tools.clone() else {
+            return;
+        };
+
+        self.runtime.spawn(async move {
+            let _ = tools.install().await;
+        });
+        cx.notify();
+    }
+
+    /// Looks for a newer yt-dlp and says what happened.
+    pub fn update_ytdlp(&mut self, cx: &mut Context<Self>) {
+        let Some(tools) = self.core.tools.clone() else {
+            return;
+        };
+        let (done, mut inbox) = mpsc::unbounded_channel();
+
+        self.runtime.spawn(async move {
+            let _ = done.send(tools.update_ytdlp().await);
+        });
+        cx.spawn(async move |this, cx| {
+            let Some(result) = inbox.recv().await else {
+                return;
+            };
+
+            let _ = this.update(cx, |store, cx| {
+                let text = match result {
+                    Ok(true) => t!("store.toast.ytdlp_updated").into_owned(),
+                    Ok(false) => t!("store.toast.ytdlp_current").into_owned(),
+                    Err(error) => error.user_message(),
+                };
+
+                store.show_toast(text, cx);
+            });
+        })
+        .detach();
+    }
+
+    /// Moves to the other service: animates the switch, saves the choice and
+    /// starts this program again once this one has exited.
+    pub fn switch_source(&mut self, target: Source, cx: &mut Context<Self>) {
+        if target == self.source() || self.switching_to.is_some() {
+            return;
+        }
+
+        if self.is_demo() {
+            self.show_toast(t!("store.toast.switch_demo"), cx);
+
+            return;
+        }
+
+        let previous = self.source();
+
+        self.switching_to = Some(target);
+        cx.notify();
+        cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(theme::SWITCH_DURATION).await;
+
+            let _ = this.update(cx, |store, cx| store.finish_switch(target, previous, cx));
+        })
+        .detach();
+    }
+
+    fn finish_switch(&mut self, target: Source, previous: Source, cx: &mut Context<Self>) {
+        self.core.config.update(|config| config.source = target);
+
+        let started = std::env::current_exe().and_then(|exe| {
+            std::process::Command::new(exe)
+                .arg("--after")
+                .arg(std::process::id().to_string())
+                .spawn()
+        });
+
+        match started {
+            Ok(child) => {
+                crate::logging::close_files();
+                platform_window::quit_after_handing_focus_to(child.id(), cx);
+            }
+            Err(error) => {
+                warn!(%error, "could not restart to switch source");
+                self.core.config.update(|config| config.source = previous);
+                self.switching_to = None;
+                self.show_toast(
+                    t!("store.toast.switch_failed", error = error.to_string()),
+                    cx,
+                );
+                cx.notify();
+            }
+        }
     }
 
     /// Checks that the data can move to `target` and asks the user to confirm.
@@ -1732,6 +1928,7 @@ impl AppStore {
 
         match confirm {
             Confirm::Logout => self.disconnect(cx),
+            Confirm::YtSignOut => self.sign_out_youtube(cx),
             Confirm::ClearHistory => {
                 let history = self.core.history.clone();
 
@@ -2211,6 +2408,8 @@ mod tests {
 
     fn state(status: Status) -> SetupState {
         SetupState {
+            source: Source::Spotify,
+            tools: ToolsStatus::Ready,
             account: AccountState::Connected,
             status,
             install: InstallState::Idle,
@@ -2220,6 +2419,51 @@ mod tests {
             legal_updated: false,
             language_chosen: true,
             connected: true,
+        }
+    }
+
+    fn youtube_state() -> SetupState {
+        SetupState {
+            source: Source::Youtube,
+            tools: ToolsStatus::Missing,
+            ..state(Status::Stopped)
+        }
+    }
+
+    #[test]
+    fn the_youtube_source_asks_for_the_tools_after_the_agreement() {
+        let mut setup = youtube_state();
+
+        assert_eq!(setup.step(), SetupStep::Tools);
+
+        setup.legal_accepted = false;
+
+        assert_eq!(setup.step(), SetupStep::Agreement);
+
+        setup.language_chosen = false;
+
+        assert_eq!(setup.step(), SetupStep::Language);
+    }
+
+    #[test]
+    fn the_youtube_source_never_asks_for_spotify_steps() {
+        for account in [
+            AccountState::Disconnected,
+            AccountState::SessionExpired,
+            AccountState::Connected,
+        ] {
+            for status in [Status::NeedsKey, Status::NotInstalled, Status::Expired] {
+                let setup = SetupState {
+                    account: account.clone(),
+                    connected: account == AccountState::Connected,
+                    ..SetupState {
+                        status,
+                        ..youtube_state()
+                    }
+                };
+
+                assert_eq!(setup.step(), SetupStep::Tools);
+            }
         }
     }
 

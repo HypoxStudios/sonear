@@ -12,12 +12,13 @@ use gpui_kit::{
     Window, div, px, relative,
 };
 use sonear_core::PlaybackModel;
+use sonear_core::model::is_track_uri;
 use sonear_core::playback::now_ms;
 use sonear_soloist::Status;
 use sonear_soloist::protocol::{PlayStatus, RepeatMode};
 
 use super::widgets::{
-    cover_for, heart_button, icon, icon_button, round_play_button, set_if_changed, spotify_icon,
+    cover_for, heart_button, icon, icon_button, round_play_button, set_if_changed, source_icon,
     text_tooltip,
 };
 use crate::format::clock;
@@ -159,11 +160,26 @@ impl PlayerBar {
     }
 }
 
-/// `spotify:track:abc` as `https://open.spotify.com/track/abc`.
-pub(super) fn spotify_url(uri: &str) -> Option<String> {
-    let (kind, id) = sonear_core::model::split_uri(uri)?;
+/// The page of a track or episode on its service.
+pub(super) fn item_url(uri: &str) -> Option<String> {
+    let (kind, _) = sonear_core::model::split_uri(uri)?;
 
-    matches!(kind, "track" | "episode").then(|| format!("https://open.spotify.com/{kind}/{id}"))
+    matches!(kind, "track" | "episode")
+        .then(|| sonear_core::model::open_url(uri))
+        .flatten()
+}
+
+/// The status label on the YouTube source: whether the playback tools are there.
+fn tools_label(status: &sonear_core::ToolsStatus) -> (String, bool) {
+    match status {
+        sonear_core::ToolsStatus::Ready => (t!("player.status.ytm_ready").into_owned(), true),
+        sonear_core::ToolsStatus::Installing { .. } => {
+            (t!("player.status.ytm_installing").into_owned(), false)
+        }
+        sonear_core::ToolsStatus::Missing | sonear_core::ToolsStatus::Failed(_) => {
+            (t!("player.status.ytm_tools").into_owned(), false)
+        }
+    }
 }
 
 fn soloist_label(status: &Status, demo: bool) -> (String, bool) {
@@ -190,7 +206,13 @@ impl Render for PlayerBar {
         let state = self.store.read(cx);
         let model = state.playback.clone();
         let demo = state.is_demo();
-        let (status_label, status_ready) = soloist_label(&state.soloist, demo);
+        let (status_label, status_ready) = if state.is_youtube() {
+            tools_label(&state.tools)
+        } else {
+            soloist_label(&state.soloist, demo)
+        };
+        let source = state.source();
+        let youtube = state.is_youtube();
         let queue_open = state.queue_showing();
         let lyrics_open = state.lyrics_showing();
         let lyrics_enabled = state.lyrics_enabled;
@@ -230,13 +252,14 @@ impl Render for PlayerBar {
         let track_uri = item
             .as_ref()
             .map(|item| item.uri.clone())
-            .filter(|uri| uri.starts_with("spotify:track:"));
+            .filter(|uri| is_track_uri(uri));
         let liked = track_uri
             .as_ref()
             .and_then(|uri| likes.is_liked(uri))
             .unwrap_or(false);
         let can_like = track_uri.is_some();
-        let open_url = item.as_ref().and_then(|item| spotify_url(&item.uri));
+        let open_url = item.as_ref().and_then(|item| item_url(&item.uri));
+        let open_tip = open_url.as_deref().map(super::common::open_label);
         let repeat = model.repeat();
         let shuffle_on = model.options.shuffle;
         let accent_if = |on: bool| {
@@ -254,6 +277,7 @@ impl Render for PlayerBar {
         let subtitle = match &item {
             Some(item) => item.artist_line(),
             None if demo => String::new(),
+            None if youtube => t!("player.choose_ytm").into_owned(),
             None => t!("player.choose_sonear").into_owned(),
         };
 
@@ -305,12 +329,14 @@ impl Render for PlayerBar {
                     div()
                         .id("player-spotify")
                         .flex_none()
-                        .tooltip(text_tooltip(t!("common.open_spotify")))
+                        .tooltip(text_tooltip(
+                            open_tip.unwrap_or_else(|| t!("common.open_spotify").into_owned()),
+                        ))
                         .when_some(open_url, |this, url| {
                             this.cursor_pointer()
                                 .on_click(move |_, _, cx| cx.open_url(&url))
                         })
-                        .child(spotify_icon()),
+                        .child(source_icon(source).mx(px(theme::SPOTIFY_CLEAR_SPACE))),
                 )
             })
             .child({

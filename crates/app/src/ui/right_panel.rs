@@ -419,7 +419,14 @@ impl Render for RightPanel {
                                 let label = if locked {
                                     tag(t!("right.up_next"), theme::accent())
                                 } else {
-                                    tag(t!("right.from_spotify"), theme::text_secondary())
+                                    tag(
+                                        if state.is_youtube() {
+                                            t!("right.from_ytm")
+                                        } else {
+                                            t!("right.from_spotify")
+                                        },
+                                        theme::text_secondary(),
+                                    )
                                 };
 
                                 plain_row(line_for_item(state, &entry.item), Some(label))

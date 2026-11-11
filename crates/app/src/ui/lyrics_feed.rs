@@ -331,7 +331,7 @@ impl Follow {
 }
 
 pub fn is_track(uri: &str) -> bool {
-    uri.starts_with("spotify:track:")
+    sonear_core::model::is_track_uri(uri)
 }
 
 fn log_failure(error: &LyricsError) {

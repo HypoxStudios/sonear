@@ -267,7 +267,17 @@ fn toggle_button(store: &Entity<AppStore>, collapsed: bool) -> Stateful<Div> {
 }
 
 fn avatar(store: &Entity<AppStore>, state: &AppStore, collapsed: bool) -> Div {
-    let profile = state.profile.value();
+    let signed_in = match state.youtube_account() {
+        sonear_core::YtAccountState::SignedIn { name, photo } => {
+            Some(sonear_core::model::Profile {
+                id: "local".to_owned(),
+                display_name: name.clone(),
+                art: photo.clone(),
+            })
+        }
+        _ => None,
+    };
+    let profile = signed_in.as_ref().or_else(|| state.profile.value());
     let initial = profile
         .and_then(|profile| profile.display_name.chars().next())
         .map(|letter| letter.to_uppercase().to_string());

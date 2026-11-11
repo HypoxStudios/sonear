@@ -17,12 +17,29 @@ pub const CONTROL_RADIUS: Pixels = px(10.);
 pub const ART_RADIUS: Pixels = px(8.);
 pub const ART_RADIUS_SMALL: Pixels = px(4.);
 
-pub const SPOTIFY_LOGO_HEIGHT: f32 = 20.;
-pub const SPOTIFY_LOGO_ASPECT: f32 = 823.46 / 225.25;
 pub const SPOTIFY_ICON_SIZE: f32 = 22.;
 pub const SPOTIFY_ICON_ASPECT: f32 = 236.05 / 225.25;
 /// Space kept free beside the Spotify logo: half the icon's height.
 pub const SPOTIFY_CLEAR_SPACE: f32 = SPOTIFY_ICON_SIZE / 2.;
+
+/// The source switch: a pill with the two services in it.
+pub const SWITCH_RADIUS: Pixels = px(12.);
+pub const SWITCH_PADDING: f32 = 3.;
+pub const SWITCH_GAP: f32 = 2.;
+pub const SWITCH_SEGMENT_RADIUS: Pixels = px(9.);
+pub const SWITCH_SEGMENT_HEIGHT: f32 = 34.;
+pub const SWITCH_MARK: f32 = 20.;
+/// Space around a segment's mark: raised, with the name beside it, and plain.
+pub const SWITCH_RAISED_LEFT: f32 = 11.;
+pub const SWITCH_RAISED_RIGHT: f32 = 14.;
+pub const SWITCH_PLAIN_SIDE: f32 = 10.;
+pub const SWITCH_PLAIN_WIDTH: f32 = 40.;
+pub const SWITCH_NAME_GAP: f32 = 8.;
+pub const SWITCH_NAME_SIZE: f32 = 15.;
+/// The widest the name's box opens: enough for "YT Music" at its size.
+pub const SWITCH_NAME_WIDTH: f32 = 76.;
+/// How long the pill takes to move to the other service. The app restarts after it.
+pub const SWITCH_DURATION: std::time::Duration = std::time::Duration::from_millis(260);
 
 pub const SETTINGS_WIDTH: Pixels = px(720.);
 pub const SETTINGS_CONTROL_WIDTH: Pixels = px(260.);
@@ -124,6 +141,8 @@ pub const PROGRESS_HEIGHT: Pixels = px(4.);
 pub const SETUP_COLUMN_WIDTH: Pixels = px(520.);
 pub const SETUP_GROUP_SPACE: Pixels = px(10.);
 pub const SETUP_BADGE: f32 = 20.;
+/// Distance of the source switch from the corner of the setup panel.
+pub const SETUP_SWITCH_INSET: f32 = 16.;
 pub const SETUP_LOG_HEIGHT: Pixels = px(180.);
 pub const SETUP_OPTION_HEIGHT: Pixels = px(44.);
 
@@ -245,6 +264,24 @@ pub fn danger() -> Hsla {
 /// versions on dark backgrounds, never tinted.
 pub fn spotify_mark() -> Hsla {
     hsla(rgb(0xFFFFFF))
+}
+
+/// The name in the source switch's raised segment.
+pub fn switch_name() -> Hsla {
+    hsla(rgb(0xFFFFFF))
+}
+
+/// A colour `amount` of the way from `from` to `to`.
+pub fn mix(from: Hsla, to: Hsla, amount: f32) -> Hsla {
+    let amount = amount.clamp(0., 1.);
+    let lerp = |a: f32, b: f32| a + (b - a) * amount;
+
+    Hsla {
+        h: lerp(from.h, to.h),
+        s: lerp(from.s, to.s),
+        l: lerp(from.l, to.l),
+        a: lerp(from.a, to.a),
+    }
 }
 
 /// Placeholder bars while content loads.

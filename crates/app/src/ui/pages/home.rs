@@ -7,7 +7,7 @@ use gpui_kit::{
 use rust_i18n::t;
 use sonear_core::LibraryError;
 use sonear_core::history::{Hero, HeroKind};
-use sonear_core::model::{Page, Playlist, Track};
+use sonear_core::model::{Page, Playlist, Shelf, ShelfItems, Track};
 
 use crate::data::{self, Load, Slot};
 use crate::format::greeting;
@@ -15,9 +15,8 @@ use crate::i18n::plural;
 use crate::store::{AppStore, Route};
 use crate::theme;
 use crate::ui::common::{CardItem, card, error_panel, heading, skeleton_card};
-use crate::ui::widgets::{
-    art, icon, pending_overlay, round_play_button, spotify_logo, text_tooltip,
-};
+use crate::ui::source_switch::source_switch;
+use crate::ui::widgets::{art, icon, pending_overlay, round_play_button, text_tooltip};
 
 const TILE: f32 = 132.;
 const SHELF_LEN: usize = 10;
@@ -29,6 +28,8 @@ pub struct HomePage {
     on_repeat: Slot<Vec<Track>>,
     recent: Slot<Vec<Track>>,
     playlists: Slot<Page<Playlist>>,
+    /// Home shelves the source suggests. Empty on Spotify.
+    discover: Slot<Vec<Shelf>>,
     seen_version: u64,
     tasks: Vec<Task<()>>,
     history_tasks: Vec<Task<()>>,
@@ -54,6 +55,7 @@ impl HomePage {
             on_repeat: Slot::default(),
             recent: Slot::default(),
             playlists: Slot::default(),
+            discover: Slot::default(),
             seen_version,
             tasks: Vec::new(),
             history_tasks: Vec::new(),
@@ -89,6 +91,29 @@ impl HomePage {
                 data::fetch(|core| async move { core.library.my_playlists(0).await }),
                 cx,
                 |page: &mut Self, message, _| page.playlists.apply(message),
+            ),
+            data::load(
+                &env,
+                Some("home:discover".to_owned()),
+                data::fetch(|core| async move { core.library.discover().await }),
+                cx,
+                |page: &mut Self, message, cx| {
+                    if let Load::Ready { value, .. } = &message {
+                        let uris = value
+                            .iter()
+                            .filter_map(|shelf| match &shelf.items {
+                                ShelfItems::Tracks(tracks) => Some(tracks),
+                                ShelfItems::Albums(_) => None,
+                            })
+                            .flatten()
+                            .map(|track| track.uri.clone())
+                            .collect();
+
+                        page.store.read(cx).ensure_likes(uris);
+                    }
+
+                    page.discover.apply(message);
+                },
             ),
         ];
         self.load_history(true, cx);
@@ -146,8 +171,10 @@ impl HomePage {
         ];
     }
 
-    fn search_pill(&self) -> Div {
+    fn search_pill(&self, cx: &Context<Self>) -> Div {
         let store = self.store.clone();
+        let state = self.store.read(cx);
+        let switch = source_switch(&self.store, state.source(), state.switching_to());
 
         div()
             .flex()
@@ -177,7 +204,7 @@ impl HomePage {
                         store.update(cx, |state, cx| state.navigate(Route::Search, cx))
                     }),
             )
-            .child(spotify_logo())
+            .child(switch)
     }
 
     fn hero_card(&self, cx: &Context<Self>) -> AnyElement {
@@ -312,41 +339,76 @@ impl HomePage {
             Load::Loading => Some(shelf(title, skeleton_tiles())),
             Load::Failed(_) => None,
             Load::Ready { value, .. } if value.is_empty() => None,
-            Load::Ready { value, .. } => {
-                let uris: Vec<String> = value.iter().map(|track| track.uri.clone()).collect();
-                let tiles = value.iter().enumerate().map(|(index, track)| {
-                    let store = self.store.clone();
-                    let uris = uris.clone();
-
-                    div()
-                        .id(ElementId::from((id, index)))
-                        .flex()
-                        .flex_col()
-                        .gap_2()
-                        .flex_none()
-                        .w(px(TILE))
-                        .cursor_pointer()
-                        .tab_index(0)
-                        .rounded(theme::CARD_RADIUS)
-                        .border_1()
-                        .border_color(theme::transparent())
-                        .focus_visible(|style| style.border_color(theme::accent()))
-                        .tooltip(text_tooltip(track.name.clone()))
-                        .child(art(&track.art, &track.uri, TILE - 2., theme::ART_RADIUS))
-                        .child(crate::ui::common::card_text(
-                            &track.name,
-                            &track.artist_line(),
-                        ))
-                        .on_click(move |_, _, cx| {
-                            store
-                                .update(cx, |state, cx| state.play_tracks(uris.clone(), index, cx));
-                        })
-                        .into_any_element()
-                });
-
-                Some(shelf(title, tiles.collect()))
-            }
+            Load::Ready { value, .. } => Some(shelf(title, self.track_tiles(id.into(), value))),
         }
+    }
+
+    /// The shelves the source suggests, as it named them.
+    fn discover_shelves(&self) -> Vec<Div> {
+        match &self.discover.state {
+            Load::Loading => Vec::new(),
+            Load::Failed(_) => Vec::new(),
+            Load::Ready { value, .. } => value
+                .iter()
+                .filter_map(|source| match &source.items {
+                    ShelfItems::Tracks(tracks) if !tracks.is_empty() => Some(shelf(
+                        source.title.clone(),
+                        self.track_tiles(SharedString::from(source.id.clone()), tracks),
+                    )),
+                    ShelfItems::Albums(albums) if !albums.is_empty() => {
+                        let tiles = albums
+                            .iter()
+                            .take(SHELF_LEN)
+                            .enumerate()
+                            .map(|(index, album)| {
+                                card(index, &CardItem::from(album), TILE, &self.store)
+                            })
+                            .collect();
+
+                        Some(shelf(source.title.clone(), tiles))
+                    }
+                    _ => None,
+                })
+                .collect(),
+        }
+    }
+
+    fn track_tiles(&self, id: SharedString, value: &[Track]) -> Vec<AnyElement> {
+        let uris: Vec<String> = value.iter().map(|track| track.uri.clone()).collect();
+
+        value
+            .iter()
+            .take(SHELF_LEN)
+            .enumerate()
+            .map(|(index, track)| {
+                let store = self.store.clone();
+                let uris = uris.clone();
+
+                div()
+                    .id(ElementId::from((id.clone(), index)))
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .flex_none()
+                    .w(px(TILE))
+                    .cursor_pointer()
+                    .tab_index(0)
+                    .rounded(theme::CARD_RADIUS)
+                    .border_1()
+                    .border_color(theme::transparent())
+                    .focus_visible(|style| style.border_color(theme::accent()))
+                    .tooltip(text_tooltip(track.name.clone()))
+                    .child(art(&track.art, &track.uri, TILE - 2., theme::ART_RADIUS))
+                    .child(crate::ui::common::card_text(
+                        &track.name,
+                        &track.artist_line(),
+                    ))
+                    .on_click(move |_, _, cx| {
+                        store.update(cx, |state, cx| state.play_tracks(uris.clone(), index, cx));
+                    })
+                    .into_any_element()
+            })
+            .collect()
     }
 
     fn playlist_shelf(&self) -> Option<Div> {
@@ -463,6 +525,7 @@ impl Render for HomePage {
         let on_repeat = self.track_shelf("on-repeat", t!("home.on_repeat"), &self.on_repeat);
         let recent = self.track_shelf("recent", t!("home.recent"), &self.recent);
         let playlists = self.playlist_shelf();
+        let discover = self.discover_shelves();
 
         div()
             .id("home")
@@ -471,7 +534,7 @@ impl Render for HomePage {
             .size_full()
             .overflow_y_scroll()
             .p_6()
-            .child(self.search_pill())
+            .child(self.search_pill(cx))
             .child(
                 div()
                     .pt_6()
@@ -491,6 +554,7 @@ impl Render for HomePage {
             .child(hero)
             .children(on_repeat)
             .children(recent)
+            .children(discover)
             .children(playlists)
     }
 }

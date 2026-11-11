@@ -24,6 +24,7 @@ mod store;
 mod theme;
 mod tray;
 mod ui;
+mod yt_session;
 
 rust_i18n::i18n!("locales", fallback = "en");
 
@@ -79,6 +80,12 @@ fn main() {
 
     // Read once for the language and the logs. With no file the system
     // language wins, which is what a fresh install should follow.
+    if let Launch::YtSession { show } = parsed.launch {
+        run_yt_session(show);
+
+        return;
+    }
+
     let paths = AppPaths::discover();
     let config = paths
         .as_ref()
@@ -98,6 +105,7 @@ fn main() {
     }
 
     match parsed.launch {
+        Launch::YtSession { .. } => {}
         Launch::Setup => installer::run_setup(),
         Launch::Uninstall => installer::run_uninstall(),
         Launch::UninstallFrom(dir) => installer::run_uninstall_from(dir),
@@ -109,6 +117,17 @@ fn main() {
         }
         Launch::App { link, ignored } => run_app(link, ignored),
     }
+}
+
+/// The sign-in helper: no logging, no window of the app, and nothing on
+/// stdout but its one line, so the parent can read it.
+fn run_yt_session(show: bool) {
+    let config = AppPaths::discover()
+        .and_then(|paths| Config::peek(&paths.config_dir().join(i18n::CONFIG_FILE)))
+        .unwrap_or_default();
+
+    i18n::apply(i18n::initial(&config));
+    yt_session::run(show, rust_i18n::t!("yt_session.title").into_owned());
 }
 
 /// Where to write log files. The installer, uninstaller and data mover create,
@@ -425,5 +444,5 @@ fn start_core(runtime: &tokio::runtime::Handle, paths: &AppPaths) -> Core {
 
 #[cfg(not(feature = "demo"))]
 fn start_core(runtime: &tokio::runtime::Handle, paths: &AppPaths) -> Core {
-    Core::start(runtime, paths)
+    Core::start(runtime, paths, Arc::new(yt_session::AppSessionProvider))
 }

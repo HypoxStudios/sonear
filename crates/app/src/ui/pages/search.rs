@@ -21,7 +21,8 @@ use crate::ui::common::{
     CardItem, GRID_ROW, ROW_HEIGHT, TrackRowSpec, card_row, error_panel, grid_columns, heading,
     skeleton_rows, track_row,
 };
-use crate::ui::widgets::{accent_button, icon, spotify_logo};
+use crate::ui::source_switch::source_switch;
+use crate::ui::widgets::{accent_button, icon};
 
 const DEBOUNCE: Duration = Duration::from_millis(300);
 const HEADER_HEIGHT: f32 = 46.;
@@ -57,6 +58,8 @@ struct Results {
 
 pub struct SearchPage {
     store: Entity<AppStore>,
+    /// Whether the source is YT Music, which has no shows.
+    youtube: bool,
     input: Entity<InputState>,
     query: String,
     searched: String,
@@ -85,6 +88,7 @@ impl SearchPage {
     pub fn new(store: Entity<AppStore>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let input = cx.new(|cx| InputState::new(window, cx).placeholder(t!("search.placeholder")));
         let language_seen = store.read(cx).language_version;
+        let youtube = store.read(cx).is_youtube();
         let handle = input.read(cx).focus_handle(cx);
 
         window.focus(&handle, cx);
@@ -106,6 +110,7 @@ impl SearchPage {
         #[allow(unused_mut)]
         let mut page = Self {
             store,
+            youtube,
             input,
             query: String::new(),
             searched: String::new(),
@@ -331,6 +336,10 @@ impl SearchPage {
         let mut rows = Vec::new();
 
         for kind in SEARCH_KINDS {
+            if self.youtube && kind == SearchKind::Show {
+                continue;
+            }
+
             let (count, has_more, loading) = match kind {
                 SearchKind::Track => (
                     self.results.tracks.items.len(),
@@ -395,7 +404,11 @@ impl SearchPage {
         if self.query.is_empty() {
             return empty_state(
                 IconName::Search,
-                t!("search.empty.title"),
+                if self.youtube {
+                    t!("search.empty.title_ytm")
+                } else {
+                    t!("search.empty.title")
+                },
                 t!("search.empty.body"),
             );
         }
@@ -552,6 +565,8 @@ impl Render for SearchPage {
         }
 
         let body = self.body(window, cx);
+        let state = self.store.read(cx);
+        let switch = source_switch(&self.store, state.source(), state.switching_to());
 
         div()
             .flex()
@@ -587,7 +602,7 @@ impl Render for SearchPage {
                             ),
                     )
                     .child(div().flex_1())
-                    .child(spotify_logo()),
+                    .child(switch),
             )
             .child(div().flex_1().min_h_0().child(body))
     }

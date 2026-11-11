@@ -17,9 +17,8 @@ use crate::format::clock;
 use crate::i18n::plural;
 use crate::store::{AppStore, LibraryTab, Route};
 use crate::theme;
-use crate::ui::widgets::{
-    accent_button, art, heart_button, icon, icon_button, spotify_logo, text_tooltip,
-};
+use crate::ui::source_switch::source_switch;
+use crate::ui::widgets::{accent_button, art, heart_button, icon, icon_button, text_tooltip};
 
 pub const ROW_HEIGHT: f32 = 52.;
 
@@ -412,10 +411,24 @@ pub fn breadcrumb(store: &Entity<AppStore>, state: &AppStore, current: &str) -> 
                 .child(current.to_owned()),
         )
         .child(div().flex_1())
-        .child(spotify_logo())
+        .child(source_switch(store, state.source(), state.switching_to()))
 }
 
-/// A link that opens a Spotify page in the browser.
+/// Whether `url` is a page on YT Music.
+pub fn is_ytm_url(url: &str) -> bool {
+    url.starts_with("https://music.youtube.com/")
+}
+
+/// "Open in Spotify" or "Open in YT Music", by where `url` points.
+pub fn open_label(url: &str) -> String {
+    if is_ytm_url(url) {
+        t!("common.open_ytm").into_owned()
+    } else {
+        t!("common.open_spotify").into_owned()
+    }
+}
+
+/// A link that opens a Spotify or YT Music page in the browser.
 pub fn open_spotify(id: &'static str, url: Option<String>) -> Option<AnyElement> {
     let url = url?;
 
@@ -431,7 +444,7 @@ pub fn open_spotify(id: &'static str, url: Option<String>) -> Option<AnyElement>
             .text_color(theme::text_secondary())
             .hover(|style| style.text_color(theme::accent()))
             .focus_visible(|style| style.text_color(theme::accent()))
-            .child(t!("common.open_spotify"))
+            .child(open_label(&url))
             .child(icon(IconName::ExternalLink, 12., theme::text_secondary()))
             .on_click(move |_, _, cx: &mut App| cx.open_url(&url))
             .into_any_element(),
@@ -737,9 +750,13 @@ fn track_menu(
 
     if let Some(url) = track.open_url.clone() {
         menu = menu.separator().item(
-            PopupMenuItem::new(t!("menu.open_spotify"))
-                .icon(IconName::ExternalLink)
-                .on_click(move |_, _, cx| cx.open_url(&url)),
+            PopupMenuItem::new(if is_ytm_url(&url) {
+                t!("menu.open_ytm")
+            } else {
+                t!("menu.open_spotify")
+            })
+            .icon(IconName::ExternalLink)
+            .on_click(move |_, _, cx| cx.open_url(&url)),
         );
     }
 

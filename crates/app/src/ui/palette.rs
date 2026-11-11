@@ -433,8 +433,13 @@ impl PaletteView {
             if let Some(error) = &self.error {
                 let message = error.clone();
 
+                let service = match self.store.read(cx).source() {
+                    sonear_core::Source::Spotify => t!("source.name.spotify").into_owned(),
+                    sonear_core::Source::Youtube => t!("source.name.youtube").into_owned(),
+                };
+
                 groups.add(
-                    Some("Spotify"),
+                    Some(&service),
                     vec![(
                         CommandItem::new()
                             .label(message.clone())
@@ -614,7 +619,11 @@ impl Render for PaletteView {
         let mut command = Command::new(&self.state)
             .filterable(false)
             .bordered(false)
-            .placeholder(t!("palette.placeholder"))
+            .placeholder(if self.store.read(cx).is_youtube() {
+                t!("palette.placeholder_ytm")
+            } else {
+                t!("palette.placeholder")
+            })
             .max_h(theme::PALETTE_MAX_HEIGHT)
             .empty(|_, _, _| {
                 div()

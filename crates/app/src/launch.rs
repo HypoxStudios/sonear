@@ -26,6 +26,11 @@ pub enum Launch {
     Uninstall,
     UninstallFrom(PathBuf),
     MoveData(PathBuf),
+    /// Reads the YT Music sign-in cookies out of the WebView2 profile and prints
+    /// them on stdout. With `show`, opens the sign-in window first.
+    YtSession {
+        show: bool,
+    },
     /// Swaps this downloaded update into the given install folder.
     ApplyUpdate(PathBuf),
     #[cfg(feature = "demo")]
@@ -59,6 +64,9 @@ pub fn parse(mut args: impl Iterator<Item = OsString>, exe: &Path) -> Parsed {
             || app(first.as_deref()),
             |dir| Launch::UninstallFrom(PathBuf::from(dir)),
         ),
+        Some("--yt-session") => Launch::YtSession {
+            show: args.next().is_some_and(|arg| arg == "--show"),
+        },
         Some("--move-data") => args.next().map_or_else(
             || app(first.as_deref()),
             |dir| Launch::MoveData(PathBuf::from(dir)),
@@ -194,6 +202,19 @@ mod tests {
                 ignored: Some(_)
             }
         ));
+    }
+
+    #[test]
+    fn the_sign_in_helper_modes_are_parsed() {
+        assert_eq!(launch(&["--yt-session"]), Launch::YtSession { show: false });
+        assert_eq!(
+            launch(&["--yt-session", "--show"]),
+            Launch::YtSession { show: true }
+        );
+        assert_eq!(
+            launch(&["--yt-session", "--other"]),
+            Launch::YtSession { show: false }
+        );
     }
 
     #[test]

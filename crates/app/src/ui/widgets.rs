@@ -224,22 +224,6 @@ pub fn danger_button(
         .when(!enabled, |this| this.opacity(0.4))
 }
 
-/// The full Spotify logo for the top row of pages that show Spotify content.
-/// Only the sides carry the clear space; callers keep the rows above and below free.
-pub fn spotify_logo() -> Svg {
-    svg()
-        .path(assets::SPOTIFY_LOGO)
-        .flex_none()
-        .w(px(theme::SPOTIFY_LOGO_HEIGHT * theme::SPOTIFY_LOGO_ASPECT))
-        .h(px(theme::SPOTIFY_LOGO_HEIGHT))
-        .text_color(theme::spotify_mark())
-}
-
-/// The Spotify icon, for places too small for the full logo.
-pub fn spotify_icon() -> Svg {
-    spotify_icon_bare().mx(px(theme::SPOTIFY_CLEAR_SPACE))
-}
-
 /// The icon without its side clear space, for layouts that provide their own.
 pub fn spotify_icon_bare() -> Svg {
     svg()
@@ -248,6 +232,23 @@ pub fn spotify_icon_bare() -> Svg {
         .w(px(theme::SPOTIFY_ICON_SIZE * theme::SPOTIFY_ICON_ASPECT))
         .h(px(theme::SPOTIFY_ICON_SIZE))
         .text_color(theme::spotify_mark())
+}
+
+/// The YT Music mark, a ring and a play triangle, at `size` pixels.
+pub fn ytm_icon(size: f32) -> Svg {
+    svg()
+        .path(assets::YTM_ICON)
+        .flex_none()
+        .size(px(size))
+        .text_color(theme::spotify_mark())
+}
+
+/// The mark of the service the app plays from, as tall as the Spotify icon.
+pub fn source_icon(source: sonear_core::Source) -> Svg {
+    match source {
+        sonear_core::Source::Spotify => spotify_icon_bare(),
+        sonear_core::Source::Youtube => ytm_icon(theme::SPOTIFY_ICON_SIZE),
+    }
 }
 
 /// A tooltip builder showing `text`, for `.tooltip(...)` on a stateful element.
