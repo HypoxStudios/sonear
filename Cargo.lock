@@ -7186,7 +7186,7 @@ dependencies = [
 
 [[package]]
 name = "sonear"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -7218,7 +7218,7 @@ dependencies = [
 
 [[package]]
 name = "sonear-core"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "async-trait",
  "chrono",
@@ -7249,7 +7249,7 @@ dependencies = [
 
 [[package]]
 name = "sonear-soloist"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "async-trait",
  "chrono",
@@ -7269,7 +7269,7 @@ dependencies = [
 
 [[package]]
 name = "sonear-spotify"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "base64 0.22.1",
  "rand 0.9.5",
@@ -7288,7 +7288,7 @@ dependencies = [
 
 [[package]]
 name = "sonear-youtube"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
