@@ -209,6 +209,81 @@ fn demo(show: bool) -> Outcome {
     Outcome::SignedIn(vec![(COOKIE.to_owned(), "demo".to_owned())])
 }
 
+/// Margin kept between the sign-in window and the edges of the work area, in
+/// logical pixels.
+#[cfg(all(windows, not(feature = "demo")))]
+const SCREEN_MARGIN: f64 = 24.;
+
+/// Sizes the window to fit the work area of the monitor under the mouse and
+/// centres it there, so neither the taskbar nor the screen edge covers it. Any
+/// failure leaves the window where Windows put it.
+#[cfg(all(windows, not(feature = "demo")))]
+fn place_on_cursor_monitor(window: &tao::window::Window) {
+    use tao::dpi::{PhysicalPosition, PhysicalSize};
+    use windows::Win32::Foundation::POINT;
+    use windows::Win32::Graphics::Gdi::{
+        GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromPoint,
+    };
+    use windows::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
+    use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+
+    let mut cursor = POINT::default();
+    let mut info = MONITORINFO {
+        cbSize: size_of::<MONITORINFO>() as u32,
+        ..Default::default()
+    };
+    let (mut dpi_x, mut dpi_y) = (0, 0);
+
+    // SAFETY: plain Win32 calls with valid out pointers.
+    let found = unsafe {
+        GetCursorPos(&mut cursor).is_ok() && {
+            let monitor = MonitorFromPoint(cursor, MONITOR_DEFAULTTONEAREST);
+
+            GetMonitorInfoW(monitor, &mut info).as_bool()
+                && GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &mut dpi_x, &mut dpi_y).is_ok()
+        }
+    };
+
+    if !found || dpi_x == 0 {
+        return;
+    }
+
+    let scale = f64::from(dpi_x) / 96.;
+    let work = info.rcWork;
+    let (left, top) = (f64::from(work.left), f64::from(work.top));
+    let (work_width, work_height) = (
+        f64::from(work.right - work.left),
+        f64::from(work.bottom - work.top),
+    );
+    let margin = SCREEN_MARGIN * scale;
+    let (max_width, max_height) = (work_width - 2. * margin, work_height - 2. * margin);
+
+    if max_width <= 0. || max_height <= 0. {
+        return;
+    }
+
+    let mut inner = PhysicalSize::new(
+        (WINDOW.0 * scale).min(max_width),
+        (WINDOW.1 * scale).min(max_height),
+    );
+
+    window.set_inner_size(inner);
+
+    // The frame and title bar come on top of the inner size.
+    let excess = f64::from(window.outer_size().height) - max_height;
+
+    if excess > 0. {
+        inner.height = (inner.height - excess).max(1.);
+        window.set_inner_size(inner);
+    }
+
+    let outer = window.outer_size();
+    let x = left + (work_width - f64::from(outer.width)) / 2.;
+    let y = top + (work_height - f64::from(outer.height)) / 2.;
+
+    window.set_outer_position(PhysicalPosition::new(x, y));
+}
+
 #[cfg(not(feature = "demo"))]
 fn web(show: bool, profile: PathBuf, title: String) -> Outcome {
     use std::cell::RefCell;
@@ -229,13 +304,19 @@ fn web(show: bool, profile: PathBuf, title: String) -> Outcome {
     let mut event_loop = EventLoop::new();
     let window = match WindowBuilder::new()
         .with_title(title)
-        .with_visible(show)
+        .with_visible(false)
         .with_inner_size(LogicalSize::new(WINDOW.0, WINDOW.1))
         .build(&event_loop)
     {
         Ok(window) => window,
         Err(error) => return Outcome::Error(format!("could not open the window: {error}")),
     };
+
+    #[cfg(windows)]
+    place_on_cursor_monitor(&window);
+
+    window.set_visible(show);
+
     let mut context = WebContext::new(Some(profile));
     let url = if show {
         SIGN_IN_URL
