@@ -92,9 +92,11 @@ impl Core {
         self.demo
     }
 
-    /// Deletes everything Sonear stored: the Spotify login and its cached data,
-    /// the Soloist key, pairing and cache, and the settings. The Soloist
-    /// program stays so it isn't downloaded again. Returns what could not be deleted.
+    /// Deletes everything Sonear stored for both sources: the Spotify login and
+    /// its cached data, the Soloist key, pairing and cache, the YT Music
+    /// sign-in and local library, and the settings. The Soloist program and
+    /// the YouTube tools stay so they aren't downloaded again. Returns what
+    /// could not be deleted.
     pub async fn delete_all_data(&self) -> Vec<String> {
         let mut problems = Vec::new();
 
@@ -127,6 +129,11 @@ impl Core {
             problems.push(format!("{}: {error}", t!("problem.config_backup")));
         }
 
+        problems.extend(data_dir::delete_other_source_data(
+            &self.paths,
+            Source::Spotify,
+            &*self.secrets,
+        ));
         self.config.update(Config::reset_keeping_data_dir);
         soloist.start().await;
 
@@ -134,8 +141,9 @@ impl Core {
     }
 
     /// Deletes what the YouTube source stored: the local library and plays,
-    /// caches, likes, lyrics, history, queue and covers, and the settings.
-    /// The downloaded tools stay so they are not fetched again.
+    /// caches, likes, lyrics, history, queue and covers, and the settings,
+    /// plus what Spotify left behind. The downloaded tools stay so they are
+    /// not fetched again.
     async fn delete_youtube_data(&self) -> Vec<String> {
         let mut problems = Vec::new();
 
@@ -149,6 +157,11 @@ impl Core {
         }
 
         problems.extend(self.account.wipe_account_data().await);
+        problems.extend(data_dir::delete_other_source_data(
+            &self.paths,
+            Source::Youtube,
+            &*self.secrets,
+        ));
 
         let backup = self.config.path().with_file_name("config.toml.bak");
 

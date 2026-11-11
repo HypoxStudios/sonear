@@ -498,11 +498,7 @@ impl Shell {
             ),
             Confirm::DeleteAll => (
                 t!("shell.confirm.delete_all.title").into(),
-                if self.store.read(cx).is_youtube() {
-                    t!("shell.confirm.delete_all.body_youtube").into()
-                } else {
-                    t!("shell.confirm.delete_all.body").into()
-                },
+                t!("shell.confirm.delete_all.body").into(),
                 t!("shell.confirm.delete_all.action").into(),
             ),
             Confirm::MoveData => {

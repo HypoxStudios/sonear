@@ -1434,11 +1434,8 @@ shell.confirm.delete_all.action:
   en: "Delete everything"
   es: "Eliminar todo"
 shell.confirm.delete_all.body:
-  en: "This removes your Spotify login, Soloist key and pairing, history, queue, cached data, cover art and settings from this computer. The Soloist program stays, so you won't download it again. Setup starts again from the beginning."
-  es: "Esto elimina de esta computadora tu sesión de Spotify, la clave y la vinculación de Soloist, el historial, la fila, los datos en caché, las portadas y la configuración. El programa Soloist se conserva, así que no tendrás que descargarlo de nuevo. Tendrás que configurar Sonear desde el principio."
-shell.confirm.delete_all.body_youtube:
-  en: "This removes your saved songs and albums, play history, queue, cached data, cover art and settings from this computer. The playback tools stay, so you won't download them again. Setup starts again from the beginning."
-  es: "Esto elimina de esta computadora tus canciones y álbumes guardados, el historial, la fila, los datos en caché, las portadas y la configuración. Las herramientas de reproducción se conservan, así que no tendrás que descargarlas de nuevo. Tendrás que configurar Sonear desde el principio."
+  en: "This removes everything Sonear keeps on this computer for Spotify and YT Music: your Spotify login, Soloist key and pairing, your YT Music sign-in and saved music, history, queue, cached data, cover art and settings. The Soloist program and the YT Music playback tools stay, so you won't download them again. Setup starts again from the beginning."
+  es: "Esto elimina todo lo que Sonear guarda en esta computadora para Spotify y YT Music: tu sesión de Spotify, la clave y la vinculación de Soloist, tu sesión y tu música guardada de YT Music, el historial, la fila, los datos en caché, las portadas y la configuración. El programa Soloist y las herramientas de reproducción de YT Music se conservan, así que no tendrás que descargarlos de nuevo. Tendrás que configurar Sonear desde el principio."
 shell.confirm.delete_all.title:
   en: "Delete all Sonear data?"
   es: "¿Eliminar todos los datos de Sonear?"

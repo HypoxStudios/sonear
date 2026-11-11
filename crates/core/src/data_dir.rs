@@ -10,6 +10,9 @@ use rust_i18n::t;
 use thiserror::Error;
 use tracing::warn;
 
+use sonear_soloist::supervisor::SoloistDirs;
+
+use crate::config::Source;
 use crate::paths::AppPaths;
 use crate::secrets::{self, SecretStore};
 
@@ -317,6 +320,80 @@ pub fn delete_local_data(paths: &AppPaths, secrets: &dyn SecretStore) -> Vec<Str
     problems
 }
 
+/// Deletes what the source that is not running left behind, so "Delete all
+/// data" covers both. Spotify loses its login, Soloist key, pairing, caches,
+/// history and queue; YouTube loses everything but its downloaded tools.
+/// Returns what could not be deleted.
+pub fn delete_other_source_data(
+    paths: &AppPaths,
+    active: Source,
+    secrets: &dyn SecretStore,
+) -> Vec<String> {
+    let mut problems = Vec::new();
+    let mut targets = Vec::new();
+
+    match active {
+        Source::Spotify => {
+            let root = paths.youtube_root();
+            let tools = paths.youtube_tools_dir();
+
+            match fs::read_dir(&root) {
+                Ok(entries) => targets.extend(
+                    entries
+                        .filter_map(Result::ok)
+                        .map(|entry| entry.path())
+                        .filter(|path| *path != tools),
+                ),
+                Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                Err(error) => problems.push(format!("{}: {error}", root.display())),
+            }
+        }
+
+        Source::Youtube => {
+            for name in secrets::ALL_KEYS {
+                if let Err(error) = secrets.delete(name) {
+                    problems.push(format!("{name}: {error}"));
+                }
+            }
+
+            let soloist = SoloistDirs::new(paths.soloist_root());
+            let history = paths.history_db().into_os_string();
+
+            targets.extend([
+                paths.meta_cache_dir(),
+                paths.queue_file(),
+                soloist.data(),
+                soloist.cache(),
+            ]);
+            targets.extend(["", "-journal", "-wal", "-shm"].map(|suffix| {
+                let mut name = history.clone();
+
+                name.push(suffix);
+                PathBuf::from(name)
+            }));
+        }
+    }
+
+    for target in targets {
+        let result = if target.is_dir() {
+            retry_busy(|| fs::remove_dir_all(&target))
+        } else {
+            retry_busy(|| fs::remove_file(&target))
+        };
+
+        match result {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => {
+                warn!(%error, "could not delete the other source's data");
+                problems.push(format!("{}: {error}", target.display()));
+            }
+        }
+    }
+
+    problems
+}
+
 #[cfg(test)]
 mod tests {
     use std::cell::RefCell;
@@ -501,5 +578,62 @@ mod tests {
         assert_eq!(store.get(secrets::SOLOIST_API_KEY).unwrap(), None);
         assert_eq!(store.get(secrets::SPOTIFY_REFRESH_TOKEN).unwrap(), None);
         assert!(delete_local_data(&paths, &store).is_empty());
+    }
+
+    #[test]
+    fn deleting_from_spotify_clears_youtube_but_keeps_its_tools() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(dir.path().join("config"), dir.path().join("local"));
+        let store = MemoryStore::default();
+
+        fs::create_dir_all(paths.youtube_tools_dir()).unwrap();
+        fs::write(paths.youtube_tools_dir().join("mpv.exe"), b"x").unwrap();
+        fs::create_dir_all(paths.youtube_webview_dir().join("Default")).unwrap();
+        fs::create_dir_all(paths.youtube_meta_cache_dir()).unwrap();
+        fs::write(paths.youtube_library_file(), b"{}").unwrap();
+        fs::write(paths.youtube_history_db(), b"x").unwrap();
+        store
+            .set(secrets::SOLOIST_API_KEY, &Secret::new("k"))
+            .unwrap();
+
+        assert!(delete_other_source_data(&paths, Source::Spotify, &store).is_empty());
+        assert!(paths.youtube_tools_dir().join("mpv.exe").exists());
+        assert!(!paths.youtube_webview_dir().exists());
+        assert!(!paths.youtube_meta_cache_dir().exists());
+        assert!(!paths.youtube_library_file().exists());
+        assert!(!paths.youtube_history_db().exists());
+        assert!(store.get(secrets::SOLOIST_API_KEY).unwrap().is_some());
+        assert!(delete_other_source_data(&paths, Source::Spotify, &store).is_empty());
+    }
+
+    #[test]
+    fn deleting_from_youtube_clears_spotify_but_keeps_the_soloist_program() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(dir.path().join("config"), dir.path().join("local"));
+        let store = MemoryStore::default();
+        let soloist = SoloistDirs::new(paths.soloist_root());
+
+        fs::create_dir_all(paths.meta_cache_dir()).unwrap();
+        fs::create_dir_all(soloist.bin()).unwrap();
+        fs::create_dir_all(soloist.data()).unwrap();
+        fs::write(paths.history_db(), b"x").unwrap();
+        fs::write(paths.queue_file(), b"[]").unwrap();
+        fs::create_dir_all(paths.youtube_webview_dir()).unwrap();
+        store
+            .set(secrets::SOLOIST_API_KEY, &Secret::new("k"))
+            .unwrap();
+        store
+            .set(secrets::SPOTIFY_REFRESH_TOKEN, &Secret::new("t"))
+            .unwrap();
+
+        assert!(delete_other_source_data(&paths, Source::Youtube, &store).is_empty());
+        assert!(!paths.meta_cache_dir().exists());
+        assert!(!paths.history_db().exists());
+        assert!(!paths.queue_file().exists());
+        assert!(!soloist.data().exists());
+        assert!(soloist.bin().exists());
+        assert!(paths.youtube_webview_dir().exists());
+        assert_eq!(store.get(secrets::SOLOIST_API_KEY).unwrap(), None);
+        assert_eq!(store.get(secrets::SPOTIFY_REFRESH_TOKEN).unwrap(), None);
     }
 }
