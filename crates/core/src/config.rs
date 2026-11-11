@@ -20,7 +20,7 @@ pub enum ConfigError {
 /// Version of the end-user agreement and privacy policy. Bump it when either
 /// changes, so everyone is asked to accept again. Returning users see
 /// `setup.legal.changes` in the app, so update that text with it.
-pub const LEGAL_VERSION: u32 = 4;
+pub const LEGAL_VERSION: u32 = 5;
 
 /// Language of the interface.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

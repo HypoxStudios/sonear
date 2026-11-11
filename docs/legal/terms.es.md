@@ -1,14 +1,16 @@
 # Acuerdo de usuario final de Sonear
 
-Última actualización: 6 de noviembre de 2026
+Última actualización: 10 de noviembre de 2026
 
 Este acuerdo es entre tú y Hypox Studios (“nosotros”), los responsables de Sonear. Al usar Sonear, aceptas este acuerdo. Si no estás de acuerdo, no uses Sonear.
 
 ## Qué es Sonear
 
-Sonear es una app de escritorio independiente que reproduce música de tu cuenta de Spotify. Spotify no la crea, no la patrocina ni la respalda. Usa la Spotify Web API y Spotify Soloist, que descargas de Spotify y usas conforme a los términos de Spotify.
+Sonear es una app de escritorio independiente que reproduce música de tu cuenta de Spotify o de YT Music. Spotify, Google y YouTube no la crean, no la patrocinan ni la respaldan.
 
-Para usar Sonear necesitas una cuenta de Spotify Premium, tu propia app de desarrollador de Spotify (un Client ID) y tu propia clave de Soloist. También debes cumplir los [Términos de uso de Spotify](https://www.spotify.com/legal/end-user-agreement/).
+Para Spotify, usa la Spotify Web API y Spotify Soloist, que descargas de Spotify y usas conforme a los términos de Spotify. Para usarla necesitas una cuenta de Spotify Premium, tu propia app de desarrollador de Spotify (un Client ID) y tu propia clave de Soloist. También debes cumplir los [Términos de uso de Spotify](https://www.spotify.com/legal/end-user-agreement/).
+
+Para YT Music, lee las páginas web de YT Music como lo hace un navegador, no a través de una API oficial, y reproduce con dos herramientas de código abierto, mpv y yt-dlp, que Sonear descarga de sus versiones publicadas en GitHub cuando se lo pides. Cada herramienta tiene su propia licencia. Tú eres responsable de cumplir los [Términos del servicio de YouTube](https://www.youtube.com/t/terms) y las leyes de donde vives cuando usas esta fuente.
 
 ## Código fuente de Sonear
 
@@ -25,11 +27,11 @@ No puedes:
 
 ## Sin garantías
 
-Sonear se ofrece “tal cual”. No hacemos ninguna garantía ni declaración en nombre de Spotify. Rechazamos todas las garantías implícitas sobre la plataforma, el servicio y el contenido de Spotify, incluidas las garantías de comerciabilidad, de idoneidad para un fin determinado y de no infracción. Sonear puede dejar de funcionar en cualquier momento, por ejemplo si Spotify cambia o retira sus API o Soloist.
+Sonear se ofrece “tal cual”. No hacemos ninguna garantía ni declaración en nombre de Spotify, Google ni YouTube. Rechazamos todas las garantías implícitas sobre la plataforma, el servicio y el contenido de Spotify, incluidas las garantías de comerciabilidad, de idoneidad para un fin determinado y de no infracción. Sonear puede dejar de funcionar en cualquier momento, por ejemplo si Spotify cambia o retira sus API o Soloist, o si YouTube cambia su sitio. La fuente YT Music es la que tiene más probabilidades de fallar, porque no usa una API oficial.
 
 ## Responsabilidad
 
-Nosotros somos responsables de Sonear, no Spotify. Spotify y otros terceros no tienen ninguna responsabilidad ante ti por Sonear ni por tu uso de él. En la medida en que la ley lo permita, no somos responsables de ningún daño indirecto, incidental o consecuente derivado del uso de Sonear.
+Nosotros somos responsables de Sonear, no Spotify ni Google. Spotify, Google y otros terceros no tienen ninguna responsabilidad ante ti por Sonear ni por tu uso de él. En la medida en que la ley lo permita, no somos responsables de ningún daño indirecto, incidental o consecuente derivado del uso de Sonear, incluida cualquier medida que YouTube o Google tomen sobre tu cuenta porque usaste la fuente YT Music.
 
 ## Spotify como tercero beneficiario
 
