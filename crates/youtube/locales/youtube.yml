@@ -1,0 +1,45 @@
+_version: 2
+
+youtube.api:
+  en: "YouTube Music answered %{status}: %{message}"
+  es: "YouTube Music respondió %{status}: %{message}"
+youtube.decode:
+  en: "could not read YouTube Music's answer: %{detail}"
+  es: "No se pudo leer la respuesta de YouTube Music: %{detail}"
+youtube.needs_login:
+  en: "YouTube Music needs you to sign in"
+  es: "YouTube Music necesita que inicies sesión"
+youtube.network:
+  en: "could not reach YouTube Music: %{detail}"
+  es: "No se pudo conectar con YouTube Music: %{detail}"
+youtube.not_found:
+  en: "YouTube Music could not find that"
+  es: "YouTube Music no encontró eso"
+
+tool.checksum:
+  en: "the downloaded file did not pass its integrity check"
+  es: "El archivo descargado no pasó la comprobación de integridad"
+tool.disconnected:
+  en: "the player stopped unexpectedly"
+  es: "El reproductor se detuvo de forma inesperada"
+tool.download:
+  en: "the download failed: %{detail}"
+  es: "Falló la descarga: %{detail}"
+tool.io:
+  en: "file error: %{detail}"
+  es: "Error de archivo: %{detail}"
+tool.mpv:
+  en: "the player reported an error: %{detail}"
+  es: "El reproductor informó de un error: %{detail}"
+tool.not_installed:
+  en: "the playback tools are not installed yet"
+  es: "Las herramientas de reproducción aún no están instaladas"
+tool.resolve:
+  en: "could not get the audio stream: %{detail}"
+  es: "No se pudo obtener el audio: %{detail}"
+tool.spawn:
+  en: "could not start the tool: %{detail}"
+  es: "No se pudo iniciar la herramienta: %{detail}"
+tool.timeout:
+  en: "the tool took too long to answer"
+  es: "La herramienta tardó demasiado en responder"
